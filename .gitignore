@@ -1,0 +1,23 @@
+# Environment variables - NEVER commit this
+.env
+
+# Virtual environment
+venv/
+
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+
+# ChromaDB data
+data/chroma_db/
+
+# Coverage reports
+.coverage
+htmlcov/
+
+# pytest cache
+.pytest_cache/
+
+# VS Code
+.vscode/
