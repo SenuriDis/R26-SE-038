@@ -24,8 +24,8 @@
         "dependencies": {
             "function_dependencies": {
                 "main": [
-                    "setdefault",
                     "ImportError",
+                    "setdefault",
                     "execute_from_command_line"
                 ]
             }
@@ -327,10 +327,10 @@
         "dependencies": {
             "function_dependencies": {
                 "handle": [
-                    "write",
+                    "check",
                     "SUCCESS",
-                    "sleep",
-                    "check"
+                    "write",
+                    "sleep"
                 ]
             }
         },
