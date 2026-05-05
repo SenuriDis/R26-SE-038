@@ -90,7 +90,7 @@ def analyze_folder(folder_path):
 
 
 if __name__ == "__main__":
-    folder_results = analyze_folder("samples")
+    folder_results = analyze_folder("datasets")
 
     print(format_as_json(folder_results))
 
