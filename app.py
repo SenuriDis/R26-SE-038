@@ -1,4 +1,6 @@
 import os
+from datetime import datetime
+
 from flask import Flask, request, jsonify
 
 # Import analyzer functions from main.py
@@ -6,6 +8,9 @@ from main import analyze_file, analyze_folder
 
 # Import helper function to save JSON results
 from src.output.json_formatter import save_json_to_file
+
+# Import MongoDB collection
+from src.config.db import analysis_collection
 
 
 # Create Flask application
@@ -48,8 +53,16 @@ def analyze_single_file():
             "error": "Analysis failed. Check file path or source code."
         }), 400
 
-    # Save API result to JSON file for demo/evidence
+    # Save API result to JSON file
     save_json_to_file(result, "results/analysis_results.json")
+
+    # Save result to MongoDB
+    analysis_collection.insert_one({
+        "type": "file_path_analysis",
+        "input_path": file_path,
+        "result": result,
+        "created_at": datetime.utcnow()
+    })
 
     return jsonify(result), 200
 
@@ -70,8 +83,16 @@ def analyze_project_folder():
     # Analyze all Python files inside the given folder
     results = analyze_folder(folder_path)
 
-    # Save API result to JSON file for demo/evidence
+    # Save API result to JSON file
     save_json_to_file(results, "results/analysis_results.json")
+
+    # Save results to MongoDB
+    analysis_collection.insert_one({
+        "type": "folder_analysis",
+        "input_path": folder_path,
+        "results": results,
+        "created_at": datetime.utcnow()
+    })
 
     return jsonify(results), 200
 
@@ -110,10 +131,30 @@ def upload_and_analyze():
             "error": "Analysis failed"
         }), 400
 
-    # Save API result to JSON file for demo/evidence
+    # Save API result to JSON file
     save_json_to_file(result, "results/analysis_results.json")
 
+    # Save result to MongoDB
+    analysis_collection.insert_one({
+        "type": "file_upload_analysis",
+        "file_name": file.filename,
+        "result": result,
+        "created_at": datetime.utcnow()
+    })
+
     return jsonify(result), 200
+
+
+@app.route("/analysis-results", methods=["GET"])
+def get_analysis_results():
+    # Fetch all saved reports from MongoDB
+    reports = []
+
+    for report in analysis_collection.find().sort("created_at", -1):
+        report["_id"] = str(report["_id"])
+        reports.append(report)
+
+    return jsonify(reports), 200
 
 
 if __name__ == "__main__":
