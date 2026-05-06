@@ -1,2 +1,4 @@
-pytest
-coverage
+pytest>=7.0
+pytest-cov>=4.0
+pytest-json-report>=1.5
+coverage>=7.0
