@@ -149,3 +149,149 @@ def _request_to_metrics(req: FunctionMetricsRequest) -> CodeMetrics:
 
 
 # Endpoints
+
+app.get("/health")
+async def health():
+    return {
+        "status": "healthy",
+        "model_loaded": _detector is not None and _detector.is_fitted,
+        "version": "1.0.0",
+    }
+ 
+ 
+@app.get("/model/info")
+async def model_info():
+    if _detector is None or not _detector.is_fitted:
+        raise HTTPException(status_code=503, detail="Model not loaded.")
+    return {
+        "model_version": MLRiskDetector.MODEL_VERSION,
+        "features": _detector.feature_names,
+        "thresholds": {
+            "HIGH": 0.65,
+            "MEDIUM": 0.35,
+        },
+        "ensemble": "RandomForest(40%) + XGBoost(50%) + LogisticRegression(10%)",
+    }
+ 
+ 
+@app.post("/predict", response_model=BatchPredictResponse)
+async def predict(request: BatchPredictRequest):
+    """
+    Main prediction endpoint. Accepts a batch of functions with code metrics.
+    Returns risk scores, SHAP explanations, and test prioritization.
+ 
+    This is the primary interface between Component 2 and Component 3.
+    """
+    if _detector is None or not _detector.is_fitted:
+        raise HTTPException(status_code=503, detail="Model not loaded. POST /train first.")
+ 
+    t0 = time.time()
+ 
+    # Build CodeMetrics objects
+    metrics_list = [_request_to_metrics(fn) for fn in request.functions]
+ 
+    # Extract features
+    fe = _feature_engineer or FeatureEngineer()
+    feature_matrix = np.stack([
+        fe.transform(m) for m in metrics_list
+    ])
+ 
+    # Metadata for predictions
+    metadata = [
+        {
+            "function_name": m.function_name,
+            "file_path": m.file_path,
+            "start_line": m.start_line,
+            "end_line": m.end_line,
+        }
+        for m in metrics_list
+    ]
+ 
+    # Predict
+    predictions: List[RiskPrediction] = _detector.predict_batch(feature_matrix, metadata)
+ 
+    # Prioritize
+    payload = _prioritizer.prioritize(predictions, project_name=request.project_name)
+ 
+    elapsed_ms = (time.time() - t0) * 1000
+ 
+    # Build response
+    TEST_TYPE_MAP = {
+        "exhaustive": ["boundary_tests", "negative_tests", "edge_cases", "exception_handling"],
+        "boundary": ["boundary_tests", "typical_inputs"],
+        "basic": ["happy_path"],
+    }
+ 
+    ranked = []
+    for fn in payload["ranked_functions"]:
+        ranked.append(FunctionRiskResponse(
+            function_name=fn["function_name"],
+            file_path=fn["file_path"],
+            start_line=fn["start_line"],
+            end_line=fn["end_line"],
+            risk_score=fn["risk_score"],
+            risk_level=fn["risk_level"],
+            confidence=fn["confidence"],
+            priority_rank=fn["priority_rank"],
+            top_risk_factors=[RiskFactorResponse(**rf) for rf in fn["top_risk_factors"]],
+            explanation_text=fn["explanation_text"],
+            recommended_test_depth=fn["recommended_test_depth"],
+            test_types=fn["test_types"],
+            rf_score=fn["rf_score"],
+            xgb_score=fn["xgb_score"],
+        ))
+ 
+    return BatchPredictResponse(
+        project=request.project_name,
+        processing_time_ms=round(elapsed_ms, 2),
+        summary=payload["summary"],
+        ranked_functions=ranked,
+    )
+ 
+ 
+@app.post("/train")
+async def train_model():
+    """
+    Train (or retrain) the model on synthetic data.
+    In production, replace with real dataset loading from repository mining.
+    """
+    global _detector, _feature_engineer
+ 
+    logger.info("Starting model training...")
+ 
+    # Import here to avoid circular deps at module load
+    import sys, os
+    sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
+    from data.dataset import generate_synthetic_dataset
+    from sklearn.model_selection import train_test_split
+ 
+    X, y, metrics_list = generate_synthetic_dataset(n_samples=2000, random_state=42)
+ 
+    X_train, X_test, y_train, y_test = train_test_split(
+        X, y, test_size=0.2, stratify=y, random_state=42
+    )
+ 
+    fe = FeatureEngineer()
+    fe.fit(metrics_list[:len(X_train)])
+ 
+    detector = MLRiskDetector()
+    detector.fit(X_train, y_train)
+    metrics = detector.evaluate(X_test, y_test)
+ 
+    # Save
+    os.makedirs("models/saved", exist_ok=True)
+    detector.save(MODEL_PATH)
+    fe_path = MODEL_PATH.replace(".pkl", "_fe.pkl")
+    import pickle
+    with open(fe_path, "wb") as f:
+        pickle.dump(fe, f)
+ 
+    _detector = detector
+    _feature_engineer = fe
+ 
+    return {
+        "status": "trained",
+        "evaluation": {k: round(v, 4) for k, v in metrics.items()},
+        "model_path": MODEL_PATH,
+    }
+ 
