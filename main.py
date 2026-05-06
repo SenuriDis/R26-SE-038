@@ -7,6 +7,7 @@ from src.metrics.nesting_depth_calculator import NestingDepthCalculator
 from src.metrics.function_complexity_calculator import FunctionComplexityCalculator
 from src.risk.risk_detector import RiskDetector
 from src.output.json_formatter import format_as_json, save_json_to_file
+from src.intelligence.testing_context_generator import TestingContextGenerator
 
 
 def analyze_file(file_path):
@@ -44,6 +45,14 @@ def analyze_file(file_path):
         "low": sum(1 for item in risk_results.values() if item["risk_level"] == "Low")
     }
 
+    testing_context_generator = TestingContextGenerator(
+    function_complexities,
+    dependencies,
+    risk_results
+)
+
+    intelligent_testing_context = testing_context_generator.generate()
+
     return {
         "file": file_path,
         "summary": {
@@ -67,7 +76,9 @@ def analyze_file(file_path):
         },
         "risk_summary": risk_summary,
         "risk_analysis": risk_results,
-        "high_risk_functions": high_risk_functions
+        "high_risk_functions": high_risk_functions,
+        "intelligent_testing_context": intelligent_testing_context
+        
     }
 
 
