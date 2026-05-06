@@ -13,14 +13,13 @@ from llama_index.core import (
 )
 from llama_index.core.node_parser import SentenceSplitter
 from llama_index.vector_stores.chroma import ChromaVectorStore
-from llama_index.embeddings.openai import OpenAIEmbedding
+from llama_index.embeddings.huggingface import HuggingFaceEmbedding
 
 from config.settings import settings
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-# Folders we never want to index
 SKIP_DIRS = {
     ".git", "__pycache__", ".venv", "venv", "env",
     "node_modules", ".tox", "dist", "build",
@@ -32,6 +31,7 @@ class RepositoryIndexer:
     """
     Indexes a Python repository into ChromaDB so all three agents
     can retrieve relevant context before making LLM calls.
+    Uses a local HuggingFace embedding model - no API key needed.
     """
 
     def __init__(self, repository_path: str):
@@ -42,24 +42,23 @@ class RepositoryIndexer:
                 f"Repository not found: {self.repository_path}"
             )
 
-        # Create a unique collection name based on the repo path
+        # Unique collection name based on repo path
         repo_hash = hashlib.md5(
             str(self.repository_path).encode()
         ).hexdigest()[:8]
         self.collection_name = f"{settings.chroma_collection_name}_{repo_hash}"
 
-        # ChromaDB client - saves to disk so we don't re-index every time
+        # ChromaDB client - saves to disk
         self.chroma_client = chromadb.PersistentClient(
             path=settings.chroma_db_path
         )
 
-        # Embedding model - converts code chunks into vectors
-        self.embedding_model = OpenAIEmbedding(
-            model="text-embedding-3-small",
-            api_key=settings.openai_api_key,
+        # Local embedding model - runs on your machine, no API key needed
+        self.embedding_model = HuggingFaceEmbedding(
+            model_name="BAAI/bge-small-en-v1.5"
         )
 
-        # Tell LlamaIndex to use our embedding model
+        # Tell LlamaIndex to use our local embedding model
         LlamaSettings.embed_model = self.embedding_model
         LlamaSettings.chunk_size = settings.rag_chunk_size
         LlamaSettings.chunk_overlap = settings.rag_chunk_overlap
@@ -75,13 +74,11 @@ class RepositoryIndexer:
         py_files = []
 
         for root, dirs, files in os.walk(self.repository_path):
-            # Remove skip directories so os.walk doesn't go into them
             dirs[:] = [d for d in dirs if d not in SKIP_DIRS]
 
             for fname in files:
                 if not fname.endswith(".py"):
                     continue
-                # Skip test files - we generate tests, we don't index them
                 if fname.startswith("test_") or fname.endswith("_test.py"):
                     continue
                 py_files.append(Path(root) / fname)
@@ -90,10 +87,7 @@ class RepositoryIndexer:
         return py_files
 
     def _file_metadata(self, file_path: str) -> dict:
-        """
-        Attach metadata to each chunk so the retriever knows
-        which file it came from.
-        """
+        """Attach file path metadata to each chunk."""
         path = Path(file_path)
         try:
             relative = path.relative_to(self.repository_path)
@@ -109,10 +103,7 @@ class RepositoryIndexer:
     def build_index(self, force_rebuild: bool = False) -> VectorStoreIndex:
         """
         Build the ChromaDB index from the repository.
-        If index already exists, loads it instead of rebuilding.
-        
-        Args:
-            force_rebuild: Set to True to delete and rebuild from scratch.
+        Loads existing index if available instead of rebuilding.
         """
         existing = [c.name for c in self.chroma_client.list_collections()]
 
@@ -144,7 +135,6 @@ class RepositoryIndexer:
                 f"No Python source files found in {self.repository_path}"
             )
 
-        # Load files into LlamaIndex documents
         reader = SimpleDirectoryReader(
             input_files=[str(f) for f in py_files],
             file_metadata=self._file_metadata,
@@ -152,7 +142,6 @@ class RepositoryIndexer:
         documents = reader.load_data()
         logger.info(f"Loaded {len(documents)} document chunks")
 
-        # Create ChromaDB collection
         collection = self.chroma_client.get_or_create_collection(
             name=self.collection_name,
             metadata={"hnsw:space": "cosine"},
@@ -163,13 +152,11 @@ class RepositoryIndexer:
             vector_store=vector_store
         )
 
-        # Chunk the documents
         splitter = SentenceSplitter(
             chunk_size=settings.rag_chunk_size,
             chunk_overlap=settings.rag_chunk_overlap,
         )
 
-        # Build the index - this embeds every chunk and stores in ChromaDB
         self._index = VectorStoreIndex.from_documents(
             documents,
             storage_context=storage_context,
