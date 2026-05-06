@@ -1,6 +1,8 @@
 import os
 from datetime import datetime
 
+from flask_cors import CORS
+
 from flask import Flask, request, jsonify
 
 # Import analyzer functions from main.py
@@ -16,6 +18,8 @@ from src.config.db import analysis_collection
 # Create Flask application
 app = Flask(__name__)
 
+# Enable CORS for all routes
+CORS(app)
 
 # Folder used to store uploaded Python files
 UPLOAD_FOLDER = "uploads"
