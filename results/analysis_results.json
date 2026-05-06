@@ -24,8 +24,8 @@
         "dependencies": {
             "function_dependencies": {
                 "main": [
-                    "ImportError",
                     "setdefault",
+                    "ImportError",
                     "execute_from_command_line"
                 ]
             }
@@ -44,7 +44,34 @@
         },
         "high_risk_functions": [
             "main"
-        ]
+        ],
+        "intelligent_testing_context": {
+            "ml_ready_features": [
+                {
+                    "function_name": "main",
+                    "cyclomatic_complexity": 1,
+                    "dependency_count": 3,
+                    "risk_level": "High"
+                }
+            ],
+            "llm_test_recommendations": [
+                {
+                    "function": "main",
+                    "risk_level": "High",
+                    "reason": "High risk due to high dependency count",
+                    "dependencies": [
+                        "setdefault",
+                        "ImportError",
+                        "execute_from_command_line"
+                    ],
+                    "suggested_test_focus": [
+                        "dependency behavior",
+                        "mocking external/internal calls",
+                        "integration-related scenarios"
+                    ]
+                }
+            ]
+        }
     },
     {
         "file": "C:/Users/micro/OneDrive/Desktop/recipe-app-python\\app\\app\\asgi.py",
@@ -73,7 +100,11 @@
             "low": 0
         },
         "risk_analysis": {},
-        "high_risk_functions": []
+        "high_risk_functions": [],
+        "intelligent_testing_context": {
+            "ml_ready_features": [],
+            "llm_test_recommendations": []
+        }
     },
     {
         "file": "C:/Users/micro/OneDrive/Desktop/recipe-app-python\\app\\app\\settings.py",
@@ -102,7 +133,11 @@
             "low": 0
         },
         "risk_analysis": {},
-        "high_risk_functions": []
+        "high_risk_functions": [],
+        "intelligent_testing_context": {
+            "ml_ready_features": [],
+            "llm_test_recommendations": []
+        }
     },
     {
         "file": "C:/Users/micro/OneDrive/Desktop/recipe-app-python\\app\\app\\tests.py",
@@ -155,7 +190,47 @@
                 "risk_level": "Low"
             }
         },
-        "high_risk_functions": []
+        "high_risk_functions": [],
+        "intelligent_testing_context": {
+            "ml_ready_features": [
+                {
+                    "function_name": "test_add_number",
+                    "cyclomatic_complexity": 1,
+                    "dependency_count": 1,
+                    "risk_level": "Low"
+                },
+                {
+                    "function_name": "test_add_number1",
+                    "cyclomatic_complexity": 1,
+                    "dependency_count": 1,
+                    "risk_level": "Low"
+                }
+            ],
+            "llm_test_recommendations": [
+                {
+                    "function": "test_add_number",
+                    "risk_level": "Low",
+                    "reason": "Low risk due to low structural complexity",
+                    "dependencies": [
+                        "assertEqual"
+                    ],
+                    "suggested_test_focus": [
+                        "basic functional correctness"
+                    ]
+                },
+                {
+                    "function": "test_add_number1",
+                    "risk_level": "Low",
+                    "reason": "Low risk due to low structural complexity",
+                    "dependencies": [
+                        "assertEqual"
+                    ],
+                    "suggested_test_focus": [
+                        "basic functional correctness"
+                    ]
+                }
+            ]
+        }
     },
     {
         "file": "C:/Users/micro/OneDrive/Desktop/recipe-app-python\\app\\app\\urls.py",
@@ -184,7 +259,11 @@
             "low": 0
         },
         "risk_analysis": {},
-        "high_risk_functions": []
+        "high_risk_functions": [],
+        "intelligent_testing_context": {
+            "ml_ready_features": [],
+            "llm_test_recommendations": []
+        }
     },
     {
         "file": "C:/Users/micro/OneDrive/Desktop/recipe-app-python\\app\\app\\wsgi.py",
@@ -213,7 +292,11 @@
             "low": 0
         },
         "risk_analysis": {},
-        "high_risk_functions": []
+        "high_risk_functions": [],
+        "intelligent_testing_context": {
+            "ml_ready_features": [],
+            "llm_test_recommendations": []
+        }
     },
     {
         "file": "C:/Users/micro/OneDrive/Desktop/recipe-app-python\\app\\core\\admin.py",
@@ -242,7 +325,11 @@
             "low": 0
         },
         "risk_analysis": {},
-        "high_risk_functions": []
+        "high_risk_functions": [],
+        "intelligent_testing_context": {
+            "ml_ready_features": [],
+            "llm_test_recommendations": []
+        }
     },
     {
         "file": "C:/Users/micro/OneDrive/Desktop/recipe-app-python\\app\\core\\apps.py",
@@ -271,7 +358,11 @@
             "low": 0
         },
         "risk_analysis": {},
-        "high_risk_functions": []
+        "high_risk_functions": [],
+        "intelligent_testing_context": {
+            "ml_ready_features": [],
+            "llm_test_recommendations": []
+        }
     },
     {
         "file": "C:/Users/micro/OneDrive/Desktop/recipe-app-python\\app\\core\\models.py",
@@ -300,7 +391,11 @@
             "low": 0
         },
         "risk_analysis": {},
-        "high_risk_functions": []
+        "high_risk_functions": [],
+        "intelligent_testing_context": {
+            "ml_ready_features": [],
+            "llm_test_recommendations": []
+        }
     },
     {
         "file": "C:/Users/micro/OneDrive/Desktop/recipe-app-python\\app\\core\\management\\commands\\wait_for_db.py",
@@ -328,9 +423,9 @@
             "function_dependencies": {
                 "handle": [
                     "check",
+                    "sleep",
                     "SUCCESS",
-                    "write",
-                    "sleep"
+                    "write"
                 ]
             }
         },
@@ -348,6 +443,34 @@
         },
         "high_risk_functions": [
             "handle"
-        ]
+        ],
+        "intelligent_testing_context": {
+            "ml_ready_features": [
+                {
+                    "function_name": "handle",
+                    "cyclomatic_complexity": 2,
+                    "dependency_count": 4,
+                    "risk_level": "High"
+                }
+            ],
+            "llm_test_recommendations": [
+                {
+                    "function": "handle",
+                    "risk_level": "High",
+                    "reason": "High risk due to high dependency count",
+                    "dependencies": [
+                        "check",
+                        "sleep",
+                        "SUCCESS",
+                        "write"
+                    ],
+                    "suggested_test_focus": [
+                        "dependency behavior",
+                        "mocking external/internal calls",
+                        "integration-related scenarios"
+                    ]
+                }
+            ]
+        }
     }
 ]
