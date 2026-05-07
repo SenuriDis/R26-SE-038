@@ -156,7 +156,7 @@ function Dashboard() {
               Latest Analysis
             </p>
 
-            <h2 className="text-lg font-bold mt-3 text-slate-800">
+            <h2 className="text-base font-bold mt-3 text-slate-800">
               {stats.latestAnalysis}
             </h2>
 

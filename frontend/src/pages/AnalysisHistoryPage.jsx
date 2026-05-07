@@ -47,7 +47,7 @@ function AnalysisHistoryPage() {
                   <div>
 
                     <h3 className="text-xl font-semibold text-slate-800">
-                      {item.type}
+                      {item.type.replace("_", " ").toUpperCase()}
                     </h3>
 
                     <p className="text-sm text-slate-500 mt-1">
