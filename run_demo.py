@@ -2,7 +2,6 @@ import logging
 import sys
 from pathlib import Path
 
-# Make sure Python can find our modules
 sys.path.insert(0, str(Path(__file__).parent))
 
 logging.basicConfig(
@@ -12,6 +11,7 @@ logging.basicConfig(
 
 from src.models.schemas import HighRiskSegment, PipelineInput
 from src.pipeline.pipeline import TestingPipeline
+from src.utils.output_writer import OutputWriter
 
 
 def main():
@@ -19,8 +19,6 @@ def main():
     print("  R26-SE-038 | LLM Testing Pipeline Demo")
     print("="*60 + "\n")
 
-    # Simulate what Component 2 (ML team) would send us
-    # These are the "high risk" segments they identified
     segments = [
         HighRiskSegment(
             segment_id="seg-001",
@@ -57,16 +55,21 @@ def main():
 
     # Run the pipeline
     pipeline = TestingPipeline()
+    #pipeline = TestingPipeline(force_reindex=True)
     output = pipeline.run(pipeline_input)
+
+    # Save outputs to disk
+    writer = OutputWriter(output_dir="./outputs")
+    written_files = writer.save(output)
 
     # Print results
     print("\n" + "="*60)
     print("  RESULTS")
     print("="*60)
 
-    print(f"\n✅ Segments processed : {output.segments_processed}")
+    print(f"\n✅ Segments processed  : {output.segments_processed}")
     print(f"✅ Valid tests generated: {output.segments_with_valid_tests}")
-    print(f"✅ Success rate        : {output.success_rate * 100:.1f}%")
+    print(f"✅ Success rate         : {output.success_rate * 100:.1f}%")
 
     print("\n--- GENERATED TESTS ---\n")
     for test in output.validated_tests:
@@ -85,6 +88,12 @@ def main():
         for f in report.findings:
             print(f"  [{f.severity.value.upper()}] {f.category.value} — {f.description}")
         print("-" * 40)
+
+    print("\n--- OUTPUT FILES SAVED ---\n")
+    for test_file in written_files["test_files"]:
+        print(f"  📄 {test_file}")
+    print(f"  📋 {written_files['review_report']}")
+    print(f"  📊 {written_files['summary']}")
 
     if output.errors:
         print("\n--- ERRORS ---")
