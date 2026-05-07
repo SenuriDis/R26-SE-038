@@ -57,4 +57,46 @@ def parse_coverage():
         "statement_coverage_pct": round(totals.get("percent_covered", 0.0), 2),
     }
 
+def parse_pytest_results():
+    """JSON report mode to get structured pass/fail data."""
+    json_report_path = os.path.join(REPORTS_DIR, "pytest_results.json")
 
+    cmd = [
+        sys.executable, "-m", "pytest",
+        TESTS_DIR,
+        f"--json-report",
+        f"--json-report-file={json_report_path}",
+        "-q",
+        "--tb=no",   
+        f"--cov={SRC_DIR}",
+        "--cov-report=",  
+    ]
+
+    subprocess.run(cmd, capture_output=True, cwd=BASE_DIR)
+
+    if not os.path.exists(json_report_path):
+        return {"error": "pytest JSON report not generated"}
+
+    with open(json_report_path, "r") as f:
+        data = json.load(f)
+
+    summary = data.get("summary", {})
+    tests   = data.get("tests", [])
+
+    failed_tests = [
+        {"name": t["nodeid"], "outcome": t["outcome"],
+         "message": t.get("call", {}).get("longrepr", "")[:300]}
+        for t in tests if t.get("outcome") != "passed"
+    ]
+
+    return {
+        "total"   : summary.get("total", 0),
+        "passed"  : summary.get("passed", 0),
+        "failed"  : summary.get("failed", 0),
+        "errors"  : summary.get("error", 0),
+        "skipped" : summary.get("skipped", 0),
+        "pass_rate_pct": round(
+            summary.get("passed", 0) / summary.get("total", 1) * 100, 2
+        ),
+        "failed_tests": failed_tests,
+    }
