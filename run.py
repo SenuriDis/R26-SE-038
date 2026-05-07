@@ -135,3 +135,33 @@ def _grade(pass_rate, coverage):
     if score >= 75: return "B — Good"
     if score >= 60: return "C — Acceptable"
     return "D — Needs Improvement"
+
+
+def main():
+    exit_code = run_tests()
+
+    print("\n[2/3] Parsing coverage metrics...")
+    coverage_data = parse_coverage()
+
+    pytest_data = parse_pytest_results()
+
+    report = generate_report(exit_code, pytest_data, coverage_data)
+
+    print("="*60)
+    print("  EVALUATION REPORT SUMMARY")
+    print("="*60)
+    print(f"  Status       : {report['execution_status']}")
+    print(f"  Tests Total  : {pytest_data.get('total', 'N/A')}")
+    print(f"  Passed       : {pytest_data.get('passed', 'N/A')}")
+    print(f"  Failed       : {pytest_data.get('failed', 'N/A')}")
+    print(f"  Pass Rate    : {pytest_data.get('pass_rate_pct', 'N/A')}%")
+    print(f"  Coverage     : {coverage_data.get('statement_coverage_pct', 'N/A')}%")
+    print(f"  Grade        : {report['evaluation_summary']['quality_grade']}")
+    print(f"\n  Report saved : {REPORT_FILE}")
+    print("="*60)
+
+    sys.exit(exit_code)
+
+
+if __name__ == "__main__":
+    main()
