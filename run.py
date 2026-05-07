@@ -100,3 +100,38 @@ def parse_pytest_results():
         ),
         "failed_tests": failed_tests,
     }
+
+# Generate evaluation report
+def generate_report(exit_code, pytest_data, coverage_data):
+    print("\n[3/3] Generating structured JSON evaluation report...\n")
+
+    report = {
+        "project"          : "LLM and ML Enhanced Software Testing System",
+        "component"        : "Test Execution and Evaluation",
+        "student_id"       : "IT22050908",
+        "timestamp"        : datetime.datetime.now().isoformat(),
+        "execution_status" : "PASS" if exit_code == 0 else "FAIL",
+        "test_results"     : pytest_data,
+        "coverage_metrics" : coverage_data,
+        "evaluation_summary": {
+            "pass_rate_pct"            : pytest_data.get("pass_rate_pct", 0),
+            "statement_coverage_pct"   : coverage_data.get("statement_coverage_pct", 0),
+            "quality_grade"            : _grade(
+                pytest_data.get("pass_rate_pct", 0),
+                coverage_data.get("statement_coverage_pct", 0)
+            ),
+        }
+    }
+
+    with open(REPORT_FILE, "w") as f:
+        json.dump(report, f, indent=2)
+
+    return report
+
+
+def _grade(pass_rate, coverage):
+    score = (pass_rate + coverage) / 2
+    if score >= 90: return "A — Excellent"
+    if score >= 75: return "B — Good"
+    if score >= 60: return "C — Acceptable"
+    return "D — Needs Improvement"
