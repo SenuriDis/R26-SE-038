@@ -1,4 +1,15 @@
 import { useEffect, useState } from "react";
+import {
+  Clock3,
+  RefreshCw,
+  FolderOpen,
+  FileCode2,
+  Activity,
+  AlertTriangle,
+  Database,
+  MousePointerClick,
+} from "lucide-react";
+
 import Navbar from "../components/Navbar";
 import ResultSummary from "../components/ResultSummary";
 import RiskSummary from "../components/RiskSummary";
@@ -28,6 +39,10 @@ function AnalysisHistoryPage() {
 
   const getFileName = (filePath) => {
     return filePath.split("\\").pop().split("/").pop();
+  };
+
+  const formatReportType = (type) => {
+    return type.replaceAll("_", " ").toUpperCase();
   };
 
   const openReport = (item) => {
@@ -65,8 +80,14 @@ function AnalysisHistoryPage() {
       <Navbar />
 
       <div className="max-w-7xl mx-auto p-8">
+        {/* Header */}
         <div className="mb-8">
-          <h1 className="text-4xl font-bold text-slate-800">
+          <p className="text-cyan-600 font-semibold text-sm flex items-center gap-2">
+            <Clock3 size={16} />
+            RECENT RESULTS
+          </p>
+
+          <h1 className="text-4xl font-bold text-slate-800 mt-2">
             Recent Analysis Results
           </h1>
 
@@ -77,102 +98,172 @@ function AnalysisHistoryPage() {
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-6">
-            <div className="flex justify-between items-center mb-5">
-              <h2 className="text-2xl font-semibold text-slate-800">
-                Saved Reports
-              </h2>
+          {/* Saved Reports */}
+          <div className="bg-white rounded-3xl border border-slate-200 shadow-sm p-6">
+            <div className="flex justify-between items-center mb-6">
+              <div>
+                <h2 className="text-2xl font-bold text-slate-800">
+                  Saved Reports
+                </h2>
+
+                <p className="text-sm text-slate-500 mt-1">
+                  MongoDB stored analysis history
+                </p>
+              </div>
 
               <button
                 onClick={loadHistory}
-                className="bg-slate-800 hover:bg-slate-900 text-white px-4 py-2 rounded-lg text-sm"
+                className="bg-slate-800 hover:bg-slate-900 text-white px-4 py-2 rounded-xl text-sm flex items-center gap-2"
               >
+                <RefreshCw size={15} />
                 Refresh
               </button>
             </div>
 
             {history.length > 0 ? (
-              <div className="space-y-4 max-h-[650px] overflow-y-auto pr-2">
-                {history.map((item) => (
-                  <div
-                    key={item._id}
-                    onClick={() => openReport(item)}
-                    className={`border rounded-xl p-4 cursor-pointer transition ${
-                      selectedReport?._id === item._id
-                        ? "bg-cyan-50 border-cyan-300"
-                        : "bg-slate-50 border-slate-200 hover:bg-slate-100"
-                    }`}
-                  >
-                    <p className="font-semibold text-slate-800">
-                      {item.type.replaceAll("_", " ").toUpperCase()}
-                    </p>
+              <div className="space-y-4 max-h-[680px] overflow-y-auto pr-2">
+                {history.map((item) => {
+                  const isFolder = item.results && item.results.length > 0;
 
-                    <p className="text-sm text-slate-500 mt-1">
-                      {new Date(item.created_at).toLocaleString()}
-                    </p>
+                  return (
+                    <div
+                      key={item._id}
+                      onClick={() => openReport(item)}
+                      className={`border rounded-2xl p-5 cursor-pointer transition hover:shadow-sm ${
+                        selectedReport?._id === item._id
+                          ? "bg-cyan-50 border-cyan-300"
+                          : "bg-slate-50 border-slate-200 hover:bg-slate-100"
+                      }`}
+                    >
+                      <div className="flex items-start gap-3">
+                        <div
+                          className={`p-3 rounded-2xl ${
+                            isFolder
+                              ? "bg-yellow-100 text-yellow-700"
+                              : "bg-cyan-100 text-cyan-700"
+                          }`}
+                        >
+                          {isFolder ? (
+                            <FolderOpen size={20} />
+                          ) : (
+                            <FileCode2 size={20} />
+                          )}
+                        </div>
 
-                    {item.input_path && (
-                      <p className="text-xs text-slate-500 mt-2 break-all">
-                        Path: {item.input_path}
-                      </p>
-                    )}
+                        <div className="flex-1">
+                          <p className="font-bold text-slate-800">
+                            {formatReportType(item.type)}
+                          </p>
 
-                    {item.file_name && (
-                      <p className="text-xs text-slate-500 mt-2">
-                        File: {item.file_name}
-                      </p>
-                    )}
+                          <p className="text-sm text-slate-500 mt-1">
+                            {new Date(item.created_at).toLocaleString()}
+                          </p>
 
-                    <span className="inline-block mt-3 bg-cyan-100 text-cyan-700 px-3 py-1 rounded-full text-xs">
-                      Click to open
-                    </span>
-                  </div>
-                ))}
+                          {item.input_path && (
+                            <p className="text-xs text-slate-500 mt-3 break-all">
+                              Path: {item.input_path}
+                            </p>
+                          )}
+
+                          {item.file_name && (
+                            <p className="text-xs text-slate-500 mt-3">
+                              File: {item.file_name}
+                            </p>
+                          )}
+
+                          <span className="inline-flex items-center gap-2 mt-4 bg-cyan-100 text-cyan-700 px-3 py-1 rounded-full text-xs">
+                            <MousePointerClick size={13} />
+                            Click to open
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
               </div>
             ) : (
-              <p className="text-slate-500">
-                No saved reports found.
-              </p>
+              <div className="bg-slate-50 border border-slate-200 rounded-2xl p-8 text-center">
+                <Database size={34} className="mx-auto text-slate-400" />
+
+                <p className="text-slate-500 mt-3">
+                  No saved reports found.
+                </p>
+              </div>
             )}
           </div>
 
+          {/* Report Details */}
           <div className="lg:col-span-2">
             {!selectedResult && (
-              <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-10 text-center">
-                <p className="text-slate-500">
-                  Select a saved report to view analysis details.
+              <div className="bg-white rounded-3xl border border-slate-200 shadow-sm p-12 text-center">
+                <div className="bg-cyan-100 text-cyan-700 w-16 h-16 rounded-3xl flex items-center justify-center mx-auto">
+                  <MousePointerClick size={28} />
+                </div>
+
+                <h3 className="text-2xl font-bold text-slate-800 mt-5">
+                  Select a Report
+                </h3>
+
+                <p className="text-slate-500 mt-2">
+                  Choose a saved report from the left side to view analysis
+                  details.
                 </p>
               </div>
             )}
 
             {folderResults.length > 0 && (
-              <div className="bg-white rounded-2xl shadow-sm p-6 border border-slate-200 mb-6">
+              <div className="bg-white rounded-3xl shadow-sm p-6 border border-slate-200 mb-6">
                 <h3 className="text-2xl font-bold text-slate-800 mb-6">
                   Folder Report Overview
                 </h3>
 
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
-                  <div className="bg-slate-100 rounded-xl p-4">
-                    <p className="text-sm text-slate-500">Files Analyzed</p>
-                    <p className="text-3xl font-bold mt-2">
-                      {folderResults.length}
-                    </p>
+                  <div className="bg-slate-100 rounded-2xl p-5">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-sm text-slate-500">
+                          Files Analyzed
+                        </p>
+
+                        <p className="text-4xl font-bold mt-3">
+                          {folderResults.length}
+                        </p>
+                      </div>
+
+                      <FileCode2 className="text-cyan-600" size={25} />
+                    </div>
                   </div>
 
-                  <div className="bg-slate-100 rounded-xl p-4">
-                    <p className="text-sm text-slate-500">
-                      Total High-Risk Functions
-                    </p>
-                    <p className="text-3xl font-bold mt-2 text-red-500">
-                      {totalHighRiskFunctions}
-                    </p>
+                  <div className="bg-slate-100 rounded-2xl p-5">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-sm text-slate-500">
+                          High-Risk Functions
+                        </p>
+
+                        <p className="text-4xl font-bold mt-3 text-red-500">
+                          {totalHighRiskFunctions}
+                        </p>
+                      </div>
+
+                      <AlertTriangle className="text-red-500" size={25} />
+                    </div>
                   </div>
 
-                  <div className="bg-slate-100 rounded-xl p-4">
-                    <p className="text-sm text-slate-500">Average Complexity</p>
-                    <p className="text-3xl font-bold mt-2 text-cyan-600">
-                      {averageComplexity}
-                    </p>
+                  <div className="bg-slate-100 rounded-2xl p-5">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-sm text-slate-500">
+                          Average Complexity
+                        </p>
+
+                        <p className="text-4xl font-bold mt-3 text-cyan-600">
+                          {averageComplexity}
+                        </p>
+                      </div>
+
+                      <Activity className="text-cyan-600" size={25} />
+                    </div>
                   </div>
                 </div>
 
@@ -199,8 +290,8 @@ function AnalysisHistoryPage() {
             )}
 
             {selectedResult && (
-              <div className="bg-white rounded-2xl shadow-sm p-8 border border-slate-200">
-                <h3 className="text-3xl font-bold text-slate-800 mb-6">
+              <div className="bg-white rounded-3xl shadow-sm p-8 border border-slate-200">
+                <h3 className="text-3xl font-bold text-slate-800 mb-8">
                   Opened Analysis Result
                 </h3>
 

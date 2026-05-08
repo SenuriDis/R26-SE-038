@@ -1,5 +1,14 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
+import {
+  FileCode2,
+  AlertTriangle,
+  BrainCircuit,
+  Activity,
+  ArrowRight,
+  Database,
+  Sparkles,
+} from "lucide-react";
 
 import Navbar from "../components/Navbar";
 import { getDashboardStats } from "../services/api";
@@ -25,26 +34,19 @@ function Dashboard() {
       let complexityCount = 0;
 
       history.forEach((item) => {
-
-        // folder analysis
+        // Folder analysis result
         if (item.results) {
           item.results.forEach((result) => {
             totalHighRisk += result.high_risk_functions.length;
-
-            totalComplexity +=
-              result.summary.file_cyclomatic_complexity;
-
+            totalComplexity += result.summary.file_cyclomatic_complexity;
             complexityCount++;
           });
         }
 
-        // single file analysis
+        // Single file analysis result
         if (item.result) {
           totalHighRisk += item.result.high_risk_functions.length;
-
-          totalComplexity +=
-            item.result.summary.file_cyclomatic_complexity;
-
+          totalComplexity += item.result.summary.file_cyclomatic_complexity;
           complexityCount++;
         }
       });
@@ -65,7 +67,6 @@ function Dashboard() {
         latestAnalysis: latest,
         avgComplexity,
       });
-
     } catch (error) {
       console.error(error);
     }
@@ -76,131 +77,186 @@ function Dashboard() {
       <Navbar />
 
       <div className="max-w-7xl mx-auto p-8">
-
         {/* Header */}
-        <div className="flex justify-between items-center mb-8">
-
+        <div className="flex flex-col md:flex-row md:justify-between md:items-center gap-5 mb-8">
           <div>
-            <h1 className="text-4xl font-bold text-slate-800">
+            <p className="text-cyan-600 font-semibold text-sm flex items-center gap-2">
+              <Sparkles size={16} />
+              INTELLIGENT TESTING DASHBOARD
+            </p>
+
+            <h1 className="text-4xl font-bold text-slate-800 mt-2">
               Project Dashboard
             </h1>
 
             <p className="text-slate-500 mt-2">
-              Intelligent static code analysis and testing recommendation platform.
+              Intelligent static code analysis and testing recommendation
+              platform.
             </p>
           </div>
 
           <Link
             to="/analysis"
-            className="bg-cyan-500 hover:bg-cyan-600 text-white px-6 py-3 rounded-xl font-medium"
+            className="bg-cyan-500 hover:bg-cyan-600 text-white px-6 py-3 rounded-xl font-medium flex items-center gap-2 shadow-sm transition"
           >
             + New Code Analysis
+            <ArrowRight size={18} />
           </Link>
-
         </div>
 
         {/* Stats */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-5">
+          <div className="bg-white rounded-2xl p-6 border border-slate-200 shadow-sm hover:shadow-md transition">
+            <div className="flex justify-between items-start">
+              <div>
+                <p className="text-slate-500 text-sm">Total Analyses</p>
 
-          <div className="bg-white rounded-2xl p-6 border border-slate-200 shadow-sm">
+                <h2 className="text-4xl font-bold mt-3 text-slate-800">
+                  {stats.totalAnalyses}
+                </h2>
 
-            <p className="text-slate-500 text-sm">
-              Total Analyses
-            </p>
+                <p className="text-green-600 text-sm mt-2">
+                  MongoDB connected
+                </p>
+              </div>
 
-            <h2 className="text-4xl font-bold mt-3 text-slate-800">
-              {stats.totalAnalyses}
-            </h2>
-
-            <p className="text-green-600 text-sm mt-2">
-              MongoDB connected
-            </p>
-
+              <div className="bg-cyan-100 text-cyan-700 p-3 rounded-xl">
+                <FileCode2 size={22} />
+              </div>
+            </div>
           </div>
 
-          <div className="bg-white rounded-2xl p-6 border border-slate-200 shadow-sm">
+          <div className="bg-white rounded-2xl p-6 border border-slate-200 shadow-sm hover:shadow-md transition">
+            <div className="flex justify-between items-start">
+              <div>
+                <p className="text-slate-500 text-sm">High-Risk Functions</p>
 
-            <p className="text-slate-500 text-sm">
-              High-Risk Functions
-            </p>
+                <h2 className="text-4xl font-bold mt-3 text-red-500">
+                  {stats.totalHighRisk}
+                </h2>
 
-            <h2 className="text-4xl font-bold mt-3 text-red-500">
-              {stats.totalHighRisk}
-            </h2>
+                <p className="text-slate-500 text-sm mt-2">
+                  Intelligent detection
+                </p>
+              </div>
 
-            <p className="text-slate-500 text-sm mt-2">
-              Intelligent detection
-            </p>
-
+              <div className="bg-red-100 text-red-600 p-3 rounded-xl">
+                <AlertTriangle size={22} />
+              </div>
+            </div>
           </div>
 
-          <div className="bg-white rounded-2xl p-6 border border-slate-200 shadow-sm">
+          <div className="bg-white rounded-2xl p-6 border border-slate-200 shadow-sm hover:shadow-md transition">
+            <div className="flex justify-between items-start">
+              <div>
+                <p className="text-slate-500 text-sm">Avg Complexity</p>
 
-            <p className="text-slate-500 text-sm">
-              Avg Complexity
-            </p>
+                <h2 className="text-4xl font-bold mt-3 text-cyan-600">
+                  {stats.avgComplexity}
+                </h2>
 
-            <h2 className="text-4xl font-bold mt-3 text-cyan-600">
-              {stats.avgComplexity}
-            </h2>
+                <p className="text-slate-500 text-sm mt-2">
+                  Real-time calculation
+                </p>
+              </div>
 
-            <p className="text-slate-500 text-sm mt-2">
-              Real-time calculation
-            </p>
-
+              <div className="bg-cyan-100 text-cyan-700 p-3 rounded-xl">
+                <Activity size={22} />
+              </div>
+            </div>
           </div>
 
-          <div className="bg-white rounded-2xl p-6 border border-slate-200 shadow-sm">
+          <div className="bg-white rounded-2xl p-6 border border-slate-200 shadow-sm hover:shadow-md transition">
+            <div className="flex justify-between items-start gap-3">
+              <div>
+                <p className="text-slate-500 text-sm">Latest Analysis</p>
 
-            <p className="text-slate-500 text-sm">
-              Latest Analysis
-            </p>
+                <h2 className="text-base font-bold mt-3 text-slate-800 break-words">
+                  {stats.latestAnalysis}
+                </h2>
 
-            <h2 className="text-base font-bold mt-3 text-slate-800">
-              {stats.latestAnalysis}
-            </h2>
+                <p className="text-slate-500 text-sm mt-2">
+                  Last stored report
+                </p>
+              </div>
 
-            <p className="text-slate-500 text-sm mt-2">
-              Last stored report
-            </p>
-
+              <div className="bg-purple-100 text-purple-700 p-3 rounded-xl shrink-0">
+                <BrainCircuit size={22} />
+              </div>
+            </div>
           </div>
-
         </div>
 
         {/* Overview */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mt-8">
-
           <div className="lg:col-span-2 bg-white rounded-2xl border border-slate-200 shadow-sm p-8">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="bg-slate-100 text-slate-700 p-3 rounded-xl">
+                <Database size={22} />
+              </div>
 
-            <h3 className="text-2xl font-bold text-slate-800 mb-4">
-              Platform Overview
-            </h3>
+              <h3 className="text-2xl font-bold text-slate-800">
+                Platform Overview
+              </h3>
+            </div>
 
             <p className="text-slate-600 leading-8">
               This intelligent software testing platform performs AST-based
-              static code analysis to identify structural risks,
-              cyclomatic complexity patterns, dependency hotspots,
-              and intelligent testing opportunities.
+              static code analysis to identify structural risks, cyclomatic
+              complexity patterns, dependency hotspots, and intelligent testing
+              opportunities.
             </p>
 
+            <div className="mt-8 grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="bg-slate-100 rounded-xl p-5">
+                <h4 className="font-semibold text-slate-700">
+                  Structural Analysis
+                </h4>
+
+                <p className="text-sm text-slate-500 mt-2 leading-6">
+                  Extracts function details, control flow counts, nesting depth,
+                  cyclomatic complexity, and dependencies.
+                </p>
+              </div>
+
+              <div className="bg-slate-100 rounded-xl p-5">
+                <h4 className="font-semibold text-slate-700">
+                  AI-Ready Output
+                </h4>
+
+                <p className="text-sm text-slate-500 mt-2 leading-6">
+                  Produces ML-ready features and LLM-ready testing
+                  recommendations for intelligent test generation.
+                </p>
+              </div>
+            </div>
           </div>
 
-          <div className="bg-cyan-50 rounded-2xl border border-cyan-100 p-6">
+          <div className="bg-cyan-50 rounded-2xl border border-cyan-100 p-6 shadow-sm">
+            <div className="flex items-center gap-3 mb-3">
+              <div className="bg-cyan-100 text-cyan-700 p-3 rounded-xl">
+                <BrainCircuit size={22} />
+              </div>
 
-            <h3 className="text-xl font-semibold text-cyan-700 mb-3">
-              AI Suggestion
-            </h3>
+              <h3 className="text-xl font-semibold text-cyan-700">
+                AI Suggestion
+              </h3>
+            </div>
 
             <p className="text-slate-600 text-sm leading-7">
-              Analyze multiple repositories and compare complexity trends
-              to improve testing prioritization and defect prediction.
+              Analyze multiple repositories and compare complexity trends to
+              improve testing prioritization and defect prediction.
             </p>
 
+            <Link
+              to="/history"
+              className="inline-flex items-center gap-2 mt-6 text-cyan-700 font-medium hover:underline"
+            >
+              View recent results
+              <ArrowRight size={16} />
+            </Link>
           </div>
-
         </div>
-
       </div>
     </div>
   );
