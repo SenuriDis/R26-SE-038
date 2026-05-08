@@ -1,0 +1,117 @@
+{
+  "run_id": "requests-demo-001",
+  "generated_at": "20260508_101445",
+  "repository": "D:\\Year 4 Sem 1\\temp_repos\\requests\\src\\requests",
+  "reports": [
+    {
+      "segment_id": "req-001",
+      "function_name": "check_header_validity",
+      "file_path": "src/requests/utils.py",
+      "pylint_score": 0.0,
+      "summary": "The code has several issues, including undefined variables and a missing final newline. The function check_header_validity is trying to validate header names and values using regular expressions, but the regular expressions are not defined in the given code snippet.",
+      "total_findings": 4,
+      "findings": [
+        {
+          "finding_id": "F001",
+          "category": "bug",
+          "severity": "high",
+          "line_number": 4,
+          "description": "Undefined variable 'CLEAN_HEADER_REGEX_BYTE'",
+          "suggested_fix": "Define CLEAN_HEADER_REGEX_BYTE as a regular expression pattern, e.g., CLEAN_HEADER_REGEX_BYTE = re.compile(rb'^[^\\s][^\\r\\n]*\\Z')"
+        },
+        {
+          "finding_id": "F002",
+          "category": "bug",
+          "severity": "high",
+          "line_number": 4,
+          "description": "Undefined variable 'CLEAN_HEADER_REGEX_STR'",
+          "suggested_fix": "Define CLEAN_HEADER_REGEX_STR as a regular expression pattern, e.g., CLEAN_HEADER_REGEX_STR = re.compile(r'^[^\\s][^\\r\\n]*\\Z')"
+        },
+        {
+          "finding_id": "F003",
+          "category": "bug",
+          "severity": "high",
+          "line_number": 7,
+          "description": "Undefined variable 'InvalidHeader'",
+          "suggested_fix": "Import InvalidHeader from the exceptions module, e.g., from requests.exceptions import InvalidHeader"
+        },
+        {
+          "finding_id": "F004",
+          "category": "code_smell",
+          "severity": "low",
+          "line_number": 15,
+          "description": "Missing final newline",
+          "suggested_fix": "Add a newline character at the end of the file"
+        }
+      ]
+    },
+    {
+      "segment_id": "req-002",
+      "function_name": "get_encoding_from_headers",
+      "file_path": "src/requests/utils.py",
+      "pylint_score": null,
+      "summary": "The function get_encoding_from_headers has some issues with encoding detection and handling. It does not follow the standard approach of checking for 'charset' in the 'Content-Type' header and does not handle cases where the encoding is not specified. The function also uses the requests.utils.parse_header function which is not necessary and can be simplified.",
+      "total_findings": 3,
+      "findings": [
+        {
+          "finding_id": "F001",
+          "category": "code_smell",
+          "severity": "medium",
+          "line_number": 5,
+          "description": "The function uses requests.utils.parse_header which is not necessary and can be simplified by using the _parse_content_type_header function from the same module.",
+          "suggested_fix": "Replace requests.utils.parse_header with _parse_content_type_header"
+        },
+        {
+          "finding_id": "F002",
+          "category": "code_smell",
+          "severity": "low",
+          "line_number": 9,
+          "description": "The function strips the encoding with ' and \" which is not necessary and can be simplified by using the strip() function without arguments.",
+          "suggested_fix": "Replace encoding.strip('\"') with encoding.strip()"
+        },
+        {
+          "finding_id": "F003",
+          "category": "code_smell",
+          "severity": "low",
+          "line_number": 11,
+          "description": "The function checks if the encoding is valid using codecs.lookup(encoding) which is not necessary and can be removed.",
+          "suggested_fix": "Remove the line if encoding and codecs.lookup(encoding):"
+        }
+      ]
+    },
+    {
+      "segment_id": "req-003",
+      "function_name": "prepend_scheme_if_needed",
+      "file_path": "src/requests/utils.py",
+      "pylint_score": 2.14,
+      "summary": "The provided function, prepend_scheme_if_needed, appears to be a part of a larger system for handling URLs and HTTP requests. However, there are several issues with the code, including undefined variables and a missing final newline. The function also does not handle potential exceptions that may occur during URL parsing.",
+      "total_findings": 3,
+      "findings": [
+        {
+          "finding_id": "F001",
+          "category": "bug",
+          "severity": "high",
+          "line_number": 2,
+          "description": "The variable 'parse_url' is not defined in the given scope.",
+          "suggested_fix": "Import the 'parse_url' function from the 'urllib.parse' module or define it within the given scope."
+        },
+        {
+          "finding_id": "F002",
+          "category": "bug",
+          "severity": "high",
+          "line_number": 19,
+          "description": "The variable 'urlunparse' is not defined in the given scope.",
+          "suggested_fix": "Import the 'urlunparse' function from the 'urllib.parse' module or define it within the given scope."
+        },
+        {
+          "finding_id": "F003",
+          "category": "code_smell",
+          "severity": "low",
+          "line_number": 19,
+          "description": "The function is missing a final newline at the end of the file.",
+          "suggested_fix": "Add a newline character at the end of the file."
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,14 @@
+{
+  "run_id": "requests-demo-001",
+  "generated_at": "20260508_101445",
+  "segments_processed": 3,
+  "segments_with_valid_tests": 3,
+  "success_rate": 1.0,
+  "errors": [],
+  "output_files": [
+    "outputs\\run_requests-demo-001_20260508_101445\\generated_tests\\test_check_header_validity.py",
+    "outputs\\run_requests-demo-001_20260508_101445\\generated_tests\\test_get_encoding_from_headers.py",
+    "outputs\\run_requests-demo-001_20260508_101445\\generated_tests\\test_prepend_scheme_if_needed.py"
+  ],
+  "review_report": "outputs\\run_requests-demo-001_20260508_101445\\code_review_report.json"
+}
