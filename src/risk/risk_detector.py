@@ -9,13 +9,11 @@ class RiskDetector:
     def __init__(self, function_complexities, function_dependencies):
 
         # Stores function-level cyclomatic complexity values
-        # Example:
-        # {"login": 4, "validate_user": 2}
+        
         self.function_complexities = function_complexities
 
         # Stores dependency relationships between functions
-        # Example:
-        # {"login": ["validate_user", "connect_db"]}
+      
         self.function_dependencies = function_dependencies
 
     # Main method used to classify function risk levels
