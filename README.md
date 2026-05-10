@@ -23,12 +23,38 @@ This component is responsible for:
 pip install -r requirements.txt
 ```
 
-### 2. Run the Evaluation Pipeline
+### 2. Install Node dependencies for the backend API
+```bash
+npm install
+```
+
+### 3. Install frontend dependencies
+```bash
+cd frontend
+npm install
+```
+
+### 4. Start the backend API server
+```bash
+node server.js
+```
+
+### 5. Start the frontend app
+```bash
+npm run dev
+```
+
+### 6. Open the app
+```bash
+http://localhost:5173
+```
+
+### 7. Run tests / generate reports
 ```bash
 python run.py
 ```
 
-### 3. Run with Docker (Sandboxed)
+### 8. Run with Docker (Sandboxed)
 ```bash
 docker build -t test-eval .
 docker run --rm test-eval
