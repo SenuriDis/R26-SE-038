@@ -45,9 +45,7 @@ npm run dev
 ```
 
 ### 6. Open the app
-```bash
-http://localhost:5173
-```
+**http://localhost:5173**
 
 ### 7. Run tests / generate reports
 ```bash
