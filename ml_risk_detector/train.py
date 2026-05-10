@@ -5,6 +5,7 @@ import logging
  
 sys.path.insert(0, os.path.dirname(__file__))
  
+# pyrefly: ignore [missing-import]
 import numpy as np
 from sklearn.model_selection import train_test_split
  
@@ -186,7 +187,7 @@ def train():
     payload = prioritizer.prioritize(predictions, project_name="payment-service-demo")
     prioritizer.print_summary(payload)
  
-    # Detailed output for top function
+    # the output for the top function
     print("\n  DETAILED SHAP EXPLANATION — process_transaction():")
     print("  " + "-"*55)
     top = next(p for p in predictions if p.function_name == "process_transaction")
@@ -201,7 +202,7 @@ def train():
         bar = "█" * int(abs(factor["contribution"]) * 80)
         print(f"    {factor['feature']:<35} +{factor['contribution']:+.3f}  {bar}")
  
-    # Save JSON output
+    # JSON file save
     out_path = "models/saved/sample_prediction.json"
     with open(out_path, "w") as f:
         json.dump(payload, f, indent=2)
