@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Recent Results — ML Risk Detector</title>
+  <meta name="description" content="View history of ML risk predictions and SHAP explanations for previously analyzed functions." />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+
+  <!-- ── Navigation ──────────────────────────────────────────── -->
+  <nav class="navbar" id="navbar">
+    <div class="nav-brand">
+      <div class="nav-logo"><span>ML</span></div>
+      <div class="nav-title">
+        <span class="brand-name">ML Risk Detector</span>
+        <span class="brand-sub">Intelligent Software Testing System</span>
+      </div>
+    </div>
+    <div class="nav-links">
+      <a href="index.html" class="nav-link" id="nav-dashboard">Dashboard</a>
+      <a href="predict.html" class="nav-link" id="nav-predict">New Prediction</a>
+      <a href="results.html" class="nav-link active" id="nav-results">Recent Results</a>
+    </div>
+  </nav>
+
+  <!-- ── Main Content ─────────────────────────────────────────── -->
+  <main class="main-content">
+
+    <div class="page-header">
+      <div class="page-header-left">
+        <h1 class="page-title">Prediction History</h1>
+        <p class="page-subtitle">Previously analyzed functions and their ML risk scores stored in session history.</p>
+      </div>
+      <button class="btn-secondary" id="btn-refresh-history" onclick="loadHistoryPage()">Refresh History</button>
+    </div>
+
+    <!-- Filter Row -->
+    <div class="filter-row" id="filter-row">
+      <button class="filter-btn active" id="filter-all" onclick="filterHistory('all')">All</button>
+      <button class="filter-btn" id="filter-high" onclick="filterHistory('HIGH')">High Risk</button>
+      <button class="filter-btn" id="filter-medium" onclick="filterHistory('MEDIUM')">Medium Risk</button>
+      <button class="filter-btn" id="filter-low" onclick="filterHistory('LOW')">Low Risk</button>
+    </div>
+
+    <!-- History List -->
+    <div id="history-list">
+      <div class="empty-state">
+        <div class="empty-icon">📊</div>
+        <p>No prediction history yet. <a href="predict.html">Run your first prediction →</a></p>
+      </div>
+    </div>
+
+  </main>
+
+  <!-- ── Detail Modal ─────────────────────────────────────────── -->
+  <div class="modal-overlay hidden" id="detail-modal">
+    <div class="modal-box" id="modal-box">
+      <div class="modal-header">
+        <h2 class="modal-title" id="modal-fn-name">—</h2>
+        <button class="modal-close" id="btn-modal-close" onclick="closeModal()">✕</button>
+      </div>
+      <div class="modal-body" id="modal-body">
+        <!-- populated by JS -->
+      </div>
+    </div>
+  </div>
+
+  <script src="app.js"></script>
+  <script>
+    document.addEventListener('DOMContentLoaded', () => {
+      loadHistoryPage();
+    });
+  </script>
+</body>
+</html>
