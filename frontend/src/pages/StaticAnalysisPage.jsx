@@ -7,14 +7,13 @@ import {
 import {
   FolderSearch,
   FileCode2,
-  Sparkles,
   AlertTriangle,
   Activity,
+  CheckCircle2,
 } from "lucide-react";
 
 import Navbar from "../components/Navbar";
 import HeaderSection from "../components/HeaderSection";
-import SourceInputCard from "../components/SourceInputCard";
 import ScanConfigCard from "../components/ScanConfigCard";
 import ResultSummary from "../components/ResultSummary";
 import RiskSummary from "../components/RiskSummary";
@@ -27,6 +26,21 @@ function StaticAnalysisPage() {
   const [result, setResult] = useState(null);
   const [folderResults, setFolderResults] = useState([]);
   const [loading, setLoading] = useState(false);
+
+  // Success notification state
+  const [successMessage, setSuccessMessage] = useState("");
+
+  // Show success message for 3 seconds
+  const showSuccessMessage = (message) => {
+  setTimeout(() => {
+    setSuccessMessage(message);
+
+    setTimeout(() => {
+      setSuccessMessage("");
+    }, 3000);
+
+  }, 200);
+};
 
   const handleAnalyzeFile = async () => {
     if (!file) {
@@ -41,6 +55,9 @@ function StaticAnalysisPage() {
 
       setResult(data);
       setFolderResults([]);
+
+      // Success message
+      showSuccessMessage("Python file analyzed successfully!");
     } catch (error) {
       console.error(error);
       alert("File analysis failed");
@@ -63,6 +80,11 @@ function StaticAnalysisPage() {
       if (Array.isArray(data) && data.length > 0) {
         setFolderResults(data);
         setResult(data[0]);
+
+        // Success message
+        showSuccessMessage(
+          `Folder analysis completed successfully! ${data.length} Python files analyzed.`
+        );
       } else {
         setFolderResults([]);
         setResult(null);
@@ -102,6 +124,20 @@ function StaticAnalysisPage() {
 
       <div className="max-w-7xl mx-auto p-8">
         <HeaderSection />
+
+        {/* Success Notification */}
+        {successMessage && (
+          <div className="fixed top-6 right-6 z-50 bg-green-500 text-white px-6 py-4 rounded-2xl shadow-xl flex items-center gap-3 animate-bounce">
+            
+            <CheckCircle2 size={22} />
+            
+            <p className="font-medium">
+              
+              {successMessage}
+              </p>
+              
+              </div>
+            )}
 
         {/* Main Top Grid */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
