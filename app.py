@@ -6,7 +6,13 @@ from flask_cors import CORS
 from flask import Flask, request, jsonify
 
 # Import analyzer functions from main.py
-from main import analyze_file, analyze_folder
+from main import (
+    analyze_file,
+    analyze_folder,
+    analyze_file_with_requirements,
+    analyze_file_with_auto_requirements,
+    analyze_github_repository,
+)
 
 # Import helper function to save JSON results
 from src.output.json_formatter import save_json_to_file
@@ -64,6 +70,119 @@ def analyze_single_file():
     analysis_collection.insert_one({
         "type": "file_path_analysis",
         "input_path": file_path,
+        "result": result,
+        "created_at": datetime.utcnow()
+    })
+
+    return jsonify(result), 200
+
+
+@app.route("/analyze-with-requirements", methods=["POST"])
+def analyze_file_against_requirements():
+    # Get JSON data from request body
+    data = request.get_json()
+
+    # Validate file_path and requirement_path
+    if not data or "file_path" not in data or "requirement_path" not in data:
+        return jsonify({
+            "error": "Both file_path and requirement_path are required"
+        }), 400
+
+    file_path = data["file_path"]
+    requirement_path = data["requirement_path"]
+
+    # Run requirement-aware analysis (AST metrics + risk + spec gaps)
+    result = analyze_file_with_requirements(file_path, requirement_path)
+
+    if result is None:
+        return jsonify({
+            "error": "Analysis failed. Check file path or source code."
+        }), 400
+
+    # If requirement parsing failed, surface that error directly
+    if "error" in result:
+        return jsonify(result), 400
+
+    # Save API result to JSON file
+    save_json_to_file(result, "results/requirement_analysis_results.json")
+
+    # Save result to MongoDB
+    analysis_collection.insert_one({
+        "type": "requirement_aware_analysis",
+        "input_path": file_path,
+        "requirement_path": requirement_path,
+        "result": result,
+        "created_at": datetime.utcnow()
+    })
+
+    return jsonify(result), 200
+
+
+@app.route("/analyze-with-auto-requirements", methods=["POST"])
+def analyze_file_with_docstring_requirements():
+    # Get JSON data from request body
+    data = request.get_json()
+
+    # Validate file_path -- no requirement_path needed, it's auto-extracted
+    if not data or "file_path" not in data:
+        return jsonify({
+            "error": "file_path is required"
+        }), 400
+
+    file_path = data["file_path"]
+
+    # Run requirement-aware analysis using requirements auto-extracted
+    # from the code's own docstrings -- ideal for real, third-party
+    # repositories with no hand-written requirement document.
+    result = analyze_file_with_auto_requirements(file_path)
+
+    if result is None:
+        return jsonify({
+            "error": "Analysis failed. Check file path or source code."
+        }), 400
+
+    # Save API result to JSON file
+    save_json_to_file(result, "results/auto_requirement_analysis_results.json")
+
+    # Save result to MongoDB
+    analysis_collection.insert_one({
+        "type": "auto_requirement_aware_analysis",
+        "input_path": file_path,
+        "result": result,
+        "created_at": datetime.utcnow()
+    })
+
+    return jsonify(result), 200
+
+
+@app.route("/analyze-github-repo", methods=["POST"])
+def analyze_github_repo():
+    # Get JSON data from request body
+    data = request.get_json()
+
+    # Validate repo_url
+    if not data or "repo_url" not in data:
+        return jsonify({
+            "error": "repo_url is required"
+        }), 400
+
+    repo_url = data["repo_url"]
+    force_reclone = bool(data.get("force_reclone", False))
+
+    # Clone (or reuse existing clone) and run requirement-aware
+    # analysis across every Python file in the repo
+    result = analyze_github_repository(repo_url, force_reclone=force_reclone)
+
+    if "error" in result:
+        return jsonify(result), 400
+
+    # Save API result to JSON file
+    save_json_to_file(result, "results/github_repo_analysis_results.json")
+
+    # Save result to MongoDB
+    analysis_collection.insert_one({
+        "type": "github_repo_analysis",
+        "repo_url": repo_url,
         "result": result,
         "created_at": datetime.utcnow()
     })
