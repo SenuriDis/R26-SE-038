@@ -10,7 +10,7 @@ from src.utils.ast_utils import strip_code_fences
 logger = logging.getLogger(__name__)
 
 
-# ── Prompts ───────────────────────────────────────────────────────────────────
+# ─ Prompts 
 
 SYSTEM_PROMPT = """You are an expert Python software engineer specialising in 
 writing pytest unit tests. Your job is to write thorough, executable pytest 

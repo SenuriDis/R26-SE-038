@@ -145,7 +145,7 @@ def _parse_findings(raw_json: str) -> tuple[list[ReviewFinding], str]:
     Returns (findings, summary).
     """
     try:
-        # Sometimes the LLM wraps in markdown fences anyway
+        # Sometimes the LLM wraps in markdown fences anywayj
         raw_json = raw_json.strip()
         if raw_json.startswith("```"):
             raw_json = raw_json.split("```")[1]

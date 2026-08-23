@@ -55,7 +55,7 @@ class TestingPipeline:
         code_review_reports = []
         errors = []
 
-        # ── Step 1: Build the RAG index ───────────────────────────────────
+        # ─ Step 1: Build the RAG index 
         try:
             logger.info("Building RAG index...")
             indexer = RepositoryIndexer(pipeline_input.repository_path)
@@ -74,12 +74,12 @@ class TestingPipeline:
                 errors=[error_msg],
             )
 
-        # ── Step 2: Initialise agents ─────────────────────────────────────
+        # ─ Step 2: Initialise agents 
         agent1 = Agent1TestGeneration(retriever)
         agent2 = Agent2TestValidation(retriever)
         agent3 = Agent3CodeReview(retriever)
 
-        # ── Step 3: Process each segment ─────────────────────────────────
+        # ─ Step 3: Process each segment 
         for i, segment in enumerate(pipeline_input.segments):
             logger.info(
                 f"Processing segment {i+1}/{len(pipeline_input.segments)} "
@@ -111,7 +111,7 @@ class TestingPipeline:
                 logger.error(error_msg)
                 errors.append(error_msg)
 
-        # ── Step 4: Count valid tests ─────────────────────────────────────
+        # ─ Step 4: Count valid tests 
         valid_count = sum(
             1 for t in validated_tests if t.is_syntactically_valid
         )

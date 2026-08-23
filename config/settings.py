@@ -10,17 +10,17 @@ class Settings(BaseSettings):
         extra="ignore",
     )
 
-    # OpenAI (for later when you have a key)
+    # OpenAI - LATER
     openai_api_key: str = Field("placeholder")
     openai_model_agent1: str = Field("gpt-4o")
     openai_model_agent3: str = Field("gpt-4o")
 
-    # Groq (free - using this for now)
+    # Groq 
     groq_api_key: str = Field("placeholder")
     groq_model_agent1: str = Field("llama-3.3-70b-versatile")
     groq_model_agent3: str = Field("llama-3.3-70b-versatile")
 
-    # Ollama (Agent 2 - runs locally)
+    # Ollama (for Agent 2 - runs locally)
     ollama_base_url: str = Field("http://localhost:11434")
     ollama_model_agent2: str = Field("deepseek-coder:33b")
 

@@ -108,7 +108,7 @@ class CodeReviewReport(BaseModel):
         self.total_findings = len(self.findings)
 
 
-# ── Final Output to Component 4 
+# - Final Output to Component 4 
 
 class PipelineOutput(BaseModel):
     run_id: str

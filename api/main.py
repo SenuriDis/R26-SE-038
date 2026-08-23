@@ -26,7 +26,7 @@ app.add_middleware(
 )
 
 
-# ── Request/Response models ───────────────────────────────────────────────────
+# ─ Request/Response models 
 
 class SegmentRequest(BaseModel):
     function_name: str
@@ -74,7 +74,7 @@ class PipelineResponse(BaseModel):
     errors: list[str]
 
 
-# ── Routes ────────────────────────────────────────────────────────────────────
+# ─ Routes 
 
 @app.get("/")
 def root():

@@ -134,7 +134,7 @@ class Agent2TestValidation:
         # Run the validation + repair loop
         for iteration in range(self.max_iterations + 1):
 
-            # ── Step 1: AST parse check ────────────────────────────────────
+            # ─ Step 1: AST parse check 
             ast_result = ast_parse_check(current_code)
 
             if not ast_result.is_valid:
@@ -169,7 +169,7 @@ class Agent2TestValidation:
                     repair_status = RepairStatus.SUCCESS
                 continue
 
-            # ── Step 2: pytest dry run ─────────────────────────────────────
+            # ─ Step 2: pytest dry run 
             dry_run = pytest_dry_run(current_code)
 
             if not dry_run.is_valid:
@@ -204,7 +204,7 @@ class Agent2TestValidation:
                     repair_status = RepairStatus.SUCCESS
                 continue
 
-            # ── Both checks passed ─────────────────────────────────────────
+            # ─ Both checks passed 
             logger.info(
                 f"Agent 2 validation passed | "
                 f"function={raw_output.function_name} | "
