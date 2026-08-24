@@ -15,6 +15,10 @@ import ResultSummary from "../components/ResultSummary";
 import RiskSummary from "../components/RiskSummary";
 import HighRiskFunctions from "../components/HighRiskFunctions";
 import Recommendations from "../components/Recommendations";
+import RequirementCoverageCard from "../components/RequirementCoverageCard";
+import RequirementMappingTable from "../components/RequirementMappingTable";
+import GapAnalysisPanel from "../components/GapAnalysisPanel";
+import JsonViewer from "../components/JsonViewer";
 import { getAnalysisHistory } from "../services/api";
 
 function AnalysisHistoryPage() {
@@ -22,6 +26,7 @@ function AnalysisHistoryPage() {
   const [selectedReport, setSelectedReport] = useState(null);
   const [folderResults, setFolderResults] = useState([]);
   const [selectedResult, setSelectedResult] = useState(null);
+  const [activeTab, setActiveTab] = useState("overview");
 
   useEffect(() => {
     loadHistory();
@@ -49,9 +54,16 @@ function AnalysisHistoryPage() {
     setSelectedReport(item);
 
     if (item.results && item.results.length > 0) {
+      // Folder analysis: per-file results at item.results
       setFolderResults(item.results);
       setSelectedResult(item.results[0]);
+    } else if (item.result && Array.isArray(item.result.files)) {
+      // GitHub repo analysis: per-file results nested at item.result.files,
+      // not at item.result directly
+      setFolderResults(item.result.files);
+      setSelectedResult(item.result.files[0] || null);
     } else if (item.result) {
+      // Single file analysis (upload, path, or requirement-aware)
       setFolderResults([]);
       setSelectedResult(item.result);
     } else {
@@ -61,7 +73,7 @@ function AnalysisHistoryPage() {
   };
 
   const totalHighRiskFunctions = folderResults.reduce(
-    (acc, item) => acc + item.high_risk_functions.length,
+    (acc, item) => acc + (item.high_risk_functions?.length || 0),
     0
   );
 
@@ -69,7 +81,7 @@ function AnalysisHistoryPage() {
     folderResults.length > 0
       ? (
           folderResults.reduce(
-            (acc, item) => acc + item.summary.file_cyclomatic_complexity,
+            (acc, item) => acc + (item.summary?.file_cyclomatic_complexity || 0),
             0
           ) / folderResults.length
         ).toFixed(1)
@@ -123,7 +135,9 @@ function AnalysisHistoryPage() {
             {history.length > 0 ? (
               <div className="space-y-4 max-h-[680px] overflow-y-auto pr-2">
                 {history.map((item) => {
-                  const isFolder = item.results && item.results.length > 0;
+                  const isFolder =
+                    (item.results && item.results.length > 0) ||
+                    (item.result && Array.isArray(item.result.files));
 
                   return (
                     <div
@@ -162,6 +176,12 @@ function AnalysisHistoryPage() {
                           {item.input_path && (
                             <p className="text-xs text-slate-500 mt-3 break-all">
                               Path: {item.input_path}
+                            </p>
+                          )}
+
+                          {item.repo_url && (
+                            <p className="text-xs text-slate-500 mt-3 break-all">
+                              Repo: {item.repo_url}
                             </p>
                           )}
 
@@ -288,26 +308,105 @@ function AnalysisHistoryPage() {
                 </div>
               </div>
             )}
-
+            
             {selectedResult && (
               <div className="bg-white rounded-3xl shadow-sm p-8 border border-slate-200">
-                <h3 className="text-3xl font-bold text-slate-800 mb-8">
-                  Opened Analysis Result
-                </h3>
 
-                <ResultSummary result={selectedResult} />
-                <RiskSummary riskSummary={selectedResult.risk_summary} />
-                <HighRiskFunctions
-                  functions={selectedResult.high_risk_functions}
-                />
-                <Recommendations
-                  recommendations={
-                    selectedResult.intelligent_testing_context
-                      .llm_test_recommendations
-                  }
-                />
-              </div>
-            )}
+    <h3 className="text-3xl font-bold text-slate-800 mb-6">
+      Opened Analysis Result
+    </h3>
+
+    {/* Tabs */}
+    <div className="flex gap-3 mb-8 border-b pb-4">
+      <button
+        onClick={() => setActiveTab("overview")}
+        className={`px-5 py-2 rounded-xl ${
+          activeTab === "overview"
+            ? "bg-cyan-500 text-white"
+            : "bg-slate-100"
+        }`}
+      >
+        Overview
+      </button>
+
+      <button
+        onClick={() => setActiveTab("requirements")}
+        className={`px-5 py-2 rounded-xl ${
+          activeTab === "requirements"
+            ? "bg-cyan-500 text-white"
+            : "bg-slate-100"
+        }`}
+      >
+        Requirements
+      </button>
+
+      <button
+        onClick={() => setActiveTab("json")}
+        className={`px-5 py-2 rounded-xl ${
+          activeTab === "json"
+            ? "bg-cyan-500 text-white"
+            : "bg-slate-100"
+        }`}
+      >
+        Raw JSON
+      </button>
+    </div>
+
+    {/* OVERVIEW TAB */}
+    {activeTab === "overview" && (
+      <>
+        <ResultSummary result={selectedResult} />
+
+        <RiskSummary
+          riskSummary={selectedResult.risk_summary}
+        />
+
+        <HighRiskFunctions
+          functions={selectedResult.high_risk_functions}
+        />
+
+        <Recommendations
+          recommendations={
+            selectedResult.intelligent_testing_context
+              ?.llm_test_recommendations
+          }
+        />
+      </>
+    )}
+
+    {/* REQUIREMENTS TAB */}
+    {activeTab === "requirements" &&
+      selectedResult.requirement_analysis && (
+        <>
+          <RequirementCoverageCard
+            projectSummary={
+              selectedResult.requirement_analysis.project_summary
+            }
+          />
+
+          <RequirementMappingTable
+            functions={
+              selectedResult.requirement_analysis.functions
+            }
+          />
+
+          <GapAnalysisPanel
+            functions={
+              selectedResult.requirement_analysis.functions
+            }
+          />
+        </>
+      )}
+
+    {/* JSON TAB */}
+    {activeTab === "json" && (
+      <JsonViewer
+        data={selectedResult}
+        fileName="feature_matrix.json"
+      />
+    )}
+  </div>
+)}
           </div>
         </div>
       </div>

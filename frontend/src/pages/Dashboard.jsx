@@ -33,21 +33,25 @@ function Dashboard() {
       let totalComplexity = 0;
       let complexityCount = 0;
 
-      history.forEach((item) => {
-        // Folder analysis result
-        if (item.results) {
-          item.results.forEach((result) => {
-            totalHighRisk += result.high_risk_functions.length;
-            totalComplexity += result.summary.file_cyclomatic_complexity;
-            complexityCount++;
-          });
-        }
+      const tallyFileResult = (fileResult) => {
+        totalHighRisk += fileResult.high_risk_functions?.length || 0;
+        totalComplexity += fileResult.summary?.file_cyclomatic_complexity || 0;
+        complexityCount++;
+      };
 
-        // Single file analysis result
-        if (item.result) {
-          totalHighRisk += item.result.high_risk_functions.length;
-          totalComplexity += item.result.summary.file_cyclomatic_complexity;
-          complexityCount++;
+      history.forEach((item) => {
+        // Folder analysis result (array of per-file results)
+        if (item.results) {
+          item.results.forEach(tallyFileResult);
+        }
+        // GitHub repo analysis result -- per-file results are nested
+        // inside item.result.files, not at item.result directly
+        else if (item.result && Array.isArray(item.result.files)) {
+          item.result.files.forEach(tallyFileResult);
+        }
+        // Single file analysis result (upload, path, or requirement-aware)
+        else if (item.result) {
+          tallyFileResult(item.result);
         }
       });
 
