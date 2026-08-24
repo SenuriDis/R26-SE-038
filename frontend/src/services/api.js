@@ -41,3 +41,45 @@ export const getDashboardStats = async () => {
 
   return response.data;
 };
+
+// --- New: requirement-aware analysis endpoints ---
+
+// Analyze one file against a hand-authored requirement document (JSON/TXT)
+export const analyzeWithRequirements = async (filePath, requirementPath) => {
+  const response = await axios.post(
+    `${API_BASE_URL}/analyze-with-requirements`,
+    {
+      file_path: filePath,
+      requirement_path: requirementPath,
+    }
+  );
+
+  return response.data;
+};
+
+// Analyze one file against requirements auto-extracted from its own
+// docstrings/type hints -- no requirement file needed
+export const analyzeWithAutoRequirements = async (filePath) => {
+  const response = await axios.post(
+    `${API_BASE_URL}/analyze-with-auto-requirements`,
+    {
+      file_path: filePath,
+    }
+  );
+
+  return response.data;
+};
+
+// Clone a GitHub repo (or reuse an existing clone) and run
+// requirement-aware analysis across every Python file in it
+export const analyzeGithubRepo = async (repoUrl, forceReclone = false) => {
+  const response = await axios.post(
+    `${API_BASE_URL}/analyze-github-repo`,
+    {
+      repo_url: repoUrl,
+      force_reclone: forceReclone,
+    }
+  );
+
+  return response.data;
+};
