@@ -3,6 +3,7 @@ import uuid
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
+from typing import Optional
 
 from src.models.schemas import HighRiskSegment, PipelineInput
 from src.pipeline.pipeline import TestingPipeline
@@ -14,10 +15,9 @@ logger = logging.getLogger(__name__)
 app = FastAPI(
     title="R26-SE-038 | LLM Testing Pipeline API",
     description="Automated test generation and code review using LLMs",
-    version="1.0.0",
+    version="2.0.0",
 )
 
-# Allow frontend to call this API
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -26,7 +26,7 @@ app.add_middleware(
 )
 
 
-# ─ Request/Response models 
+# ── Request Models ─────────────────────────────────────────────────────────────
 
 class SegmentRequest(BaseModel):
     function_name: str
@@ -41,13 +41,29 @@ class PipelineRequest(BaseModel):
     segments: list[SegmentRequest]
 
 
-class FindingResponse(BaseModel):
-    finding_id: str
-    category: str
-    severity: str
-    line_number: int | None
+# ── Response Models ────────────────────────────────────────────────────────────
+
+class TestCaseResponse(BaseModel):
+    test_case_id: str
     description: str
-    suggested_fix: str
+    input_values: str
+    expected_output: str
+    category: str
+
+
+class TraceabilityEntryResponse(BaseModel):
+    test_case_id: str
+    description: str
+    implemented_by: Optional[str]
+    is_covered: bool
+    notes: Optional[str]
+
+
+class TraceabilityResponse(BaseModel):
+    total_test_cases: int
+    covered_count: int
+    coverage_rate: float
+    entries: list[TraceabilityEntryResponse]
 
 
 class TestResult(BaseModel):
@@ -55,11 +71,22 @@ class TestResult(BaseModel):
     is_valid: bool
     repairs: int
     test_code: str
+    test_cases: list[TestCaseResponse] = []
+    traceability: Optional[TraceabilityResponse] = None
+
+
+class FindingResponse(BaseModel):
+    finding_id: str
+    category: str
+    severity: str
+    line_number: Optional[int]
+    description: str
+    suggested_fix: str
 
 
 class ReviewResult(BaseModel):
     function_name: str
-    pylint_score: float | None
+    pylint_score: Optional[float]
     summary: str
     findings: list[FindingResponse]
 
@@ -74,11 +101,11 @@ class PipelineResponse(BaseModel):
     errors: list[str]
 
 
-# ─ Routes 
+# ── Routes ─────────────────────────────────────────────────────────────────────
 
 @app.get("/")
 def root():
-    return {"status": "running", "project": "R26-SE-038"}
+    return {"status": "running", "project": "R26-SE-038", "version": "2.0.0"}
 
 
 @app.get("/health")
@@ -88,14 +115,9 @@ def health():
 
 @app.post("/run", response_model=PipelineResponse)
 def run_pipeline(request: PipelineRequest):
-    """
-    Run the full three-agent pipeline on the given code segments.
-    This is the main endpoint the frontend calls.
-    """
     try:
         run_id = str(uuid.uuid4())[:8]
 
-        # Build segments
         segments = [
             HighRiskSegment(
                 segment_id=f"seg-{i+1:03d}",
@@ -116,24 +138,47 @@ def run_pipeline(request: PipelineRequest):
             run_id=run_id,
         )
 
-        # Run pipeline
         pipeline = TestingPipeline()
         output = pipeline.run(pipeline_input)
 
-        # Save outputs to disk
         writer = OutputWriter()
         writer.save(output)
 
-        # Build response
-        tests = [
-            TestResult(
+        # Build test results with test cases and traceability
+        tests = []
+        for t in output.validated_tests:
+            test_cases = []
+            if t.traceability_report and hasattr(t, 'traceability_report'):
+                # Get test cases from the raw output via pipeline
+                pass
+
+            traceability = None
+            if t.traceability_report:
+                tr = t.traceability_report
+                traceability = TraceabilityResponse(
+                    total_test_cases=tr.total_test_cases,
+                    covered_count=tr.covered_count,
+                    coverage_rate=tr.coverage_rate,
+                    entries=[
+                        TraceabilityEntryResponse(
+                            test_case_id=e.test_case_id,
+                            description=e.description,
+                            implemented_by=e.implemented_by,
+                            is_covered=e.is_covered,
+                            notes=e.notes,
+                        )
+                        for e in tr.entries
+                    ],
+                )
+
+            tests.append(TestResult(
                 function_name=t.function_name,
                 is_valid=t.is_syntactically_valid,
                 repairs=t.total_repairs,
                 test_code=t.validated_test_code,
-            )
-            for t in output.validated_tests
-        ]
+                test_cases=test_cases,
+                traceability=traceability,
+            ))
 
         reviews = [
             ReviewResult(

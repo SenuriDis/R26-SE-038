@@ -17,8 +17,8 @@ class Settings(BaseSettings):
 
     # Groq 
     groq_api_key: str = Field("placeholder")
-    groq_model_agent1: str = Field("llama-3.3-70b-versatile")
-    groq_model_agent3: str = Field("llama-3.3-70b-versatile")
+    groq_model_agent1: str = Field("openai/gpt-oss-120b")
+    groq_model_agent3: str = Field("openai/gpt-oss-120b")
 
     # Ollama (for Agent 2 - runs locally)
     ollama_base_url: str = Field("http://localhost:11434")
