@@ -4,6 +4,7 @@ import os
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'src'))
 
+# pyrefly: ignore [missing-import]
 from calculator import add, subtract, multiply, divide, is_even, factorial
 
 
