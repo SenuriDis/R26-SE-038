@@ -51,17 +51,17 @@ npm run dev
 ```bash
 python run.py
 ```
+*Note: This acts as the Docker orchestrator and executes the test inside a Docker container.*
 
-### 8. Run with Docker (Sandboxed)
-```bash
-docker build -t test-eval .
-docker run --rm test-eval
-```
-
-### 4. Run PyTest manually
+### 3. Run PyTest manually (Without Docker)
 ```bash
 python -m pytest tests/ -v
 ```
+
+Reports are written to `reports/`: `evaluation_report.json`, `pytest_results.json`,
+`coverage.json`, `execution.log`, and `mutation.log`. The generated test files are
+executed as part of the checked-out repository, so a CI run evaluates the same code
+that was pushed.
 
 ---
 
