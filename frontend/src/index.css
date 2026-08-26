@@ -194,12 +194,15 @@ body {
   font-size: 11px;
   color: var(--clr-dimmer);
   font-family: var(--font-mono);
+  background: #f0f2f7;
+  padding: 3px 8px;
+  border-radius: 6px;
 }
 
 /* Summary cards */
 .summary-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
   gap: 16px;
   margin-bottom: 24px;
 }
@@ -428,7 +431,7 @@ body {
 .cov-overall-bar {
   width: 100%;
   height: 8px;
-  background: rgba(255,255,255,.07);
+  background: #e8eaf0;
   border-radius: 99px;
   overflow: hidden;
   margin-bottom: 24px;
