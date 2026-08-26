@@ -1,4 +1,5 @@
 import os
+import ast
 
 from src.parser.ast_parser import parse_python_file
 from src.extractor.feature_extractor import FeatureExtractor
@@ -14,6 +15,7 @@ from src.intelligence.testing_context_generator import TestingContextGenerator
 from src.adapter.function_info_adapter import FunctionInfoAdapter
 from src.requirement_analysis.parsers.parser_factory import RequirementParserFactory
 from src.requirement_analysis.composite_extractor import CompositeRequirementExtractor
+from src.requirement_analysis.readme_extractor import ReadmeRequirementExtractor
 from src.integration.feature_matrix_builder import FeatureMatrixBuilder
 from src.ingestion.github_fetcher import GitHubFetcher, GitHubFetchError
 
@@ -137,7 +139,7 @@ def analyze_file(file_path):
 # document exists. If a function's docstring follows the Google-style
 # Args/Returns/Raises convention, that docstring IS treated as its
 # specification.
-def analyze_file_with_auto_requirements(file_path):
+def analyze_file_with_auto_requirements(file_path, readme_requirements=None):
 
     base_result = analyze_file(file_path)
 
@@ -159,10 +161,22 @@ def analyze_file_with_auto_requirements(file_path):
     risk_detector = RiskDetector(function_complexities, dependencies)
     risk_results = risk_detector.detect_risk()
 
-    # The only difference from analyze_file_with_requirements(): requirements
-    # are auto-extracted from the code itself (docstrings first, type
-    # hints as a fallback), not read from an external file.
-    requirements = CompositeRequirementExtractor().extract(tree)
+    # If no README requirements were supplied (i.e. this function was
+    # called standalone, not via analyze_folder_with_auto_requirements),
+    # best-effort discover a README in this file's own directory.
+    if readme_requirements is None:
+        project_root = os.path.dirname(file_path) or "."
+        known_function_names = {
+            node.name for node in ast.walk(tree) if isinstance(node, ast.FunctionDef)
+        }
+        readme_requirements = {
+            r.function_name: r
+            for r in ReadmeRequirementExtractor().extract(project_root, known_function_names)
+        }
+
+    # Requirements come from three automated sources, richest wins:
+    # docstrings > README API reference > type hints.
+    requirements = CompositeRequirementExtractor().extract(tree, readme_requirements)
 
     requirement_analysis_output = FeatureMatrixBuilder().build(
         function_infos, requirements, risk_results
@@ -279,8 +293,6 @@ def analyze_folder(folder_path):
 # analyze_folder() itself.
 def analyze_folder_with_auto_requirements(folder_path):
 
-    results = []
-
     ignored_folders = {
         "__pycache__",
         ".git",
@@ -289,20 +301,43 @@ def analyze_folder_with_auto_requirements(folder_path):
         "tests"
     }
 
-    for root, dirs, files in os.walk(folder_path):
+    # First pass: collect every function name across the whole folder,
+    # and every candidate .py file path. This lets the README (which
+    # describes the whole project, not one file) be parsed exactly
+    # once and matched against functions regardless of which file
+    # they're actually defined in.
+    file_paths = []
+    all_function_names = set()
 
+    for root, dirs, files in os.walk(folder_path):
         dirs[:] = [d for d in dirs if d not in ignored_folders]
 
         for file in files:
-
             if file.endswith(".py") and not file.startswith("__"):
-
                 full_path = os.path.join(root, file)
+                file_paths.append(full_path)
 
-                result = analyze_file_with_auto_requirements(full_path)
+                tree, _source_code = parse_python_file(full_path)
+                if tree is not None:
+                    all_function_names.update(
+                        node.name for node in ast.walk(tree)
+                        if isinstance(node, ast.FunctionDef)
+                    )
 
-                if result:
-                    results.append(result)
+    readme_requirements = {
+        r.function_name: r
+        for r in ReadmeRequirementExtractor().extract(folder_path, all_function_names)
+    }
+
+    results = []
+
+    for full_path in file_paths:
+        result = analyze_file_with_auto_requirements(
+            full_path, readme_requirements=readme_requirements
+        )
+
+        if result:
+            results.append(result)
 
     return results
 
