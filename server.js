@@ -1,107 +1,140 @@
 const express = require("express");
-const { spawn } = require("child_process");
-const path = require("path");
+const cors = require("cors");
 const fs = require("fs");
+const path = require("path");
+const { spawn } = require("child_process");
 
 const app = express();
-const BASE_DIR = __dirname;
-const REPORTS = path.join(BASE_DIR, "reports");
+const PORT = 3001;
 
+const BASE_DIR = __dirname;
+const REPORTS_DIR = path.join(BASE_DIR, "reports");
+const EVAL_REPORT = path.join(REPORTS_DIR, "evaluation_report.json");
+const PYTEST_REPORT = path.join(REPORTS_DIR, "pytest_results.json");
+const COVERAGE_REPORT = path.join(REPORTS_DIR, "coverage.json");
+
+app.use(cors());
 app.use(express.json());
 
-// GET /api/report
-app.get("/api/report", (req, res) => {
+function readJSON(filePath) {
   try {
-    const evalPath = path.join(REPORTS, "evaluation_report.json");
-    const pytestPath = path.join(REPORTS, "pytest_results.json");
-    const covPath = path.join(REPORTS, "coverage.json");
-
-    if (!fs.existsSync(evalPath)) {
-      return res.status(404).json({ error: "No report found. Run tests first." });
-    }
-
-    const report = JSON.parse(fs.readFileSync(evalPath,   "utf-8"));
-    const pytest = fs.existsSync(pytestPath)
-      ? JSON.parse(fs.readFileSync(pytestPath, "utf-8"))
-      : null;
-    const coverage = fs.existsSync(covPath)
-      ? JSON.parse(fs.readFileSync(covPath, "utf-8"))
-      : null;
-
-    // Per-test detail list
-    const tests = pytest?.tests?.map(t => ({
-      name: t.nodeid.split("::").pop(),
-      nodeid: t.nodeid,
-      outcome: t.outcome,
-      duration: Math.round(
-        ((t.setup?.duration || 0) + (t.call?.duration || 0) + (t.teardown?.duration || 0)) * 1000
-      ),
-      reason: t.call?.longrepr
-        ? String(t.call.longrepr).split("\n").slice(-3).join(" ").trim().slice(0, 200)
-        : null,
-    })) ?? [];
-
-    // Per-function coverage
-    const files = coverage?.files ?? {};
-    const perFunction = [];
-    for (const [file, fileData] of Object.entries(files)) {
-      const fns = fileData.functions ?? {};
-      for (const [fn, fnData] of Object.entries(fns)) {
-        if (!fn) continue; // skip module-level blank key
-        perFunction.push({
-          file: path.basename(file),
-          function: fn,
-          covered: fnData.summary.covered_lines,
-          total: fnData.summary.num_statements,
-          pct: Math.round(fnData.summary.percent_covered),
-        });
-      }
-    }
-
-    res.json({ ...report, tests, perFunction });
-  } catch (err) {
-    res.status(500).json({ error: err.message });
+    return JSON.parse(fs.readFileSync(filePath, "utf-8"));
+  } catch {
+    return null;
   }
+}
+
+function buildPerFunction(covData) {
+  if (!covData || !covData.files) return [];
+  const rows = [];
+  for (const [filePath, fileData] of Object.entries(covData.files)) {
+    const fns = fileData.functions || {};
+    for (const [fnName, fnData] of Object.entries(fns)) {
+      if (!fnName) continue;
+      const summary = fnData.summary || {};
+      const covered = summary.covered_lines ?? 0;
+      const total = summary.num_statements ?? 0;
+      const pct = total > 0 ? Math.round((covered / total) * 100) : 100;
+      rows.push({
+        file: path.basename(filePath),
+        function: fnName,
+        covered,
+        total,
+        pct,
+      });
+    }
+  }
+  return rows;
+}
+
+function buildTests(pytestData) {
+  if (!pytestData || !pytestData.tests) return [];
+  return pytestData.tests.map((t) => {
+    const callDuration = t.call?.duration ?? null;
+    const durationMs = callDuration != null ? Math.round(callDuration * 1000) : null;
+    // Extract readable name from nodeid: "tests/test_calculator.py::test_add_positive_numbers"
+    const name = t.nodeid ? t.nodeid.split("::").pop() : t.nodeid;
+    const reason =
+      t.call?.longrepr
+        ? String(t.call.longrepr).split("\n").slice(-1)[0].trim().slice(0, 200)
+        : null;
+    return {
+      nodeid: t.nodeid,
+      name,
+      outcome: t.outcome,
+      duration: durationMs,
+      reason: reason || null,
+    };
+  });
+}
+
+app.get("/api/report", (req, res) => {
+  const evalReport = readJSON(EVAL_REPORT);
+  if (!evalReport) {
+    return res.status(404).json({ error: "evaluation_report.json not found — run tests first." });
+  }
+
+  const pytestData = readJSON(PYTEST_REPORT);
+  const coverageData = readJSON(COVERAGE_REPORT);
+
+  const merged = {
+    ...evalReport,
+    tests: buildTests(pytestData),
+    perFunction: buildPerFunction(coverageData),
+  };
+
+  res.json(merged);
 });
 
 
 app.post("/api/run", (req, res) => {
-  res.setHeader("Content-Type",  "text/event-stream");
+  res.setHeader("Content-Type", "text/event-stream");
   res.setHeader("Cache-Control", "no-cache");
-  res.setHeader("Connection",    "keep-alive");
-  res.setHeader("Access-Control-Allow-Origin", "*");
+  res.setHeader("Connection", "keep-alive");
   res.flushHeaders();
 
-  const send = (data) => res.write(`data: ${JSON.stringify(data)}\n\n`);
+  function send(type, message) {
+    res.write(`data: ${JSON.stringify({ type, message })}\n\n`);
+  }
 
-  send({ type: "start", message: "Starting test run…" });
+  send("log", "Starting test pipeline...");
 
-  const child = spawn("python", ["run.py"], {
-    cwd:   BASE_DIR,
-    shell: true,
-  });
+  const child = spawn("python", ["run.py"], { cwd: BASE_DIR, shell: true });
 
   child.stdout.on("data", (chunk) => {
-    chunk.toString().split("\n").forEach(line => {
-      if (line.trim()) send({ type: "log", message: line });
-    });
+    const lines = chunk.toString().split("\n");
+    for (const line of lines) {
+      if (line.trim()) send("log", line);
+    }
   });
 
   child.stderr.on("data", (chunk) => {
-    chunk.toString().split("\n").forEach(line => {
-      if (line.trim()) send({ type: "log", message: line });
-    });
+    const lines = chunk.toString().split("\n");
+    for (const line of lines) {
+      if (line.trim()) send("log", line);
+    }
   });
 
   child.on("close", (code) => {
-    send({ type: "done", exitCode: code });
+    send("log", `Pipeline finished with exit code ${code}`);
+    send("done", "complete");
     res.end();
   });
 
-  req.on("close", () => child.kill());
+  child.on("error", (err) => {
+    send("log", `ERROR: ${err.message}`);
+    send("done", "error");
+    res.end();
+  });
+
+  req.on("close", () => {
+    child.kill();
+  });
 });
 
-const PORT = 3001;
-app.listen(PORT, () =>
-  console.log(`\n Test Dashboard API  →  http://localhost:${PORT}\n`)
-);
+
+app.listen(PORT, () => {
+  console.log(`\n  Test Dashboard API running at http://localhost:${PORT}`);
+  console.log(`     GET  http://localhost:${PORT}/api/report`);
+  console.log(`     POST http://localhost:${PORT}/api/run\n`);
+});
