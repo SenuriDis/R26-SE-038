@@ -19,8 +19,8 @@ export default function RunButton({ running, setRunning, logLines, setLogLines, 
       if (!res.ok) throw new Error(`Server returned ${res.status}`);
 
       const reader = res.body.getReader();
-      const dec    = new TextDecoder();
-      let   buf    = "";
+      const dec = new TextDecoder();
+      let buf = "";
 
       while (true) {
         const { done, value } = await reader.read();
@@ -52,9 +52,9 @@ export default function RunButton({ running, setRunning, logLines, setLogLines, 
 
   function lineClass(line) {
     const l = line.toLowerCase();
-    if (l.includes("passed") || l.includes("pass"))  return "log-line log-line--pass";
+    if (l.includes("passed") || l.includes("pass")) return "log-line log-line--pass";
     if (l.includes("failed") || l.includes("error") || l.includes("fail")) return "log-line log-line--fail";
-    if (l.startsWith("=") || l.startsWith("["))      return "log-line log-line--head";
+    if (l.startsWith("=") || l.startsWith("[")) return "log-line log-line--head";
     return "log-line";
   }
 
@@ -67,7 +67,7 @@ export default function RunButton({ running, setRunning, logLines, setLogLines, 
           onClick={handleRun}
           disabled={running}
         >
-          {running ? " Running…" : "▶  Run Tests Now"}
+          {running ? " Running…" : "Run Tests Now"}
         </button>
         <span className="run-hint">
           {running

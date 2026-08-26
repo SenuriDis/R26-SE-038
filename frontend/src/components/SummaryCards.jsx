@@ -25,7 +25,7 @@ function useCountUp(target, duration = 900) {
   return val;
 }
 
-function StatCard({ value, label, sub, accentColor }) {
+function StatCard({ value, label, sub, accentColor, showPct }) {
   const animated = useCountUp(value);
   return (
     <div
@@ -36,8 +36,7 @@ function StatCard({ value, label, sub, accentColor }) {
         className="summary-card__value"
         style={{ color: accentColor }}
       >
-        {animated}
-        {typeof value === "string" && value.includes("%") ? "%" : ""}
+        {animated}{showPct ? "%" : ""}
       </div>
       <div className="summary-card__label">{label}</div>
       {sub && <div className="summary-card__sub">{sub}</div>}
@@ -45,11 +44,12 @@ function StatCard({ value, label, sub, accentColor }) {
   );
 }
 
-/* SummaryCards — five metric cards across the top. */
+/* SummaryCards — six metric cards across the top. */
 export default function SummaryCards({ report }) {
-  const tr = report?.test_results    ?? {};
+  const tr = report?.test_results       ?? {};
   const ev = report?.evaluation_summary ?? {};
-  const cv = report?.coverage_metrics ?? {};
+  const cv = report?.coverage_metrics   ?? {};
+  const mt = report?.mutation_metrics   ?? {};
 
   return (
     <div className="summary-grid fade-up" style={{ animationDelay: ".08s" }}>
@@ -73,12 +73,21 @@ export default function SummaryCards({ report }) {
         label="Pass Rate"
         sub="percentage"
         accentColor="#2563eb"
+        showPct
       />
       <StatCard
         value={cv.statement_coverage_pct ?? ev.statement_coverage_pct ?? 0}
         label="Coverage"
         sub="statements"
         accentColor="#0891b2"
+        showPct
+      />
+      <StatCard
+        value={ev.mutation_score_pct ?? mt.mutation_score_pct ?? 0}
+        label="Mutation Score"
+        sub={mt.killed_mutants != null ? `${mt.killed_mutants}/${mt.total_mutants} killed` : undefined}
+        accentColor="#7c3aed"
+        showPct
       />
     </div>
   );

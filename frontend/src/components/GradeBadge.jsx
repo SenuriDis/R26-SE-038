@@ -17,15 +17,20 @@ const R  = 50;
 const C  = 2 * Math.PI * R;  
 
 
-/* GradeBadge — SVG ring + grade letter + bar charts for pass rate & coverage. */
+/* GradeBadge — SVG ring + grade letter + bar charts for pass rate, coverage & mutation. */
 export default function GradeBadge({ report }) {
-  const ev   = report?.evaluation_summary ?? {};
-  const raw  = ev.quality_grade ?? "";
-  const info = parseGradeLetter(raw);
+  const ev       = report?.evaluation_summary ?? {};
+  const mt       = report?.mutation_metrics   ?? {};
+  const raw      = ev.quality_grade ?? "";
+  const info     = parseGradeLetter(raw);
 
-  const passRate = ev.pass_rate_pct          ?? 0;
-  const coverage = ev.statement_coverage_pct ?? 0;
-  const score    = (passRate + coverage) / 2;
+  const passRate  = ev.pass_rate_pct          ?? 0;
+  const coverage  = ev.statement_coverage_pct ?? 0;
+  const mutation  = ev.mutation_score_pct ?? mt.mutation_score_pct ?? 0;
+  const hasMutation = mutation > 0;
+  const score     = hasMutation
+    ? (passRate + coverage + mutation) / 3
+    : (passRate + coverage) / 2;
 
   const filled = C * (1 - score / 100);
 
@@ -81,6 +86,13 @@ export default function GradeBadge({ report }) {
               pct={coverage}
               color="var(--clr-cyan)"
             />
+            {hasMutation && (
+              <BarRow
+                label="Mutation"
+                pct={mutation}
+                color="var(--clr-violet)"
+              />
+            )}
           </div>
         </div>
       </div>

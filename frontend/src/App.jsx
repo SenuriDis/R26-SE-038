@@ -5,6 +5,7 @@ import GradeBadge   from "./components/GradeBadge.jsx";
 import RunButton    from "./components/RunButton.jsx";
 import TestTable    from "./components/TestTable.jsx";
 import CoveragePanel from "./components/CoveragePanel.jsx";
+import FailureClassification from "./components/FailureClassification.jsx";
 
 export default function App() {
   const [report,   setReport]   = useState(null);
@@ -84,6 +85,8 @@ export default function App() {
             <GradeBadge    report={report} />
             <CoveragePanel report={report} />
           </div>
+
+          <FailureClassification report={report} />
 
           <TestTable tests={report.tests ?? []} />
         </>
