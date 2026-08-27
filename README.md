@@ -7,12 +7,19 @@
 
 ## Overview
 
-This component is responsible for:
-- Executing automatically generated unit test cases
-- Running them inside Docker sandbox containers (isolated environment)
-- Measuring code coverage (statement, branch, function level)
-- Generating structured JSON evaluation reports
-- Providing pass/fail rates and quality grades
+This component performs the following major tasks:
+
+- Integrates AI-generated tests with the target repository.
+- Sets up the required dependencies and execution environment.
+- Executes AI-generated tests inside isolated Docker containers.
+- Evaluates functional correctness using runtime execution results.
+- Measures source-code coverage.
+- Performs mutation testing to evaluate test effectiveness.
+- Extracts detailed failure evidence from test execution.
+- Classifies test failures using execution evidence and requirement information.
+- Generates structured evaluation reports.
+- Integrates the evaluation workflow with CI/CD.
+- Optionally updates the repository with generated test files and evaluation results.
 
 ---
 
