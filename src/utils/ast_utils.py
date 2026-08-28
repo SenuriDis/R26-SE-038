@@ -47,10 +47,19 @@ def ast_parse_check(code: str) -> ASTValidationResult:
         )
 
 
-def pytest_dry_run(test_code: str, timeout: int = 15) -> DryRunResult:
+def pytest_dry_run(
+    test_code: str,
+    timeout: int = 15,
+    repo_path: Optional[str] = None,
+) -> DryRunResult:
     """
     Write the test code to a temporary file and run pytest --collect-only.
     This catches import errors and undefined names without actually running tests.
+
+    If ``repo_path`` is given, the repository root (and its ``src`` directory)
+    are put on PYTHONPATH and used as the working directory, so the generated
+    tests can ``import`` the module under test the same way they would in a
+    real run.
     """
     with tempfile.NamedTemporaryFile(
         mode="w",
@@ -61,12 +70,31 @@ def pytest_dry_run(test_code: str, timeout: int = 15) -> DryRunResult:
         tmp.write(test_code)
         tmp_path = tmp.name
 
+    env = os.environ.copy()
+    cwd = None
+    if repo_path:
+        repo_path = os.path.abspath(repo_path)
+        cwd = repo_path
+        extra_paths = [repo_path, os.path.join(repo_path, "src")]
+        existing = env.get("PYTHONPATH", "")
+        env["PYTHONPATH"] = os.pathsep.join(
+            [p for p in extra_paths if os.path.isdir(p)]
+            + ([existing] if existing else [])
+        )
+
     try:
         result = subprocess.run(
-            [sys.executable, "-m", "pytest", "--collect-only", "-q", tmp_path],
+            [
+                sys.executable, "-m", "pytest",
+                "--collect-only", "-q",
+                "-p", "no:cacheprovider",
+                tmp_path,
+            ],
             capture_output=True,
             text=True,
             timeout=timeout,
+            env=env,
+            cwd=cwd,
         )
 
         output = result.stdout + result.stderr

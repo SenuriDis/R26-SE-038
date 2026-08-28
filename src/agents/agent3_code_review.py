@@ -6,10 +6,10 @@ import tempfile
 import os
 from pathlib import Path
 
-from langchain_groq import ChatGroq
 from langchain_core.messages import SystemMessage, HumanMessage
 
 from config.settings import settings
+from src.utils.llm import build_groq_llm
 from src.models.schemas import (
     HighRiskSegment,
     CodeReviewReport,
@@ -193,11 +193,7 @@ class Agent3CodeReview:
 
     def __init__(self, retriever: RepositoryRetriever):
         self.retriever = retriever
-        self.llm = ChatGroq(
-            api_key=settings.groq_api_key,
-            model=settings.groq_model_agent3,
-            temperature=0.1,
-        )
+        self.llm = build_groq_llm(settings.groq_model_agent3, temperature=0.1)
         logger.info(f"Agent 3 ready | model={settings.groq_model_agent3}")
 
     def run(self, segment: HighRiskSegment) -> CodeReviewReport:

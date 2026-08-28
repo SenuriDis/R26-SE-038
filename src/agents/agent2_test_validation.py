@@ -13,10 +13,10 @@ Repeats up to max_repair_iterations times.
 """
 
 import logging
-from langchain_groq import ChatGroq
 from langchain_core.messages import SystemMessage, HumanMessage
 
 from config.settings import settings
+from src.utils.llm import build_groq_llm
 from src.models.schemas import (
     RawTestOutput,
     ValidatedTestOutput,
@@ -198,17 +198,15 @@ class Agent2TestValidation:
     def __init__(self, retriever: RepositoryRetriever):
         self.retriever = retriever
         self.max_iterations = settings.max_repair_iterations
-        self.llm = ChatGroq(
-            api_key=settings.groq_api_key,
-            model=settings.groq_model_agent1,
-            temperature=0.1,
-        )
+        self._repo_path = None
+        self.llm = build_groq_llm(settings.groq_model_agent1, temperature=0.1)
         logger.info(f"Agent 2 ready | max_repairs={self.max_iterations}")
 
     def run(
         self,
         raw_output: RawTestOutput,
         original_segment_source: str,
+        repo_path: str | None = None,
     ) -> ValidatedTestOutput:
         """
         Validate Agent 1's output.
@@ -216,10 +214,13 @@ class Agent2TestValidation:
         Args:
             raw_output: The RawTestOutput from Agent 1 (includes test_case_set)
             original_segment_source: The original source code being tested
+            repo_path: Repository root, so the pytest dry run can import the
+                       module under test
 
         Returns:
             ValidatedTestOutput with traceability report and repair history
         """
+        self._repo_path = repo_path
         logger.info(
             f"Agent 2 validating | function={raw_output.function_name}"
         )
@@ -362,7 +363,7 @@ class Agent2TestValidation:
                 continue
 
             # Dry run check
-            dry_run = pytest_dry_run(current_code)
+            dry_run = pytest_dry_run(current_code, repo_path=self._repo_path)
             if not dry_run.is_valid:
                 logger.info(
                     f"Dry run failed (iteration {iteration}) | "

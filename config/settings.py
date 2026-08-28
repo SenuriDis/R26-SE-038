@@ -15,10 +15,15 @@ class Settings(BaseSettings):
     openai_model_agent1: str = Field("gpt-4o")
     openai_model_agent3: str = Field("gpt-4o")
 
-    # Groq 
+    # Groq
     groq_api_key: str = Field("placeholder")
     groq_model_agent1: str = Field("openai/gpt-oss-120b")
     groq_model_agent3: str = Field("openai/gpt-oss-120b")
+
+    # Groq throttling (shared across all agents to stay under free-tier limits)
+    groq_requests_per_second: float = Field(0.4)   # ~24 requests/min
+    groq_max_retries: int = Field(5)
+    groq_timeout_seconds: int = Field(60)
 
     # Ollama (for Agent 2 - runs locally)
     ollama_base_url: str = Field("http://localhost:11434")

@@ -14,6 +14,7 @@ We combine with the repository path to read the actual source code.
 import ast
 import logging
 from pathlib import Path
+from typing import Optional
 
 logger = logging.getLogger(__name__)
 
@@ -71,7 +72,9 @@ class CodeExtractor:
 
         # Strategy 1: AST-based extraction (preferred)
         try:
-            extracted = self._extract_by_ast(source, function_name)
+            extracted = self._extract_by_ast(
+                source, function_name, start_line, end_line
+            )
             if extracted:
                 logger.info(
                     f"Extracted '{function_name}' via AST from {file_path}"
@@ -87,26 +90,85 @@ class CodeExtractor:
         )
         return self._extract_by_lines(lines, start_line, end_line)
 
-    def _extract_by_ast(self, source: str, function_name: str) -> str:
+    def _extract_by_ast(
+        self,
+        source: str,
+        function_name: str,
+        start_line: Optional[int] = None,
+        end_line: Optional[int] = None,
+    ) -> str:
         """
-        Parse the file's AST and find the exact function definition.
-        This is more reliable than line numbers because it handles
-        decorators, nested functions, and methods correctly.
+        Parse the file's AST and find the function definition matching
+        `function_name`.
+
+        A name alone is not always unique — the same method name commonly
+        appears on more than one class in a file (`process`, `validate`,
+        `__init__`, ...). When that happens we disambiguate using the
+        (start_line, end_line) hint from Component 2's report rather than
+        blindly taking the first AST match, which could silently return a
+        different function/method than the one that was actually flagged.
         """
         tree = ast.parse(source)
         source_lines = source.splitlines(keepends=True)
 
-        for node in ast.walk(tree):
-            if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
-                if node.name == function_name:
-                    # Get the start line including decorators
-                    start = node.lineno - 1  # 0-indexed
-                    end = node.end_lineno    # 0-indexed end
+        candidates = [
+            node
+            for node in ast.walk(tree)
+            if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef))
+            and node.name == function_name
+        ]
 
-                    extracted = "".join(source_lines[start:end])
-                    return extracted.rstrip()
+        if not candidates:
+            return ""
 
-        return ""
+        node = self._pick_best_candidate(candidates, start_line, end_line)
+
+        # node.lineno points at the `def` line, not the decorator(s) above
+        # it (true since Python 3.8) — start from the first decorator when
+        # present so decorated functions/methods aren't truncated.
+        decorator_start = (
+            node.decorator_list[0].lineno if node.decorator_list else node.lineno
+        )
+        start = decorator_start - 1  # 0-indexed
+        end = node.end_lineno        # 0-indexed end
+
+        extracted = "".join(source_lines[start:end])
+        return extracted.rstrip()
+
+    @staticmethod
+    def _pick_best_candidate(
+        candidates: list,
+        start_line: Optional[int],
+        end_line: Optional[int],
+    ):
+        """
+        Choose the AST node that best matches the (start_line, end_line)
+        hint when several functions/methods share the same name.
+
+        Preference order:
+        1. The candidate whose line range overlaps the hint the most.
+        2. If none overlap (approximate/off-by-a-few line numbers), the
+           candidate whose start line is numerically closest to the hint.
+        3. If no hint was given at all, the first candidate found (old
+           behaviour), so callers that don't have line numbers still work.
+        """
+        if len(candidates) == 1 or start_line is None:
+            return candidates[0]
+
+        hint_end = end_line if end_line is not None else start_line
+
+        def score(node) -> tuple:
+            node_start = node.lineno
+            node_end = node.end_lineno or node.lineno
+            overlap = max(
+                0, min(node_end, hint_end) - max(node_start, start_line) + 1
+            )
+            if overlap > 0:
+                return (1, overlap)
+            distance = abs(node_start - start_line)
+            return (0, -distance)
+
+        return max(candidates, key=score)
 
     def _extract_by_lines(
         self,
@@ -156,3 +218,5 @@ class CodeExtractor:
             pass
 
         return functions
+
+    
