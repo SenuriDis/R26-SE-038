@@ -67,6 +67,25 @@ class EnrichedSegment:
     recommended_test_types: list[str]  # from Component 2 directly
     confidence: float                  # ML model confidence
 
+    def effective_test_types(self) -> list[str]:
+        """
+        Merge the tier-level default test types with Component 2's own
+        per-function recommendation.
+
+        `test_types` (from TIER_CONFIG) keeps the generic categories that
+        line up with Agent 1's fixed category vocabulary (normal/edge/
+        negative/exception), so a segment always gets a sane baseline for
+        its risk tier. `recommended_test_types` is Component 2's specific,
+        per-function guidance (e.g. "boundary_tests") and used to be
+        collected but never actually passed to Agent 1 — this folds it in
+        instead of discarding it, without dropping the tier baseline.
+        """
+        merged = list(self.test_types)
+        for t in self.recommended_test_types:
+            if t not in merged:
+                merged.append(t)
+        return merged
+
 
 class MLReportReader:
     """

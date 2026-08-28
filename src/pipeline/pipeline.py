@@ -199,7 +199,7 @@ class TestingPipeline:
                     risk_level=enriched.risk_level,
                     test_depth=enriched.test_depth,
                     min_test_cases=enriched.min_test_cases,
-                    test_types=enriched.test_types,
+                    test_types=enriched.effective_test_types(),
                     explanation_text=enriched.explanation_text,
                     top_risk_factors=enriched.top_risk_factors,
                 )
