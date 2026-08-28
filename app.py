@@ -5,6 +5,8 @@ from flask_cors import CORS
 
 from flask import Flask, request, jsonify
 
+from bson import ObjectId
+
 # Import analyzer functions from main.py
 from main import (
     analyze_file,
@@ -26,6 +28,7 @@ app = Flask(__name__)
 
 # Enable CORS for all routes
 CORS(app)
+
 
 # Folder used to store uploaded Python files
 UPLOAD_FOLDER = "uploads"
@@ -171,13 +174,19 @@ def analyze_github_repo():
 
     # Clone (or reuse existing clone) and run requirement-aware
     # analysis across every Python file in the repo
-    result = analyze_github_repository(repo_url, force_reclone=force_reclone)
+    result = analyze_github_repository(
+        repo_url,
+        force_reclone=force_reclone
+    )
 
     if "error" in result:
         return jsonify(result), 400
 
     # Save API result to JSON file
-    save_json_to_file(result, "results/github_repo_analysis_results.json")
+    save_json_to_file(
+        result,
+        "results/github_repo_analysis_results.json"
+    )
 
     # Save result to MongoDB
     analysis_collection.insert_one({
@@ -207,7 +216,10 @@ def analyze_project_folder():
     results = analyze_folder(folder_path)
 
     # Save API result to JSON file
-    save_json_to_file(results, "results/analysis_results.json")
+    save_json_to_file(
+        results,
+        "results/analysis_results.json"
+    )
 
     # Save results to MongoDB
     analysis_collection.insert_one({
@@ -243,7 +255,11 @@ def upload_and_analyze():
         }), 400
 
     # Save uploaded file into uploads folder
-    file_path = os.path.join(app.config["UPLOAD_FOLDER"], file.filename)
+    file_path = os.path.join(
+        app.config["UPLOAD_FOLDER"],
+        file.filename
+    )
+
     file.save(file_path)
 
     # Analyze uploaded Python file
@@ -255,7 +271,10 @@ def upload_and_analyze():
         }), 400
 
     # Save API result to JSON file
-    save_json_to_file(result, "results/analysis_results.json")
+    save_json_to_file(
+        result,
+        "results/analysis_results.json"
+    )
 
     # Save result to MongoDB
     analysis_collection.insert_one({
@@ -268,18 +287,270 @@ def upload_and_analyze():
     return jsonify(result), 200
 
 
+# ============================================================
+# ANALYSIS HISTORY
+# ============================================================
+
 @app.route("/analysis-results", methods=["GET"])
 def get_analysis_results():
-    # Fetch all saved reports from MongoDB
+
     reports = []
 
-    for report in analysis_collection.find().sort("created_at", -1):
+    # IMPORTANT:
+    # This endpoint only loads lightweight report metadata.
+    #
+    # The actual "result" and "results" fields are NOT deleted
+    # or modified in MongoDB.
+    #
+    # They are simply excluded from this particular response
+    # so that the history page does not download huge analysis
+    # results for every report at once.
+
+    cursor = (
+        analysis_collection
+        .find(
+            {},
+            {
+                "result": 0,
+                "results": 0
+            }
+        )
+        .sort("created_at", -1)
+        .limit(100)
+    )
+
+    for report in cursor:
         report["_id"] = str(report["_id"])
         reports.append(report)
 
     return jsonify(reports), 200
 
 
+@app.route("/analysis-results/<report_id>", methods=["GET"])
+def get_single_analysis_result(report_id):
+
+    try:
+        # Retrieve the COMPLETE original report.
+        #
+        # This includes:
+        # - result
+        # - results
+        # - requirement_analysis
+        # - risk information
+        # - high-risk functions
+        # - GitHub file results
+        # - LLM testing context
+        # - all other existing analysis output
+        #
+        # Nothing in the stored structure is changed.
+
+        report = analysis_collection.find_one({
+            "_id": ObjectId(report_id)
+        })
+
+        if not report:
+            return jsonify({
+                "error": "Report not found"
+            }), 404
+
+        # ObjectId cannot be directly serialized to JSON
+        report["_id"] = str(report["_id"])
+
+        return jsonify(report), 200
+
+    except Exception as e:
+        return jsonify({
+            "error": str(e)
+        }), 500
+
+
+@app.route("/dashboard-stats", methods=["GET"])
+def get_dashboard_stats():
+
+    try:
+        # ---------------------------------------------------------
+        # TOTAL NUMBER OF ANALYSES
+        # ---------------------------------------------------------
+        total_analyses = analysis_collection.count_documents({})
+
+        # ---------------------------------------------------------
+        # CALCULATE HIGH-RISK FUNCTIONS + COMPLEXITY
+        # USING MONGODB AGGREGATION
+        #
+        # IMPORTANT:
+        # This does NOT modify the stored analysis result.
+        # Your original ML/analyzer JSON remains unchanged.
+        # ---------------------------------------------------------
+
+        pipeline = [
+            {
+                "$project": {
+                    "file_results": {
+                        "$cond": [
+                            {
+                                "$isArray": "$results"
+                            },
+                            "$results",
+
+                            {
+                                "$cond": [
+                                    {
+                                        "$isArray": "$result.files"
+                                    },
+                                    "$result.files",
+
+                                    {
+                                        "$cond": [
+                                            {
+                                                "$ne": [
+                                                    "$result",
+                                                    None
+                                                ]
+                                            },
+                                            ["$result"],
+                                            []
+                                        ]
+                                    }
+                                ]
+                            }
+                        ]
+                    }
+                }
+            },
+
+            {
+                "$unwind": {
+                    "path": "$file_results",
+                    "preserveNullAndEmptyArrays": False
+                }
+            },
+
+            {
+                "$project": {
+                    "high_risk_count": {
+                        "$size": {
+                            "$ifNull": [
+                                "$file_results.high_risk_functions",
+                                []
+                            ]
+                        }
+                    },
+
+                    "complexity": {
+                        "$ifNull": [
+                            "$file_results.summary.file_cyclomatic_complexity",
+                            0
+                        ]
+                    }
+                }
+            },
+
+            {
+                "$group": {
+                    "_id": None,
+
+                    "totalHighRisk": {
+                        "$sum": "$high_risk_count"
+                    },
+
+                    "totalComplexity": {
+                        "$sum": "$complexity"
+                    },
+
+                    "complexityCount": {
+                        "$sum": 1
+                    }
+                }
+            }
+        ]
+
+        stats_result = list(
+            analysis_collection.aggregate(pipeline)
+        )
+
+        if stats_result:
+
+            stats = stats_result[0]
+
+            total_high_risk = stats.get(
+                "totalHighRisk",
+                0
+            )
+
+            total_complexity = stats.get(
+                "totalComplexity",
+                0
+            )
+
+            complexity_count = stats.get(
+                "complexityCount",
+                0
+            )
+
+        else:
+
+            total_high_risk = 0
+            total_complexity = 0
+            complexity_count = 0
+
+        # ---------------------------------------------------------
+        # AVERAGE COMPLEXITY
+        # ---------------------------------------------------------
+
+        avg_complexity = (
+            round(
+                total_complexity / complexity_count,
+                1
+            )
+            if complexity_count > 0
+            else 0
+        )
+
+        # ---------------------------------------------------------
+        # LATEST ANALYSIS
+        # ---------------------------------------------------------
+
+        latest_report = analysis_collection.find_one(
+            {},
+            {
+                "created_at": 1
+            },
+            sort=[
+                ("created_at", -1)
+            ]
+        )
+
+        latest_analysis = (
+            latest_report["created_at"].isoformat()
+            if latest_report
+            and latest_report.get("created_at")
+            else None
+        )
+
+        # ---------------------------------------------------------
+        # RETURN DASHBOARD DATA ONLY
+        # ---------------------------------------------------------
+
+        return jsonify({
+            "totalAnalyses": total_analyses,
+            "totalHighRisk": total_high_risk,
+            "avgComplexity": avg_complexity,
+            "latestAnalysis": latest_analysis
+        }), 200
+
+    except Exception as e:
+
+        print("Dashboard stats error:", str(e))
+
+        return jsonify({
+            "error": str(e)
+        }), 500
+
 if __name__ == "__main__":
     # Run Flask development server
-    app.run(debug=False, use_reloader=False)
+    app.run(
+        debug=False,
+        use_reloader=False
+    )
+
+
