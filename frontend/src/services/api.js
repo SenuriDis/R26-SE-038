@@ -36,7 +36,7 @@ export const getAnalysisHistory = async () => {
 
 export const getDashboardStats = async () => {
   const response = await axios.get(
-    `${API_BASE_URL}/analysis-results`
+    `${API_BASE_URL}/dashboard-stats`
   );
 
   return response.data;
@@ -79,6 +79,16 @@ export const analyzeGithubRepo = async (repoUrl, forceReclone = false) => {
       repo_url: repoUrl,
       force_reclone: forceReclone,
     }
+  );
+
+  return response.data;
+};
+
+
+// Get the complete analysis report by its MongoDB ID
+export const getAnalysisResult = async (reportId) => {
+  const response = await axios.get(
+    `${API_BASE_URL}/analysis-results/${reportId}`
   );
 
   return response.data;
