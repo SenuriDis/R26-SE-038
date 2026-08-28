@@ -26,55 +26,21 @@ function Dashboard() {
   }, []);
 
   const loadDashboardData = async () => {
-    try {
-      const history = await getDashboardStats();
+  try {
+    const data = await getDashboardStats();
 
-      let totalHighRisk = 0;
-      let totalComplexity = 0;
-      let complexityCount = 0;
-
-      const tallyFileResult = (fileResult) => {
-        totalHighRisk += fileResult.high_risk_functions?.length || 0;
-        totalComplexity += fileResult.summary?.file_cyclomatic_complexity || 0;
-        complexityCount++;
-      };
-
-      history.forEach((item) => {
-        // Folder analysis result (array of per-file results)
-        if (item.results) {
-          item.results.forEach(tallyFileResult);
-        }
-        // GitHub repo analysis result -- per-file results are nested
-        // inside item.result.files, not at item.result directly
-        else if (item.result && Array.isArray(item.result.files)) {
-          item.result.files.forEach(tallyFileResult);
-        }
-        // Single file analysis result (upload, path, or requirement-aware)
-        else if (item.result) {
-          tallyFileResult(item.result);
-        }
-      });
-
-      const avgComplexity =
-        complexityCount > 0
-          ? (totalComplexity / complexityCount).toFixed(1)
-          : 0;
-
-      const latest =
-        history.length > 0
-          ? new Date(history[0].created_at).toLocaleString()
-          : "N/A";
-
-      setStats({
-        totalAnalyses: history.length,
-        totalHighRisk,
-        latestAnalysis: latest,
-        avgComplexity,
-      });
-    } catch (error) {
-      console.error(error);
-    }
-  };
+    setStats({
+      totalAnalyses: data.totalAnalyses ?? 0,
+      totalHighRisk: data.totalHighRisk ?? 0,
+      latestAnalysis: data.latestAnalysis
+        ? new Date(data.latestAnalysis).toLocaleString()
+        : "N/A",
+      avgComplexity: data.avgComplexity ?? 0,
+    });
+  } catch (error) {
+    console.error("Dashboard loading error:", error);
+  }
+};
 
   return (
     <div className="min-h-screen bg-slate-100">
@@ -110,6 +76,7 @@ function Dashboard() {
 
         {/* Stats */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-5">
+          {/* Total Analyses */}
           <div className="bg-white rounded-2xl p-6 border border-slate-200 shadow-sm hover:shadow-md transition">
             <div className="flex justify-between items-start">
               <div>
@@ -130,10 +97,13 @@ function Dashboard() {
             </div>
           </div>
 
+          {/* High-Risk Functions */}
           <div className="bg-white rounded-2xl p-6 border border-slate-200 shadow-sm hover:shadow-md transition">
             <div className="flex justify-between items-start">
               <div>
-                <p className="text-slate-500 text-sm">High-Risk Functions</p>
+                <p className="text-slate-500 text-sm">
+                  High-Risk Functions
+                </p>
 
                 <h2 className="text-4xl font-bold mt-3 text-red-500">
                   {stats.totalHighRisk}
@@ -150,6 +120,7 @@ function Dashboard() {
             </div>
           </div>
 
+          {/* Average Complexity */}
           <div className="bg-white rounded-2xl p-6 border border-slate-200 shadow-sm hover:shadow-md transition">
             <div className="flex justify-between items-start">
               <div>
@@ -170,6 +141,7 @@ function Dashboard() {
             </div>
           </div>
 
+          {/* Latest Analysis */}
           <div className="bg-white rounded-2xl p-6 border border-slate-200 shadow-sm hover:shadow-md transition">
             <div className="flex justify-between items-start gap-3">
               <div>
@@ -193,6 +165,7 @@ function Dashboard() {
 
         {/* Overview */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mt-8">
+          {/* Platform Overview */}
           <div className="lg:col-span-2 bg-white rounded-2xl border border-slate-200 shadow-sm p-8">
             <div className="flex items-center gap-3 mb-4">
               <div className="bg-slate-100 text-slate-700 p-3 rounded-xl">
@@ -218,8 +191,8 @@ function Dashboard() {
                 </h4>
 
                 <p className="text-sm text-slate-500 mt-2 leading-6">
-                  Extracts function details, control flow counts, nesting depth,
-                  cyclomatic complexity, and dependencies.
+                  Extracts function details, control flow counts, nesting
+                  depth, cyclomatic complexity, and dependencies.
                 </p>
               </div>
 
@@ -236,6 +209,7 @@ function Dashboard() {
             </div>
           </div>
 
+          {/* AI Suggestion */}
           <div className="bg-cyan-50 rounded-2xl border border-cyan-100 p-6 shadow-sm">
             <div className="flex items-center gap-3 mb-3">
               <div className="bg-cyan-100 text-cyan-700 p-3 rounded-xl">
