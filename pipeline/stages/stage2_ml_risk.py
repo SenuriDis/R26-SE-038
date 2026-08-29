@@ -62,9 +62,11 @@ def check_dependencies(python_exe: str) -> Optional[str]:
     if not shutil.which(python_exe) and not Path(python_exe).exists():
         return f"interpreter not found: {python_exe}"
 
-    probe = (
-        "import numpy, pandas, sklearn, xgboost"
-    )
+    # Only these three are actually imported on the prediction path.
+    # C2's requirements.txt also lists xgboost, shap, imbalanced-learn, jupyter,
+    # matplotlib and seaborn, but nothing in the package imports them -- the
+    # "xgb_model" attribute is really an sklearn GradientBoostingClassifier.
+    probe = "import numpy, pandas, sklearn"
     result = subprocess.run(
         [python_exe, "-c", probe],
         capture_output=True,

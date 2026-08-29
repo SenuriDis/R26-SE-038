@@ -106,7 +106,39 @@ async def health():
 The decorator `@` is missing, so the route is never registered and
 `GET /health` returns 404. Every other route in the file has it.
 
-### 2. C2 — inference uses an unfitted FeatureEngineer  *(affects all scores)*
+### 2a. C2 — the committed model file is stale  *(this is the big one)*
+
+`models/saved/risk_detector.pkl` does not match any committed FeatureEngineer.
+
+Evidence — commit dates on `origin/Vihanga`:
+
+| file | committed | commit |
+|---|---|---|
+| `feature_engineer.pkl` | 2026-05-07 | `aebd066` |
+| `sample_prediction.json` | 2026-05-07 | `aebd066` |
+| `risk_detector.pkl` | 2026-05-10 | `7e89c5f` |
+| `risk_detector_fe.pkl` | 2026-05-10 | `7e89c5f` |
+
+Scoring the `process_transaction` example from `predict_api.py` against the
+recorded result of **0.4294**:
+
+| model + FeatureEngineer | score |
+|---|---|
+| committed model + `feature_engineer.pkl` | 0.0411 |
+| committed model + `risk_detector_fe.pkl` | 0.0411 |
+| committed model + unfitted FE (API path) | 0.9999 |
+| **freshly trained via `train.py`** | **0.429** ✅ |
+
+Re-running `train.py` unmodified reproduces the documented sample exactly —
+score 0.429, MEDIUM, and the same three SHAP factors (bug_history, num_loops,
+dependency_count). So the training code is correct and the committed `.pkl`
+is simply out of date with its FeatureEngineer.
+
+`data/dataset.py` generates synthetic data with `random_state=42`, so training
+is deterministic and reproducible. **Fix: re-run `train.py` and commit both
+pickles together.**
+
+### 2b. C2 — inference uses an unfitted FeatureEngineer  *(affects all scores)*
 
 `train.py` fits the FeatureEngineer for z-score normalisation and pickles it:
 
@@ -126,8 +158,9 @@ when `_fit_stats is None`. So the API feeds unnormalised features to a model
 trained on z-scored ones. This likely explains the compressed scores in
 `sample_prediction.json` (average risk 0.1438, zero HIGH-risk functions).
 
-`pipeline/runners/c2_predict.py` works around this by loading the fitted
-pickle, and warns loudly if it is missing.
+`pipeline/runners/c2_predict.py` loads the fitted pickle instead, and warns
+loudly if it is missing. Note this alone does **not** fix the scores while
+issue 2a stands — with the stale model both fitted pickles give 0.0411.
 
 **Both are in Vihanga's component and are left unmodified here on purpose** —
 editing vendored subtree code creates conflicts on the next `git subtree pull`.
@@ -141,28 +174,69 @@ C1's `FeatureExtractor`, `FunctionComplexityCalculator` and
 Stage 1 counts and reports these rather than hiding them, but the real fix
 belongs in C1.
 
-### 4. Stage 2 cannot run in this environment yet  *(current blocker)*
+### 4. C2's requirements.txt overstates what it needs  *(resolved)*
 
-C2 needs `numpy`, `pandas`, `scikit-learn`, `xgboost`. The repo venv is C3's
-(chromadb / llama-index) and has none of them. C2's pinned `numpy==1.26.4` has
-**no wheels for Python 3.13**, which is the only interpreter installed here.
+`requirements.txt` pins xgboost, shap, imbalanced-learn, jupyter, matplotlib
+and seaborn. **None of them are imported anywhere in the package** — the
+`xgb_model` attribute is really an sklearn `GradientBoostingClassifier`, and
+`SimpleSMOTE` / `PermutationExplainer` are hand-rolled in `risk_detector.py`.
 
-Options, in order of preference:
+The prediction path needs only `numpy`, `pandas`, `scikit-learn`.
 
-1. Create a C2 venv on Python 3.11 or 3.12 and install
-   `components/c2_ml_risk/requirements.txt` as pinned, then point at it with
-   `C2_PYTHON`. Keeps the pickled model loading against the sklearn version it
-   was trained on.
-2. Relax the pins to `numpy>=2.1`, `scikit-learn>=1.5` on 3.13. The
-   `risk_detector.pkl` was pickled under sklearn 1.4.2, so it may warn or fail
-   to unpickle — retraining via `train.py` would then be required.
+Environment now in place: `components/c2_ml_risk/venv` on **Python 3.12.10**
+with numpy 1.26.4, pandas 2.2.1, scikit-learn 1.4.2 — C2's exact pins.
+`stage2_ml_risk.resolve_python()` finds it automatically.
+
+(C2's pinned `numpy==1.26.4` has no Python 3.13 wheels, which is why 3.12 was
+needed. The repo's own venv is C3's and stays untouched.)
+
+### 5. Real code scores flat, because 5 features are constants
+
+With the pipeline running end to end over 91 real functions from C1's `src/`:
+
+| model | distinct scores | range | tiers |
+|---|---|---|---|
+| committed | 2 | 0.000 – 0.042 | 91 LOW |
+| freshly trained | 4 | 0.000 – 0.046 | 91 LOW |
+
+Retraining does **not** fix this, because the cause is upstream: every function
+carries `bug_history=0`, `commit_frequency=0`, `author_count=1`,
+`days_since_last_change=999`, `fan_in=0`. Those five feed six of the model's
+engineered features, including `change_risk` and `total_coupling`.
+
+RandomForest importances on the current model:
+
+```
+structural_complexity      0.1061
+change_risk                0.1010   <- placeholder-driven
+dependency_count           0.0961
+fan_out                    0.0957
+num_conditionals           0.0950
+bug_history                0.0950   <- placeholder-driven
+complexity_nesting_product 0.0905
+commit_frequency           0.0804   <- placeholder-driven
+```
+
+The model was trained on synthetic data where risky functions have heavy git
+churn. Real functions reporting zero churn all look safe, and ranking then
+falls to noise — `parse` (cc=2) outscores `_parse_block` (cc=9).
+
+A sensitivity sweep confirms the lever: holding code metrics fixed and moving
+only the git fields to realistic values moved the score 0.042 -> 0.147.
+
+**So backfilling the git fields is required, not an optimisation.**
 
 ## Status
 
 - [x] Branch created, C1 + C2 vendored with history
 - [x] Stage 1: C1 runs, both artifacts written
 - [x] C1 -> C2 adapter: all 20 fields, verified against source
-- [ ] Stage 2: blocked on C2 environment (issue 4)
-- [ ] Backfill the 4 git-history fields and `fan_in`
+- [x] C2 environment: Python 3.12 venv with C2's exact pins
+- [x] **Stage 2 runs end to end — C1 -> C2 -> 03_ml_output.json**
+- [ ] Backfill the 4 git-history fields and `fan_in` (issue 5 — next up)
+- [ ] Get C2's model artifacts regenerated and committed (issue 2a — Vihanga)
 - [ ] Stage 3: vendor C3 and wire `ml_report_reader.py` to artifact 03
 - [ ] Stage 4: vendor C4 (Nisula) for test execution
+
+The connection between C1 and C2 is proven working. The *scores* it currently
+carries are not yet meaningful, for the reasons in issues 2a and 5.

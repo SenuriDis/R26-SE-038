@@ -20,6 +20,11 @@ import pickle
 import sys
 from pathlib import Path
 
+# Python puts *this script's* directory on sys.path, not the cwd. C2 imports
+# itself as `utils.*` and `models.*`, so its root (which the caller sets as cwd)
+# has to go on the path before those imports run.
+sys.path.insert(0, str(Path.cwd()))
+
 import numpy as np
 
 from utils.feature_engineering import FeatureEngineer
