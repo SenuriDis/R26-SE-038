@@ -1,0 +1,383 @@
+[
+    {
+        "file": "C:\\Users\\micro\\OneDrive\\Desktop\\Receipe-python-app\\app\\manage.py",
+        "summary": {
+            "total_lines": 21,
+            "file_cyclomatic_complexity": 2,
+            "nesting_depth": 1,
+            "total_dependency_calls": 3
+        },
+        "control_flow": {
+            "if_count": 1,
+            "for_count": 0,
+            "while_count": 0
+        },
+        "functions": {
+            "total_functions": 1,
+            "function_names": [
+                "main"
+            ],
+            "function_complexity": {
+                "main": 1
+            }
+        },
+        "dependencies": {
+            "function_dependencies": {
+                "main": [
+                    "setdefault",
+                    "execute_from_command_line",
+                    "ImportError"
+                ]
+            }
+        },
+        "risk_summary": {
+            "high": 1,
+            "medium": 0,
+            "low": 0
+        },
+        "risk_analysis": {
+            "main": {
+                "complexity": 1,
+                "dependency_count": 3,
+                "risk_level": "High"
+            }
+        },
+        "high_risk_functions": [
+            "main"
+        ],
+        "intelligent_testing_context": {
+            "ml_ready_features": [
+                {
+                    "function_name": "main",
+                    "cyclomatic_complexity": 1,
+                    "dependency_count": 3,
+                    "risk_level": "High"
+                }
+            ],
+            "llm_test_recommendations": [
+                {
+                    "function": "main",
+                    "risk_level": "High",
+                    "reason": "High risk due to high dependency count",
+                    "dependencies": [
+                        "setdefault",
+                        "execute_from_command_line",
+                        "ImportError"
+                    ],
+                    "suggested_test_focus": [
+                        "dependency behavior",
+                        "mocking external/internal calls",
+                        "integration-related scenarios"
+                    ]
+                }
+            ]
+        }
+    },
+    {
+        "file": "C:\\Users\\micro\\OneDrive\\Desktop\\Receipe-python-app\\app\\app\\settings.py",
+        "summary": {
+            "total_lines": 123,
+            "file_cyclomatic_complexity": 1,
+            "nesting_depth": 0,
+            "total_dependency_calls": 0
+        },
+        "control_flow": {
+            "if_count": 0,
+            "for_count": 0,
+            "while_count": 0
+        },
+        "functions": {
+            "total_functions": 0,
+            "function_names": [],
+            "function_complexity": {}
+        },
+        "dependencies": {
+            "function_dependencies": {}
+        },
+        "risk_summary": {
+            "high": 0,
+            "medium": 0,
+            "low": 0
+        },
+        "risk_analysis": {},
+        "high_risk_functions": [],
+        "intelligent_testing_context": {
+            "ml_ready_features": [],
+            "llm_test_recommendations": []
+        }
+    },
+    {
+        "file": "C:\\Users\\micro\\OneDrive\\Desktop\\Receipe-python-app\\app\\app\\urls.py",
+        "summary": {
+            "total_lines": 21,
+            "file_cyclomatic_complexity": 1,
+            "nesting_depth": 0,
+            "total_dependency_calls": 0
+        },
+        "control_flow": {
+            "if_count": 0,
+            "for_count": 0,
+            "while_count": 0
+        },
+        "functions": {
+            "total_functions": 0,
+            "function_names": [],
+            "function_complexity": {}
+        },
+        "dependencies": {
+            "function_dependencies": {}
+        },
+        "risk_summary": {
+            "high": 0,
+            "medium": 0,
+            "low": 0
+        },
+        "risk_analysis": {},
+        "high_risk_functions": [],
+        "intelligent_testing_context": {
+            "ml_ready_features": [],
+            "llm_test_recommendations": []
+        }
+    },
+    {
+        "file": "C:\\Users\\micro\\OneDrive\\Desktop\\Receipe-python-app\\app\\app\\wsgi.py",
+        "summary": {
+            "total_lines": 16,
+            "file_cyclomatic_complexity": 1,
+            "nesting_depth": 0,
+            "total_dependency_calls": 0
+        },
+        "control_flow": {
+            "if_count": 0,
+            "for_count": 0,
+            "while_count": 0
+        },
+        "functions": {
+            "total_functions": 0,
+            "function_names": [],
+            "function_complexity": {}
+        },
+        "dependencies": {
+            "function_dependencies": {}
+        },
+        "risk_summary": {
+            "high": 0,
+            "medium": 0,
+            "low": 0
+        },
+        "risk_analysis": {},
+        "high_risk_functions": [],
+        "intelligent_testing_context": {
+            "ml_ready_features": [],
+            "llm_test_recommendations": []
+        }
+    },
+    {
+        "file": "C:\\Users\\micro\\OneDrive\\Desktop\\Receipe-python-app\\app\\core\\admin.py",
+        "summary": {
+            "total_lines": 35,
+            "file_cyclomatic_complexity": 1,
+            "nesting_depth": 0,
+            "total_dependency_calls": 0
+        },
+        "control_flow": {
+            "if_count": 0,
+            "for_count": 0,
+            "while_count": 0
+        },
+        "functions": {
+            "total_functions": 0,
+            "function_names": [],
+            "function_complexity": {}
+        },
+        "dependencies": {
+            "function_dependencies": {}
+        },
+        "risk_summary": {
+            "high": 0,
+            "medium": 0,
+            "low": 0
+        },
+        "risk_analysis": {},
+        "high_risk_functions": [],
+        "intelligent_testing_context": {
+            "ml_ready_features": [],
+            "llm_test_recommendations": []
+        }
+    },
+    {
+        "file": "C:\\Users\\micro\\OneDrive\\Desktop\\Receipe-python-app\\app\\core\\apps.py",
+        "summary": {
+            "total_lines": 5,
+            "file_cyclomatic_complexity": 1,
+            "nesting_depth": 0,
+            "total_dependency_calls": 0
+        },
+        "control_flow": {
+            "if_count": 0,
+            "for_count": 0,
+            "while_count": 0
+        },
+        "functions": {
+            "total_functions": 0,
+            "function_names": [],
+            "function_complexity": {}
+        },
+        "dependencies": {
+            "function_dependencies": {}
+        },
+        "risk_summary": {
+            "high": 0,
+            "medium": 0,
+            "low": 0
+        },
+        "risk_analysis": {},
+        "high_risk_functions": [],
+        "intelligent_testing_context": {
+            "ml_ready_features": [],
+            "llm_test_recommendations": []
+        }
+    },
+    {
+        "file": "C:\\Users\\micro\\OneDrive\\Desktop\\Receipe-python-app\\app\\core\\models.py",
+        "summary": {
+            "total_lines": 34,
+            "file_cyclomatic_complexity": 2,
+            "nesting_depth": 1,
+            "total_dependency_calls": 7
+        },
+        "control_flow": {
+            "if_count": 1,
+            "for_count": 0,
+            "while_count": 0
+        },
+        "functions": {
+            "total_functions": 2,
+            "function_names": [
+                "create_user",
+                "create_superuser"
+            ],
+            "function_complexity": {
+                "create_user": 2,
+                "create_superuser": 1
+            }
+        },
+        "dependencies": {
+            "function_dependencies": {
+                "create_user": [
+                    "set_password",
+                    "model",
+                    "ValueError",
+                    "save",
+                    "normalize_email"
+                ],
+                "create_superuser": [
+                    "create_user",
+                    "save"
+                ]
+            }
+        },
+        "risk_summary": {
+            "high": 1,
+            "medium": 1,
+            "low": 0
+        },
+        "risk_analysis": {
+            "create_user": {
+                "complexity": 2,
+                "dependency_count": 5,
+                "risk_level": "High"
+            },
+            "create_superuser": {
+                "complexity": 1,
+                "dependency_count": 2,
+                "risk_level": "Medium"
+            }
+        },
+        "high_risk_functions": [
+            "create_user"
+        ],
+        "intelligent_testing_context": {
+            "ml_ready_features": [
+                {
+                    "function_name": "create_user",
+                    "cyclomatic_complexity": 2,
+                    "dependency_count": 5,
+                    "risk_level": "High"
+                },
+                {
+                    "function_name": "create_superuser",
+                    "cyclomatic_complexity": 1,
+                    "dependency_count": 2,
+                    "risk_level": "Medium"
+                }
+            ],
+            "llm_test_recommendations": [
+                {
+                    "function": "create_user",
+                    "risk_level": "High",
+                    "reason": "High risk due to high dependency count",
+                    "dependencies": [
+                        "set_password",
+                        "model",
+                        "ValueError",
+                        "save",
+                        "normalize_email"
+                    ],
+                    "suggested_test_focus": [
+                        "dependency behavior",
+                        "mocking external/internal calls",
+                        "integration-related scenarios"
+                    ]
+                },
+                {
+                    "function": "create_superuser",
+                    "risk_level": "Medium",
+                    "reason": "Medium risk due to moderate dependency count",
+                    "dependencies": [
+                        "create_user",
+                        "save"
+                    ],
+                    "suggested_test_focus": [
+                        "dependency behavior",
+                        "mocking external/internal calls",
+                        "integration-related scenarios"
+                    ]
+                }
+            ]
+        }
+    },
+    {
+        "file": "C:\\Users\\micro\\OneDrive\\Desktop\\Receipe-python-app\\app\\core\\views.py",
+        "summary": {
+            "total_lines": 3,
+            "file_cyclomatic_complexity": 1,
+            "nesting_depth": 0,
+            "total_dependency_calls": 0
+        },
+        "control_flow": {
+            "if_count": 0,
+            "for_count": 0,
+            "while_count": 0
+        },
+        "functions": {
+            "total_functions": 0,
+            "function_names": [],
+            "function_complexity": {}
+        },
+        "dependencies": {
+            "function_dependencies": {}
+        },
+        "risk_summary": {
+            "high": 0,
+            "medium": 0,
+            "low": 0
+        },
+        "risk_analysis": {},
+        "high_risk_functions": [],
+        "intelligent_testing_context": {
+            "ml_ready_features": [],
+            "llm_test_recommendations": []
+        }
+    }
+]
