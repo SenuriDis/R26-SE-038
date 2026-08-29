@@ -5,7 +5,9 @@ Reads Component 2's ML risk report JSON and converts it into
 HighRiskSegment objects that the pipeline can process.
 
 Also handles:
-- Tier-based test depth (HIGH/MEDIUM/LOW)
+- Test depth (exhaustive/boundary/basic), preferring Component 2's own
+  per-function `recommended_test_depth` and falling back to a tier-based
+  default (HIGH/MEDIUM/LOW) only when that field is missing/unrecognised
 - Source code extraction using CodeExtractor
 - Risk factor injection for Agent prompts
 """
@@ -21,32 +23,47 @@ from src.utils.code_extractor import CodeExtractor
 logger = logging.getLogger(__name__)
 
 
-# ── Test depth configuration per tier ─────────────────────────────────────────
+# ── Test depth configuration ──────────────────────────────────────────────────
+# DEPTH_PROFILES defines what each depth actually means for Agent 1 (minimum
+# test cases, categories to focus on). TIER_CONFIG only supplies the
+# *default* depth to fall back on when a function entry doesn't carry a
+# `recommended_test_depth` Component 2 already computes that value per
+# function — we prefer it, and only fall back to the tier default when it's
+# missing or not one of the depths we know how to configure.
 
-TIER_CONFIG = {
-    "HIGH": {
-        "description": "Exhaustive testing — all test case types",
-        "test_depth": "exhaustive",
+DEPTH_PROFILES = {
+    "exhaustive": {
         "min_test_cases": 10,
         "test_types": [
             "normal", "edge", "negative", "exception", "boundary"
         ],
     },
-    "MEDIUM": {
-        "description": "Boundary testing — edge cases and boundaries",
-        "test_depth": "boundary",
+    "boundary": {
         "min_test_cases": 6,
         "test_types": [
             "normal", "edge", "boundary"
         ],
     },
-    "LOW": {
-        "description": "Basic testing — happy path only",
-        "test_depth": "basic",
+    "basic": {
         "min_test_cases": 3,
         "test_types": [
             "normal"
         ],
+    },
+}
+
+TIER_CONFIG = {
+    "HIGH": {
+        "description": "Exhaustive testing — all test case types",
+        "default_test_depth": "exhaustive",
+    },
+    "MEDIUM": {
+        "description": "Boundary testing — edge cases and boundaries",
+        "default_test_depth": "boundary",
+    },
+    "LOW": {
+        "description": "Basic testing — happy path only",
+        "default_test_depth": "basic",
     },
 }
 
@@ -184,6 +201,7 @@ class MLReportReader:
         explanation = func.get("explanation_text", "")
         risk_factors = func.get("top_risk_factors", [])
         recommended_types = func.get("test_types", ["happy_path"])
+        recommended_depth = func.get("recommended_test_depth")
 
         # Extract source code from the repository
         try:
@@ -224,20 +242,34 @@ class MLReportReader:
             cyclomatic_complexity=None,
         )
 
-        # Get tier config
-        config = TIER_CONFIG.get(tier, TIER_CONFIG["LOW"])
+        # Prefer Component 2's own per-function recommendation; fall back to
+        # the tier default only if it's missing or not a depth we recognise.
+        tier_config = TIER_CONFIG.get(tier, TIER_CONFIG["LOW"])
+        if recommended_depth in DEPTH_PROFILES:
+            test_depth = recommended_depth
+        else:
+            if recommended_depth is not None:
+                logger.warning(
+                    f"Unrecognised recommended_test_depth "
+                    f"'{recommended_depth}' for {function_name}; "
+                    f"falling back to {tier} tier default "
+                    f"'{tier_config['default_test_depth']}'"
+                )
+            test_depth = tier_config["default_test_depth"]
+
+        depth_profile = DEPTH_PROFILES[test_depth]
 
         logger.info(
             f"Processed {tier} | {function_name} | "
-            f"risk={risk_score:.3f} | depth={config['test_depth']}"
+            f"risk={risk_score:.3f} | depth={test_depth}"
         )
 
         return EnrichedSegment(
             segment=segment,
             risk_level=tier,
-            test_depth=config["test_depth"],
-            min_test_cases=config["min_test_cases"],
-            test_types=config["test_types"],
+            test_depth=test_depth,
+            min_test_cases=depth_profile["min_test_cases"],
+            test_types=depth_profile["test_types"],
             explanation_text=explanation,
             top_risk_factors=risk_factors,
             recommended_test_types=recommended_types,
