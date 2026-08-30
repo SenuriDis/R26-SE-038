@@ -138,6 +138,24 @@ def preview(artifact_dir: Path, min_risk_level: str = "MEDIUM") -> Dict:
     }
 
 
+def recorded_repo_root(artifact_dir: Path) -> Optional[str]:
+    """
+    The root stage 1 made file paths relative to.
+
+    C3 resolves source as `repo_path / file_path`, so its --repo-path has to be
+    the same root stage 1 used. Passing the analysis target instead breaks that
+    join whenever the target is a subdirectory.
+    """
+    c2_input = artifact_dir / contracts.STAGE1_C2_INPUT
+    if not c2_input.exists():
+        return None
+
+    try:
+        return json.loads(c2_input.read_text(encoding="utf-8")).get("repo_root")
+    except (ValueError, OSError):
+        return None
+
+
 def check_credentials() -> Optional[str]:
     """None when C3 has what it needs, else a human-readable reason."""
     env = load_root_env()

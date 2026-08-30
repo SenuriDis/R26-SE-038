@@ -27,6 +27,47 @@ from typing import Dict, List, Tuple
 IGNORED_FOLDERS = {"__pycache__", ".git", "venv", "migrations", "tests"}
 
 
+def find_repo_root(target: Path) -> Path:
+    """
+    The root that file paths should be expressed relative to.
+
+    C3 treats file_path as repo-relative (`repo_path / file_path`) and, more
+    importantly, embeds it verbatim into its RAG query text. An absolute
+    Windows path there drags drive letters and temp-directory noise into the
+    embedding and wrecks retrieval, so paths must stay short and meaningful.
+
+    Prefers the git root, which is what C3's own demos assume
+    ("src/requests/utils.py"), and falls back to the target itself.
+    """
+    import subprocess
+
+    start = target if target.is_dir() else target.parent
+    try:
+        out = subprocess.run(
+            ["git", "rev-parse", "--show-toplevel"],
+            cwd=str(start), capture_output=True, text=True, timeout=15,
+        )
+        if out.returncode == 0 and out.stdout.strip():
+            return Path(out.stdout.strip())
+    except (OSError, subprocess.TimeoutExpired):
+        pass
+
+    return start
+
+
+def relative_path(file_path: Path, repo_root: Path) -> str:
+    """
+    `file_path` relative to `repo_root`, POSIX-style.
+
+    Forward slashes because the string ends up inside an embedding query, and
+    backslashes tokenise badly.
+    """
+    try:
+        return file_path.resolve().relative_to(repo_root.resolve()).as_posix()
+    except ValueError:
+        return file_path.name
+
+
 def iter_python_files(target: Path) -> List[Path]:
     """C1's traversal rule: .py files, skipping dunder files and ignored dirs."""
     if target.is_file():
@@ -41,7 +82,8 @@ def iter_python_files(target: Path) -> List[Path]:
     return sorted(found)
 
 
-def functions_for_file(file_path: Path, c2_defaults: Dict, miner=None) -> Tuple[List[Dict], List[str]]:
+def functions_for_file(file_path: Path, c2_defaults: Dict, miner=None,
+                       repo_root: Path = None) -> Tuple[List[Dict], List[str]]:
     """
     Build one C2 function record per function in `file_path`.
 
@@ -82,7 +124,10 @@ def functions_for_file(file_path: Path, c2_defaults: Dict, miner=None) -> Tuple[
         records.append({
             # ── straight from C1 ──
             "function_name": info.name,
-            "file_path": str(file_path),
+            "file_path": (
+                relative_path(file_path, repo_root)
+                if repo_root is not None else str(file_path)
+            ),
             "cyclomatic_complexity": info.cyclomatic_complexity,
             "nesting_depth": info.nesting_depth,
             "lines_of_code": info.lines_of_code,
@@ -126,7 +171,8 @@ def collect_function_names(paths: List[Path]) -> set:
     return names
 
 
-def spec_records_for_file(file_path: Path, readme_requirements: Dict) -> List[Dict]:
+def spec_records_for_file(file_path: Path, readme_requirements: Dict,
+                          repo_root: Path = None) -> List[Dict]:
     """
     The documented contract for each function in `file_path`.
 
@@ -174,7 +220,10 @@ def spec_records_for_file(file_path: Path, readme_requirements: Dict) -> List[Di
         records.append({
             # Join key onto the ML report.
             "function_name": mapping.function_name,
-            "file_path": str(file_path),
+            "file_path": (
+                relative_path(file_path, repo_root)
+                if repo_root is not None else str(file_path)
+            ),
 
             "mapping_status": mapping.status.value,
 
@@ -199,7 +248,11 @@ def main() -> int:
     target = Path(sys.argv[1]).resolve()
     artifact_dir = Path(sys.argv[2]).resolve()
     project_name = sys.argv[3]
-    repo_root = Path(sys.argv[4]).resolve()
+
+    # The *pipeline's* root, used only to import the pipeline package. Distinct
+    # from the *target's* root computed below, which file paths are made
+    # relative to.
+    pipeline_root = Path(sys.argv[4]).resolve()
 
     # Python puts *this script's* directory on sys.path, not the cwd, so C1's
     # root has to be added explicitly for its `src.*` and `main` imports.
@@ -208,10 +261,10 @@ def main() -> int:
     if c1_root not in sys.path:
         sys.path.insert(0, c1_root)
 
-    # The orchestrator's package lives at the repo root, not inside C1.
+    # The orchestrator's package lives at the pipeline root, not inside C1.
     # Appended, not inserted, so it can never shadow C1's own modules.
-    if str(repo_root) not in sys.path:
-        sys.path.append(str(repo_root))
+    if str(pipeline_root) not in sys.path:
+        sys.path.append(str(pipeline_root))
 
     from pipeline.contracts import (
         STAGE1_RAW, STAGE1_C2_INPUT, STAGE1_SPEC, C2_DEFAULTS,
@@ -221,6 +274,11 @@ def main() -> int:
     # "--no-git" as a 5th argument turns history mining off.
     mine_git = not (len(sys.argv) > 5 and sys.argv[5] == "--no-git")
     miner = GitHistoryMiner(target) if mine_git else None
+
+    # Everything downstream refers to files relative to this. C3 both joins it
+    # against its --repo-path and embeds it in RAG query text, so it has to be
+    # a short, meaningful path rather than an absolute one.
+    repo_root = find_repo_root(target)
 
     artifact_dir.mkdir(parents=True, exist_ok=True)
 
@@ -259,7 +317,7 @@ def main() -> int:
 
     spec_records: List[Dict] = []
     for py_file in python_files:
-        spec_records.extend(spec_records_for_file(py_file, readme_requirements))
+        spec_records.extend(spec_records_for_file(py_file, readme_requirements, repo_root))
 
     documented = sum(1 for r in spec_records if r["requirement"] is not None)
 
@@ -267,6 +325,7 @@ def main() -> int:
     spec_path.write_text(
         json.dumps({
             "project_name": project_name,
+            "repo_root": str(repo_root),
             "readme_requirements_found": len(readme_requirements),
             "functions": spec_records,
         }, indent=2),
@@ -278,13 +337,18 @@ def main() -> int:
     all_skipped: List[str] = []
 
     for py_file in python_files:
-        records, skipped = functions_for_file(py_file, C2_DEFAULTS, miner)
+        records, skipped = functions_for_file(py_file, C2_DEFAULTS, miner, repo_root)
         all_records.extend(records)
         all_skipped.extend(skipped)
 
     c2_input_path = artifact_dir / STAGE1_C2_INPUT
     c2_input_path.write_text(
-        json.dumps({"project_name": project_name, "functions": all_records}, indent=2),
+        json.dumps({
+            "project_name": project_name,
+            # file_path values below are relative to this.
+            "repo_root": str(repo_root),
+            "functions": all_records,
+        }, indent=2),
         encoding="utf-8",
     )
 
@@ -296,6 +360,7 @@ def main() -> int:
         "raw_artifact": str(raw_path),
         "c2_input_artifact": str(c2_input_path),
         "spec_artifact": str(spec_path),
+        "repo_root": str(repo_root),
         "spec": {
             "functions": len(spec_records),
             "documented": documented,

@@ -225,9 +225,18 @@ def main(argv=None) -> int:
 
         print()
         try:
+            # Stage 1 recorded the root it made file paths relative to; C3's
+            # `repo_path / file_path` join only works against that same root.
+            repo_path = (
+                args.repo_path
+                or stage3_llm_tests.recorded_repo_root(artifact_dir)
+                or args.target
+            )
+            print(f"  repo root           : {repo_path}")
+
             result = stage3_llm_tests.run(
                 artifact_dir=artifact_dir,
-                repo_path=args.repo_path or args.target,
+                repo_path=repo_path,
                 min_risk_level=args.min_risk_level,
                 python_exe=args.c3_python,
                 force_reindex=args.force_reindex,

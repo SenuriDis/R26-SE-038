@@ -380,7 +380,56 @@ Windows defaults to cp1252, which cannot encode them, so it raises
 looks failed when it actually succeeded. Stage 3 sets `PYTHONIOENCODING=utf-8`
 on the child to avoid it, but the real fix belongs in C3.
 
-### 8. C3 output varies a lot between identical runs
+### 8. C3 output — earlier conclusion was wrong
+
+**An earlier version of this file said C3's output "varies a lot between
+identical runs" and implied a reliability problem. That was wrong, and the
+fault was in this pipeline.** Two separate causes, both now understood.
+
+**Cause 1 — absolute file paths (a bug in stage 1, fixed).**
+
+C3 treats `file_path` as repo-relative. `CodeExtractor` joins it
+(`repo_path / file_path`) and, more importantly, `RepositoryRetriever` embeds
+it *verbatim into the RAG query text*:
+
+```python
+query = f"...for the function '{function_name}' in '{file_path}'"
+```
+
+Stage 1 was emitting absolute Windows paths, so every retrieval query carried
+160 characters of `C:\Users\...\AppData\Local\Temp\claude\<uuid>\scratchpad\`
+noise. That is a semantic embedding query, and the indexer labels its own
+chunks with *relative* paths — so the query vector was dominated by
+irrelevant path tokens and retrieval returned poor context.
+
+Stage 1 now resolves the target's git root and emits `src/requests/utils.py`,
+matching the format C3's own demos use. The root is recorded in artifact 02
+as `repo_root`, and stage 3 passes it as `--repo-path` so both sides agree.
+
+**Cause 2 — the sample was the single hardest function in the library.**
+
+C2 ranked exactly one function MEDIUM: `resolve_redirects`. Every stage 3 run
+therefore targeted it, and it is a worst case — ~150 lines, a generator,
+requiring a full `Session.send` loop to be mocked. Agent 3's own review calls
+it out for handling "redirect logic, cookie merging, auth rebuilding, proxy
+handling, and body rewinding".
+
+Measured on three ordinary functions instead (complexity 4–5, ~22 lines):
+
+| target | valid tests | traceability |
+|---|---|---|
+| `unquote_unreserved` | ✅ | **8/8** |
+| `generate` | ✅ (2 repairs) | **8/8** |
+| `__call__` | ✅ | **6/6** |
+| **overall** | **3/3 (100%)** | **perfect** |
+
+versus `resolve_redirects`: 0/1 valid, 0/7 traced.
+
+So C3 performs as its author reported. The honest limitation is narrower:
+very large multi-responsibility functions defeat it. Worth noting in the
+research write-up as a real boundary, not a defect.
+
+#### Historical: the runs that prompted the wrong conclusion
 
 Three runs on the same function, same config, no code changes between them:
 
@@ -390,20 +439,18 @@ Three runs on the same function, same config, no code changes between them:
 | `374a2712` | 1, named `test_resolve_redirects_simple` | 1/1 ✅ | **0/7** | 3 |
 | `163494b5` | 5 | **0/1 ❌** | **0/7** | — |
 
-One good result, one that collapsed a 7-case plan into a single generic test,
-and one that failed validation outright. That is a wide spread for a component
-whose output feeds C4.
+All three targeted `resolve_redirects` with absolute paths in the RAG query,
+so the spread reflects an LLM struggling on a worst-case function with poor
+retrieval context — not general instability. With both causes fixed, ordinary
+functions come out at 100% with perfect traceability.
 
-Note the middle run: *more* repair iterations produced the *worse* result.
-Agent 2 has a `_build_traceability_repair_prompt` and inspects uncovered
-entries, so it was actively trying to fix coverage and still ended at 0/7
-after three attempts — the repair loop can degrade tests rather than improve
-them.
-
-Worth investigating: the traceability matcher looks for a test function per
-`TC00n` id, so it only scores well when Agent 1 follows the `test_tc001_*`
-naming convention. When the LLM names tests differently, coverage reads 0%
-even if the cases are genuinely covered.
+One observation still worth keeping: the traceability matcher looks for a test
+function per `TC00n` id, so it scores well only when Agent 1 follows the
+`test_tc001_*` naming convention. Run `374a2712` named its single test
+`test_resolve_redirects_simple` and scored 0/7. On the three ordinary
+functions the convention held and traceability was perfect, so this only
+surfaces when generation is already going badly — but a matcher that also
+compared descriptions would be more robust.
 
 **It does find real bugs.** On `requests.resolve_redirects`, Agent 3 reported
 HIGH: *"when yield_requests=True the generator yields the prepared request but
