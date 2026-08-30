@@ -23,6 +23,12 @@ STAGE1_RAW = "01_static_analysis.json"
 STAGE1_C2_INPUT = "02_c2_input.json"
 STAGE2_ML_OUTPUT = "03_ml_output.json"
 
+# Side output, not part of the C1 -> C2 -> C3 chain. Carries C1's
+# documentation/requirement analysis straight to C3, because C2's input
+# contract has nowhere to put it and it would otherwise be discarded.
+# Keyed by (function_name, file_path) so it joins onto the ML report.
+STAGE1_SPEC = "04_spec_contract.json"
+
 
 # ── Component locations ───────────────────────────────────────────────────────
 

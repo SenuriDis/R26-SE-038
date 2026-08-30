@@ -31,6 +31,7 @@ target (.py file or directory)
    |
    +--> artifacts/01_static_analysis.json    C1's native per-file output
    +--> artifacts/02_c2_input.json           flattened to C2's BatchPredictRequest
+   +--> artifacts/04_spec_contract.json      documented contract, for C3
    |
    v  stage 2  -- C2, components/c2_ml_risk
    |
@@ -39,6 +40,24 @@ target (.py file or directory)
    v  stage 3  -- C3  [NOT WIRED YET]
         src/utils/ml_report_reader.py already reads exactly this format
 ```
+
+Artifact 04 leaves the chain at stage 1 and goes straight to C3:
+
+```
+C1 ──code metrics──▶ C2 ──risk report──▶ C3
+ └──documented contract (artifact 04)───▶ ┘
+```
+
+C2's `FunctionMetricsRequest` has no field for documentation — no coverage,
+no gaps, no declared exceptions — so routing C1's requirement analysis
+through C2 would silently discard it. Artifact 04 keys each record on
+`function_name` + `file_path` so it joins onto the ML report inside C3.
+
+C1's own `FeatureMatrixBuilder` drops the `Requirement` object, keeping only
+counts and booleans derived from it. Stage 1 therefore calls
+`CodeRequirementMapper` directly to retain the contract itself, because
+`"raises ValueError when amount < 0"` is a test case while
+`"exception_requirements_count: 1"` is not.
 
 Stages talk only through JSON files, so any stage can be re-run on its own
 against the previous stage's output:
@@ -263,10 +282,25 @@ Two things remain open:
   a HIGH threshold of 0.65. Either the thresholds are calibrated for a score
   distribution the model doesn't actually produce, or the synthetic training
   data is more extreme than real code. Worth raising with Vihanga.
-- **Speed.** ~0.7 s per function: 69 s for 91 functions, 3 min for 266. Fine
-  for a demo, painful for a large repo. `--no-git` skips it; a faster path
-  would be one `git log` per file rather than per line range, trading
-  per-function precision for speed.
+- **Speed — and a correction.** An earlier version of this file blamed the
+  runtime on git mining. That was wrong; the stages were never timed apart.
+  Measured separately on requests (266 functions):
+
+  | stage | time |
+  |---|---|
+  | stage 1, no git | **1.0 s** |
+  | stage 1, with git mining | **22.6 s** |
+  | stage 2 (C2 scoring) | **3 m 22 s** |
+
+  Git mining costs ~80 ms per function, not the ~0.7 s previously claimed.
+  The bottleneck is **C2**, specifically `PermutationExplainer.explain()`,
+  which loops over all 22 features per function and re-predicts each time
+  across a 200-tree forest and a 200-estimator booster. That is roughly
+  760 ms per function and it dominates everything else combined.
+
+  Worth raising with Vihanga: the explanation step could be limited to the
+  top-ranked functions rather than every one, since only high-risk functions
+  need SHAP factors injected into C3's prompts.
 
 ## Status
 
@@ -286,6 +320,36 @@ Two things remain open:
 C1 -> C2 is connected, validated, and produces a defensible risk ranking on
 real code. 19 of the 20 fields carry real measurements; only `fan_in` is
 still a placeholder.
+
+### 6. C1 only reads Google-style docstrings  *(limits artifact 04)*
+
+`DocstringRequirementExtractor` states it plainly: *"Only Google-style
+Args/Returns/Raises sections are recognised."* Sphinx/reST docstrings
+(`:param x:`, `:raises ValueError:`) are invisible to it.
+
+That style is extremely common in the third-party repos this path was built
+for. Demonstrated with two functions that mean exactly the same thing:
+
+| function | style | result |
+|---|---|---|
+| `charge_google` | Google | inputs, returns, exceptions `[ValueError, LookupError]` |
+| `charge_rest` | reST | `implemented_undocumented` — nothing extracted |
+
+On psf/requests the effect is total: 226 functions, **zero** declared
+exceptions found. The 155 input constraints that did come through are from
+the type-hint fallback, not docstrings.
+
+Since declared exceptions are the most directly useful thing here — each one
+is a negative test case — teaching the extractor reST would roughly double
+what artifact 04 is worth on real repositories. That belongs in C1.
+
+The reproduction case is `scratchpad/styletest/billing.py`.
+
+**What does work well:** gap detection. Given a docstring promising
+`ValueError` where the body never raises, C1 correctly reports
+`missing_input_validation` and `missing_exception_handling`. That is a real
+defect found from documentation alone, and exactly the kind of test worth
+generating.
 
 ## Reproducing the validation run
 

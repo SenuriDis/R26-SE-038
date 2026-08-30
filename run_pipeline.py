@@ -110,8 +110,18 @@ def main(argv=None) -> int:
                 f"{git.get('cache_hits', 0)} cached"
             )
 
+        spec = summary.get("spec", {})
+        if spec:
+            print(
+                f"  documented funcs    : {spec.get('documented', 0)}"
+                f" / {spec.get('functions', 0)}"
+                f"  (README requirements: {spec.get('readme_requirements', 0)})"
+            )
+
         print(f"  -> {summary['raw_artifact']}")
         print(f"  -> {summary['c2_input_artifact']}")
+        if summary.get("spec_artifact"):
+            print(f"  -> {summary['spec_artifact']}")
 
         skipped = summary.get("async_functions_skipped") or []
         if skipped:
