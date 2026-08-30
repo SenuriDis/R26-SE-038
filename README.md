@@ -293,7 +293,19 @@ page. The runner's workspace is destroyed when a job ends, so without
 survive.
 
 Set `commit-tests: "true"` to have them written back into the branch under
-`tests-dir`. That needs `permissions: contents: write`, and it cannot work for
+`tests-dir`, along with two documents meant to be read by a person:
+
+```
+tests/ai_generated/
+    test_*.py          the generated tests
+    REPORT.md          what the run found, from all four components,
+                       including which planned test case each test implements
+    CODE_REVIEW.md     findings by severity, with the suggested fix for each
+```
+
+The intermediate JSON stays in the uploaded artifact. It is build output, and
+committing it would churn every pull request with new run ids for no benefit.
+ That needs `permissions: contents: write`, and it cannot work for
 pull requests from forks, where the token is read-only. It is off by default
 because pushing AI-written code to someone's branch unannounced is a
 surprise, not a feature.

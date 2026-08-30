@@ -263,6 +263,19 @@ runs:
         mkdir -p "${TARGET}"
         cp "${SRC}"/test_*.py "${TARGET}/"
 
+        # Commit the two documents a developer would actually read alongside
+        # the tests: what the run found, and what the reviewer suggests
+        # fixing. The intermediate JSON stays in the uploaded artifact -- it is
+        # build output, and committing it would churn every pull request with
+        # new run ids for no benefit.
+        ACTION="${{ github.action_path }}"
+        PYTHONPATH="${ACTION}" python -m pipeline.report "${ARTIFACTS}" \
+          --title "AI test analysis" -o "${TARGET}/REPORT.md" || \
+          echo "::warning::Could not write REPORT.md"
+        PYTHONPATH="${ACTION}" python -m pipeline.report "${ARTIFACTS}" \
+          --code-review -o "${TARGET}/CODE_REVIEW.md" || \
+          echo "::warning::Could not write CODE_REVIEW.md"
+
         git config user.name  "github-actions[bot]"
         git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
         git add "${TARGET}"
