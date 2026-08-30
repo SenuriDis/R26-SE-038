@@ -37,8 +37,9 @@ target (.py file or directory)
    |
    +--> artifacts/03_ml_output.json          tier_breakdown payload
    |
-   v  stage 3  -- C3  [NOT WIRED YET]
-        src/utils/ml_report_reader.py already reads exactly this format
+   v  stage 3  -- C3, components/c3_llm_tests
+   |
+   +--> artifacts/c3_output/run_<id>/  generated tests, review, traceability
 ```
 
 Artifact 04 leaves the chain at stage 1 and goes straight to C3:
@@ -314,7 +315,7 @@ Two things remain open:
 - [ ] `fan_in` — still the one unsourced field; needs a call graph
 - [ ] Get C2's model artifacts regenerated and committed (issue 2a — Vihanga)
 - [ ] Tier thresholds vs real-world score range (issue 5b — Vihanga)
-- [ ] Stage 3: vendor C3 and wire `ml_report_reader.py` to artifact 03
+- [x] Stage 3: C3 vendored and wired — runs end to end
 - [ ] Stage 4: vendor C4 (Nisula) for test execution
 
 C1 -> C2 is connected, validated, and produces a defensible risk ranking on
@@ -350,6 +351,58 @@ The reproduction case is `scratchpad/styletest/billing.py`.
 `missing_input_validation` and `missing_exception_handling`. That is a real
 defect found from documentation alone, and exactly the kind of test worth
 generating.
+
+### 7. Stage 3 notes
+
+C3 already ships a full CLI, so stage 3 wraps it rather than reimplementing.
+It runs on the repo venv, which was built for C3's dependencies.
+
+**It is off by default.** Every selected function costs several Groq calls
+across three agents, throttled to ~24/min, so a plain run stops after stage 2
+and prints what stage 3 *would* process. `--stage3` actually runs it, and
+`--min-risk-level` controls how far down the tiers it goes.
+
+**Credentials.** C3 resolves `.env` relative to its cwd, which is its own
+vendored directory. Rather than copy secrets in there — where they could be
+committed by accident — the repo-root `.env` is parsed and passed through the
+subprocess environment. Environment variables outrank the file in
+pydantic-settings, so C3 needs no change.
+
+**Ollama is not needed.** `settings.py` configures `ollama_model_agent2:
+deepseek-coder:33b`, but `agent2_test_validation.py` calls
+`build_groq_llm(settings.groq_model_agent1, ...)`. All three agents are on
+Groq; the Ollama settings are vestigial. Worth deleting or wiring up, since
+right now they suggest a dependency that doesn't exist.
+
+**Windows console crash (worked around).** C3's `print_summary` emits emoji.
+Windows defaults to cp1252, which cannot encode them, so it raises
+`UnicodeEncodeError` — *after* every output file has been written. The run
+looks failed when it actually succeeded. Stage 3 sets `PYTHONIOENCODING=utf-8`
+on the child to avoid it, but the real fix belongs in C3.
+
+### 8. C3 output varies a lot between identical runs
+
+Two runs, same function, same config:
+
+| run | test functions | traceability | repairs |
+|---|---|---|---|
+| 1 | 6, named `test_tc001…tc006` | **6/7 (86%)** | 1 |
+| 2 | 1, named `test_resolve_redirects_simple` | **0/7 (0%)** | 3 |
+
+The second collapsed a 7-case plan into a single generic test. Note the run
+with *more* repair iterations produced the *worse* result, which suggests
+Agent 2's repair loop can degrade tests rather than improve them — it has a
+`_build_traceability_repair_prompt` and inspects uncovered entries, so it was
+trying to fix coverage and ended at 0/7 after three attempts.
+
+Worth investigating: the traceability matcher looks for a test function per
+`TC00n` id, so it only scores well when Agent 1 follows the `test_tc001_*`
+naming convention. When the LLM names tests differently, coverage reads 0%
+even if the cases are genuinely covered.
+
+**It does find real bugs.** On `requests.resolve_redirects`, Agent 3 reported
+HIGH: *"when yield_requests=True the generator yields the prepared request but
+never updates the URL or breaks the loop, causing an infinite loop."*
 
 ## Reproducing the validation run
 

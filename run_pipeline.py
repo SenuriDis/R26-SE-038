@@ -27,7 +27,7 @@ import sys
 from pathlib import Path
 
 from pipeline import contracts
-from pipeline.stages import stage1_static_analysis, stage2_ml_risk
+from pipeline.stages import stage1_static_analysis, stage2_ml_risk, stage3_llm_tests
 
 
 def parse_args(argv=None):
@@ -51,9 +51,32 @@ def parse_args(argv=None):
     )
     parser.add_argument(
         "--only",
-        choices=["1", "2"],
+        choices=["1", "2", "3"],
         default=None,
         help="Run a single stage against the artifacts already on disk.",
+    )
+    parser.add_argument(
+        "--stage3",
+        action="store_true",
+        help="Run stage 3 (C3 LLM test generation). Off by default because it "
+             "makes paid Groq API calls; without it the run stops after stage 2 "
+             "and reports what stage 3 would process.",
+    )
+    parser.add_argument(
+        "--min-risk-level",
+        choices=["HIGH", "MEDIUM", "LOW"],
+        default="MEDIUM",
+        help="Lowest risk tier stage 3 will generate tests for (default: MEDIUM).",
+    )
+    parser.add_argument(
+        "--repo-path",
+        default=None,
+        help="Repository root C3 should read source from. Defaults to the target.",
+    )
+    parser.add_argument(
+        "--force-reindex",
+        action="store_true",
+        help="Make C3 rebuild its ChromaDB index.",
     )
     parser.add_argument(
         "--no-git",
@@ -63,6 +86,7 @@ def parse_args(argv=None):
     )
     parser.add_argument("--c1-python", default=None, help="Interpreter for C1.")
     parser.add_argument("--c2-python", default=None, help="Interpreter for C2.")
+    parser.add_argument("--c3-python", default=None, help="Interpreter for C3.")
     return parser.parse_args(argv)
 
 
@@ -157,12 +181,64 @@ def main(argv=None) -> int:
             f"avg={summary.get('average_risk_score')}"
         )
 
+    run_stage3 = args.only == "3" or (args.only is None and args.stage3)
+    show_preview = args.only in (None, "3")
+
+    if show_preview:
+        _banner("Stage 3 -- C3 LLM test generation")
+        try:
+            plan = stage3_llm_tests.preview(artifact_dir, args.min_risk_level)
+        except stage3_llm_tests.Stage3Error as error:
+            print(f"\n  Stage 3 unavailable: {error}", file=sys.stderr)
+            return 1
+
+        counts = plan["counts"]
+        print(
+            f"  risk tiers          : HIGH={counts.get('HIGH', 0)} "
+            f"MEDIUM={counts.get('MEDIUM', 0)} LOW={counts.get('LOW', 0)}"
+        )
+        print(
+            f"  at or above {plan['min_risk_level']:<6}  : "
+            f"{len(plan['selected'])} function(s) would be processed"
+        )
+
+        for function in plan["selected"][:5]:
+            print(
+                f"      {function['risk_level']:6s} {function['risk_score']:.3f}  "
+                f"{function['function_name']} "
+                f"({function['recommended_test_depth']})"
+            )
+        if len(plan["selected"]) > 5:
+            print(f"      ... and {len(plan['selected']) - 5} more")
+
+        if not run_stage3:
+            print(
+                "\n  Not run. Every selected function costs several Groq calls\n"
+                "  across three agents, throttled to ~24/min. Add --stage3 to run it."
+            )
+
+    if run_stage3:
+        problem = stage3_llm_tests.check_credentials()
+        if problem:
+            print(f"\n  Stage 3 failed: {problem}", file=sys.stderr)
+            return 1
+
+        print()
+        try:
+            result = stage3_llm_tests.run(
+                artifact_dir=artifact_dir,
+                repo_path=args.repo_path or args.target,
+                min_risk_level=args.min_risk_level,
+                python_exe=args.c3_python,
+                force_reindex=args.force_reindex,
+            )
+        except stage3_llm_tests.Stage3Error as error:
+            print(f"\n  Stage 3 failed: {error}", file=sys.stderr)
+            return 1
+
+        print(f"\n  -> {result['output_dir']}")
+
     _banner("Done")
-    print(
-        "  Stage 3 (C3 LLM test generation) is not wired in yet.\n"
-        f"  It consumes {artifact_dir / contracts.STAGE2_ML_OUTPUT}, which is\n"
-        "  already in the format src/utils/ml_report_reader.py expects."
-    )
     return 0
 
 
