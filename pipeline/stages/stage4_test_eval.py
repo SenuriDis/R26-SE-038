@@ -109,31 +109,41 @@ def find_generated_tests(artifact_dir: Path) -> List[Path]:
     return []
 
 
-def infer_source_root(target: Path) -> Path:
+def recorded_repo_root(artifact_dir: Path) -> Optional[Path]:
     """
-    The directory that must be importable for the generated tests to resolve.
+    The root stage 1 made file paths relative to.
 
-    Tests import the target by package name (`from requests.utils import ...`),
-    so the importable root is the *parent* of the package, not the package
-    itself. A target that is a package -- has __init__.py -- therefore resolves
-    to its parent.
+    This is the only correct import root, because C3 derives its test imports
+    straight from those relative paths -- `examples/demo_project/pricing.py`
+    becomes `from examples.demo_project.pricing import ...`. Staging any other
+    directory as the root makes every generated test fail to import.
     """
-    target = target.resolve()
-    if target.is_file():
-        target = target.parent
+    c2_input = artifact_dir / contracts.STAGE1_C2_INPUT
+    if not c2_input.exists():
+        return None
 
-    if (target / "__init__.py").exists():
-        return target.parent
+    try:
+        recorded = json.loads(c2_input.read_text(encoding="utf-8")).get("repo_root")
+    except (ValueError, OSError):
+        return None
 
-    return target
+    return Path(recorded) if recorded else None
 
 
 def stage_workdir(
     artifact_dir: Path,
-    source_root: Path,
+    repo_root: Path,
+    target: Path,
     tests: List[Path],
 ) -> Path:
-    """Build the directory layout C4's execute_tests.py expects."""
+    """
+    Build the directory layout C4's execute_tests.py expects.
+
+    The target is copied under `src/` at its path *relative to the repo root*,
+    so a test importing `examples.demo_project.pricing` resolves once `src/` is
+    on sys.path. Only the analysed subtree is copied rather than the whole
+    repository, which keeps the workdir small and coverage focused.
+    """
     workdir = artifact_dir / WORKDIR_NAME
     if workdir.exists():
         shutil.rmtree(workdir)
@@ -145,9 +155,20 @@ def stage_workdir(
     # repoints SRC_DIR / TESTS_DIR / REPORTS_DIR at the staged layout.
     shutil.copy2(C4_SCRIPT, workdir / "execute_tests.py")
 
+    target = target.resolve()
+    source_dir = target if target.is_dir() else target.parent
+
+    try:
+        relative = source_dir.relative_to(repo_root.resolve())
+    except ValueError:
+        relative = Path(".")
+
+    destination = workdir / "src" / relative
+    destination.parent.mkdir(parents=True, exist_ok=True)
+
     shutil.copytree(
-        source_root,
-        workdir / "src",
+        source_dir,
+        destination,
         ignore=shutil.ignore_patterns(
             "__pycache__", "*.pyc", ".git", "venv", ".venv", "node_modules",
         ),
@@ -175,7 +196,11 @@ def run(
             f"No generated tests under {artifact_dir / 'c3_output'} -- run stage 3 first."
         )
 
-    root = Path(source_root) if source_root else infer_source_root(Path(target))
+    root = (
+        Path(source_root) if source_root
+        else recorded_repo_root(artifact_dir)
+        or Path(target).resolve()
+    )
     if not root.exists():
         raise Stage4Error(f"source root does not exist: {root}")
 
@@ -184,7 +209,7 @@ def run(
     if problem:
         raise Stage4Error(problem)
 
-    workdir = stage_workdir(artifact_dir, root, tests)
+    workdir = stage_workdir(artifact_dir, root, Path(target), tests)
 
     # The staged copy has to win over any installed distribution of the same
     # package, otherwise coverage measures site-packages instead of the target.
