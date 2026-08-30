@@ -403,7 +403,7 @@ query = f"...for the function '{function_name}' in '{file_path}'"
 ```
 
 Stage 1 was emitting absolute Windows paths, so every retrieval query carried
-160 characters of `C:\Users\...\AppData\Local\Temp\claude\<uuid>\scratchpad\`
+160 characters of `C:\Users\...\AppData\Local\Temp\<tmp>\scratchpad\`
 noise. That is a semantic embedding query, and the indexer labels its own
 chunks with *relative* paths — so the query vector was dominated by
 irrelevant path tokens and retrieval returned poor context.
