@@ -226,6 +226,48 @@ only the git fields to realistic values moved the score 0.042 -> 0.147.
 
 **So backfilling the git fields is required, not an optimisation.**
 
+### 5b. Backfill done — and validated on a real repository
+
+`pipeline/extractors/git_history.py` now mines all four fields per function
+via `git log -L <start>,<end>:<file>`, which follows a line range backwards
+through history as it moves.
+
+Running it against C1's own `src/` produced no change in scores. That turned
+out to be a property of the target, not a bug: C1 is a solo-author project
+with 1–3 commits per function and **zero** bug-fix commits, while the model
+was trained on synthetic data resembling PROMISE/NASA defect sets.
+
+Re-running against **psf/requests** (6,493 commits, 790 authors) tells a very
+different story:
+
+| field | C1's src/ | requests |
+|---|---|---|
+| `commit_frequency` | 1–3 (3 distinct) | 1–92 (39 distinct) |
+| `author_count` | always 1 | 1–38 (24 distinct) |
+| `bug_history` | **always 0** | 0–29 (17 distinct) |
+| distinct risk scores | 2 | **33** |
+| tiers | 91 LOW | 1 MEDIUM, 265 LOW |
+
+The ranking it produces is plausible on its face — top functions are
+`resolve_redirects` (sessions.py), `send` (adapters.py), `request`
+(sessions.py), `prepare_body` (models.py): genuinely the most-patched parts
+of that library.
+
+Both the committed and a freshly-trained model produce the **same ordering**,
+differing only in absolute score (0.358 vs 0.289 at the top). So the
+prioritisation is trustworthy even while issue 2a is unresolved.
+
+Two things remain open:
+
+- **Nothing reaches HIGH.** The top real-world function scores 0.358 against
+  a HIGH threshold of 0.65. Either the thresholds are calibrated for a score
+  distribution the model doesn't actually produce, or the synthetic training
+  data is more extreme than real code. Worth raising with Vihanga.
+- **Speed.** ~0.7 s per function: 69 s for 91 functions, 3 min for 266. Fine
+  for a demo, painful for a large repo. `--no-git` skips it; a faster path
+  would be one `git log` per file rather than per line range, trading
+  per-function precision for speed.
+
 ## Status
 
 - [x] Branch created, C1 + C2 vendored with history
@@ -233,10 +275,23 @@ only the git fields to realistic values moved the score 0.042 -> 0.147.
 - [x] C1 -> C2 adapter: all 20 fields, verified against source
 - [x] C2 environment: Python 3.12 venv with C2's exact pins
 - [x] **Stage 2 runs end to end — C1 -> C2 -> 03_ml_output.json**
-- [ ] Backfill the 4 git-history fields and `fan_in` (issue 5 — next up)
+- [x] Backfill the 4 git-history fields (issue 5b)
+- [x] Validated end to end on psf/requests — 266 functions, sensible ranking
+- [ ] `fan_in` — still the one unsourced field; needs a call graph
 - [ ] Get C2's model artifacts regenerated and committed (issue 2a — Vihanga)
+- [ ] Tier thresholds vs real-world score range (issue 5b — Vihanga)
 - [ ] Stage 3: vendor C3 and wire `ml_report_reader.py` to artifact 03
 - [ ] Stage 4: vendor C4 (Nisula) for test execution
 
-The connection between C1 and C2 is proven working. The *scores* it currently
-carries are not yet meaningful, for the reasons in issues 2a and 5.
+C1 -> C2 is connected, validated, and produces a defensible risk ranking on
+real code. 19 of the 20 fields carry real measurements; only `fan_in` is
+still a placeholder.
+
+## Reproducing the validation run
+
+```bash
+git clone https://github.com/psf/requests.git /tmp/requests
+python run_pipeline.py /tmp/requests/src/requests --project-name requests
+```
+
+Expect ~3 minutes, 266 functions, `resolve_redirects` ranked first.
