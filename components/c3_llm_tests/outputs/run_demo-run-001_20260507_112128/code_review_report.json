@@ -1,0 +1,67 @@
+{
+  "run_id": "demo-run-001",
+  "generated_at": "20260507_112128",
+  "repository": "D:\\Year 4 Sem 1\\Intelligent-software-testing-system\\sample_project",
+  "reports": [
+    {
+      "segment_id": "seg-001",
+      "function_name": "divide",
+      "file_path": "sample_project/calculator.py",
+      "pylint_score": 5.0,
+      "summary": "The code quality of the given function is generally good, but it lacks error handling and a final newline. Pylint analysis also reports a missing final newline. The function is simple and does not handle potential division by zero errors.",
+      "total_findings": 2,
+      "findings": [
+        {
+          "finding_id": "F001",
+          "category": "bug",
+          "severity": "high",
+          "line_number": 2,
+          "description": "Division by zero will raise a ZeroDivisionError",
+          "suggested_fix": "if b == 0: raise ValueError('Cannot divide by zero'); return a / b"
+        },
+        {
+          "finding_id": "F002",
+          "category": "code_smell",
+          "severity": "low",
+          "line_number": 3,
+          "description": "Missing final newline",
+          "suggested_fix": "Add a newline at the end of the file"
+        }
+      ]
+    },
+    {
+      "segment_id": "seg-002",
+      "function_name": "calculate_average",
+      "file_path": "sample_project/calculator.py",
+      "pylint_score": 8.0,
+      "summary": "The code quality of the calculate_average function is good, with a clear and concise implementation. However, there are a few areas that can be improved for better maintainability and robustness.",
+      "total_findings": 3,
+      "findings": [
+        {
+          "finding_id": "F001",
+          "category": "code_smell",
+          "severity": "low",
+          "line_number": 5,
+          "description": "The function does not handle the case where the input list is empty, which would result in a ZeroDivisionError.",
+          "suggested_fix": "Add a check at the beginning of the function to return 0 or a specific value when the input list is empty, e.g., 'if not numbers: return 0'"
+        },
+        {
+          "finding_id": "F002",
+          "category": "code_smell",
+          "severity": "low",
+          "line_number": 1,
+          "description": "The function does not validate the input type, which could lead to a TypeError if the input is not a list or if the list contains non-numeric values.",
+          "suggested_fix": "Add a check at the beginning of the function to ensure the input is a list and contains only numeric values, e.g., 'if not isinstance(numbers, list) or not all(isinstance(n, (int, float)) for n in numbers): raise ValueError'"
+        },
+        {
+          "finding_id": "F003",
+          "category": "maintainability",
+          "severity": "info",
+          "line_number": 5,
+          "description": "The function uses a manual loop to calculate the sum, which can be replaced with the built-in sum function for better readability and performance.",
+          "suggested_fix": "Replace the manual loop with the built-in sum function, e.g., 'return sum(numbers) / len(numbers)'"
+        }
+      ]
+    }
+  ]
+}

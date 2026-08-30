@@ -1,0 +1,12 @@
+{
+  "run_id": "f19b539d",
+  "generated_at": "20260508_155252",
+  "segments_processed": 1,
+  "segments_with_valid_tests": 1,
+  "success_rate": 1.0,
+  "errors": [],
+  "output_files": [
+    "outputs\\run_f19b539d_20260508_155252\\generated_tests\\test_divide.py"
+  ],
+  "review_report": "outputs\\run_f19b539d_20260508_155252\\code_review_report.json"
+}
