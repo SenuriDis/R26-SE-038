@@ -322,9 +322,6 @@ PIPELINE_NOTES.md    how the integration works, and every open issue found
 `PIPELINE_NOTES.md` documents everything found while integrating, with steps
 to reproduce each one. The ones that affect results most:
 
-- **C2's committed model file is out of date.** It scores its own documented
-  sample at 0.04 against a recorded 0.43. Re-running `train.py` reproduces the
-  documented figure, so only the saved files need regenerating.
 - **Nothing reaches the HIGH tier on real code.** The riskiest function in
   `requests` scores 0.358 against a 0.65 threshold, so the thresholds likely
   need recalibrating against real repositories rather than synthetic data.

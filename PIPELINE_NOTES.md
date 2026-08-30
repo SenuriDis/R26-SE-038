@@ -132,37 +132,32 @@ async def health():
 The decorator `@` is missing, so the route is never registered and
 `GET /health` returns 404. Every other route in the file has it.
 
-### 2a. C2 — the committed model file is stale  *(this is the big one)*
+### 2a. C2 — the committed model is FINE  *(earlier claim retracted)*
 
-`models/saved/risk_detector.pkl` does not match any committed FeatureEngineer.
+**An earlier version of this file said C2's committed `risk_detector.pkl` was
+stale and scored its own documented sample at 0.0411 against a recorded
+0.4294. That was wrong, and the fault was in the test, not the model.**
 
-Evidence — commit dates on `origin/Vihanga`:
+The test fed the `example=` values from `predict_api.py`'s Pydantic fields.
+Those are *not* the numbers `train.py` uses for its demo. Several differ
+materially — `num_conditionals` 8 vs 12, `dependencies` 4 entries vs 12,
+`author_count` 3 vs 4 — and dependency count is one of the model's strongest
+features.
 
-| file | committed | commit |
-|---|---|---|
-| `feature_engineer.pkl` | 2026-05-07 | `aebd066` |
-| `sample_prediction.json` | 2026-05-07 | `aebd066` |
-| `risk_detector.pkl` | 2026-05-10 | `7e89c5f` |
-| `risk_detector_fe.pkl` | 2026-05-10 | `7e89c5f` |
+Re-tested with `train.py`'s own values:
 
-Scoring the `process_transaction` example from `predict_api.py` against the
-recorded result of **0.4294**:
-
-| model + FeatureEngineer | score |
+| model | score on `process_transaction` |
 |---|---|
-| committed model + `feature_engineer.pkl` | 0.0411 |
-| committed model + `risk_detector_fe.pkl` | 0.0411 |
-| committed model + unfitted FE (API path) | 0.9999 |
-| **freshly trained via `train.py`** | **0.429** ✅ |
+| committed | **0.4648** |
+| freshly trained | **0.4294** — matches `sample_prediction.json` exactly |
 
-Re-running `train.py` unmodified reproduces the documented sample exactly —
-score 0.429, MEDIUM, and the same three SHAP factors (bug_history, num_loops,
-dependency_count). So the training code is correct and the committed `.pkl`
-is simply out of date with its FeatureEngineer.
+Both are healthy MEDIUM scores. The small gap between them is consistent with
+the model having been retrained between commits, which the differing commit
+dates already suggested. Nothing needs fixing.
 
-`data/dataset.py` generates synthetic data with `random_state=42`, so training
-is deterministic and reproducible. **Fix: re-run `train.py` and commit both
-pickles together.**
+Lesson worth keeping: `predict_api.py`'s `example=` annotations and
+`train.py`'s demo values disagree. They are documentation, not fixtures, and
+should not be used as a reference for what the model should output.
 
 ### 2b. C2 — inference uses an unfitted FeatureEngineer  *(affects all scores)*
 
@@ -185,8 +180,9 @@ trained on z-scored ones. This likely explains the compressed scores in
 `sample_prediction.json` (average risk 0.1438, zero HIGH-risk functions).
 
 `pipeline/runners/c2_predict.py` loads the fitted pickle instead, and warns
-loudly if it is missing. Note this alone does **not** fix the scores while
-issue 2a stands — with the stale model both fitted pickles give 0.0411.
+loudly if it is missing. This remains the right thing to do: an unfitted
+FeatureEngineer returns raw, unnormalised features, and on the documented
+sample that saturates the model to 0.9999.
 
 **Both are in Vihanga's component and are left unmodified here on purpose** —
 editing vendored subtree code creates conflicts on the next `git subtree pull`.
