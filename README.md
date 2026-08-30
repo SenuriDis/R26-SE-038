@@ -280,7 +280,23 @@ the job summary and as a comment on the PR.
 | `max-functions` | `10` | Budget cap, highest risk first |
 | `min-risk-level` | `MEDIUM` | Set to `LOW` on small repositories |
 | `comment-on-pr` | `true` | Needs `pull-requests: write` |
+| `upload-artifact` | `true` | Attach generated tests to the run so they survive |
+| `commit-tests` | `false` | Commit generated tests back to the branch |
+| `tests-dir` | `tests/ai_generated` | Where committed tests go |
 | `fail-on-defect` | `false` | Whether a likely defect fails the check |
+
+### Where the generated tests end up
+
+By default they are attached to the workflow run and downloadable from its
+page. The runner's workspace is destroyed when a job ends, so without
+`upload-artifact` the generated tests would be lost and only the report would
+survive.
+
+Set `commit-tests: "true"` to have them written back into the branch under
+`tests-dir`. That needs `permissions: contents: write`, and it cannot work for
+pull requests from forks, where the token is read-only. It is off by default
+because pushing AI-written code to someone's branch unannounced is a
+surprise, not a feature.
 
 Two things that will silently produce an empty run:
 

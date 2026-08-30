@@ -49,6 +49,30 @@ inputs:
     required: false
     default: "true"
 
+  upload-artifact:
+    description: >-
+      Attach the generated tests and reports to the workflow run so they can
+      be downloaded. Without this the runner's workspace is destroyed when the
+      job ends and the generated tests are lost.
+    required: false
+    default: "true"
+
+  commit-tests:
+    description: >-
+      Commit the generated tests back to the branch under `tests-dir`.
+
+      Off by default, deliberately: these tests are AI-written, and a run that
+      silently pushes to someone's branch is a surprise. Turning it on needs
+      `permissions: contents: write`, and it cannot work for pull requests
+      from forks, where the token is read-only.
+    required: false
+    default: "false"
+
+  tests-dir:
+    description: "Where committed tests are written, relative to the repository root."
+    required: false
+    default: "tests/ai_generated"
+
   fail-on-defect:
     description: >-
       Fail the check when a generated test finds a likely defect. Off by
@@ -218,3 +242,50 @@ runs:
         python "${ACTION}/action/post_results.py" \
           --artifacts "${ARTIFACTS}" \
           --pipeline-root "${ACTION}"
+
+    - name: Commit the generated tests
+      if: inputs.commit-tests == 'true'
+      shell: bash
+      run: |
+        set -euo pipefail
+        cd "${{ github.workspace }}"
+        ARTIFACTS="${{ github.workspace }}/.ai-test-artifacts"
+        TARGET="${{ inputs.tests-dir }}"
+
+        # Newest run directory; C3 writes one per run.
+        SRC=$(ls -dt "${ARTIFACTS}"/c3_output/run_*/generated_tests 2>/dev/null | head -1 || true)
+
+        if [ -z "${SRC}" ] || [ -z "$(ls -A "${SRC}" 2>/dev/null)" ]; then
+          echo "::notice::No generated tests to commit."
+          exit 0
+        fi
+
+        mkdir -p "${TARGET}"
+        cp "${SRC}"/test_*.py "${TARGET}/"
+
+        git config user.name  "github-actions[bot]"
+        git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+        git add "${TARGET}"
+
+        if git diff --cached --quiet; then
+          echo "::notice::Generated tests are unchanged; nothing to commit."
+          exit 0
+        fi
+
+        # [skip ci] so committing does not retrigger this workflow on its own
+        # push and loop.
+        git commit -q -m "test: add AI-generated tests [skip ci]"
+
+        BRANCH="${GITHUB_HEAD_REF:-${GITHUB_REF_NAME}}"
+        if ! git push origin "HEAD:${BRANCH}"; then
+          echo "::warning::Could not push the generated tests. A fork's token is read-only, and committing needs permissions: contents: write."
+        fi
+
+    - name: Attach the generated tests and reports
+      if: always() && inputs.upload-artifact == 'true'
+      uses: actions/upload-artifact@v4
+      with:
+        name: ai-test-results
+        path: ${{ github.workspace }}/.ai-test-artifacts
+        if-no-files-found: warn
+        retention-days: 30
