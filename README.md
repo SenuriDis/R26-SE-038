@@ -244,6 +244,49 @@ component 2 — the cap is that model doing the job it exists for.
 
 ---
 
+## Using it as a GitHub Action
+
+The pipeline is packaged as a Docker action, so the four environments are
+baked into the image rather than installed on every run.
+
+Copy `examples/ai-test-review.yml` into `.github/workflows/`, add your Groq
+key as a repository secret, and open a pull request. The report appears in
+the job summary and as a comment on the PR.
+
+```yaml
+- uses: actions/checkout@v4
+  with:
+    fetch-depth: 0          # required -- see below
+
+- uses: your-org/your-repo@v1
+  with:
+    groq-api-key: ${{ secrets.GROQ_API_KEY }}
+    changed-only: "true"
+    min-risk-level: "LOW"
+    max-functions: "5"
+```
+
+| Input | Default | Notes |
+|---|---|---|
+| `groq-api-key` | — | Required. Store as a secret |
+| `path` | `.` | Directory to analyse |
+| `changed-only` | `true` | Only functions the PR touched |
+| `max-functions` | `10` | Budget cap, highest risk first |
+| `min-risk-level` | `MEDIUM` | Set to `LOW` on small repositories |
+| `comment-on-pr` | `true` | Needs `pull-requests: write` |
+| `fail-on-defect` | `false` | Whether a likely defect fails the check |
+
+Two things that will silently produce an empty run:
+
+- **`fetch-depth: 0` is not optional.** The risk model's strongest features
+  are `bug_history` and `commit_frequency`. With the default shallow clone
+  there is no history, so every function looks brand new and scores LOW.
+- **`min-risk-level: LOW` on small repositories.** Only 1 function in 266
+  reached MEDIUM on a mature library. Leaving the default on a small project
+  selects nothing, and the run succeeds having done no work.
+
+---
+
 ## Where things live
 
 ```

@@ -1,0 +1,90 @@
+# Copy this into .github/workflows/ in the repository you want analysed.
+#
+# Two jobs, because the two situations have very different costs:
+#
+#   pull-request  only the functions the diff touched -- a minute or two
+#   baseline      the whole repository, ranked, tests for the riskiest few
+#
+# Test generation costs roughly 45 seconds per function, so a whole-repository
+# run without a cap is measured in hours. The baseline job is manual for that
+# reason.
+
+name: AI Test Review
+
+on:
+  pull_request:
+  workflow_dispatch:
+    inputs:
+      max_functions:
+        description: "How many functions to generate tests for"
+        required: false
+        default: "10"
+
+jobs:
+  pull-request:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    permissions:
+      contents: read
+      pull-requests: write      # needed to post the report as a comment
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # Not optional. The risk model leans on bug_history and
+          # commit_frequency, both mined from git. With the default shallow
+          # clone there is no history, every function looks brand new, and
+          # everything scores LOW.
+          fetch-depth: 0
+
+      - name: Analyse changed functions
+        uses: ./                       # or: your-org/your-repo@v1
+        with:
+          groq-api-key: ${{ secrets.GROQ_API_KEY }}
+          changed-only: "true"
+          min-risk-level: "LOW"
+          max-functions: "5"
+
+  baseline:
+    if: github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+
+    permissions:
+      contents: read
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Rank the whole repository
+        uses: ./
+        with:
+          groq-api-key: ${{ secrets.GROQ_API_KEY }}
+          changed-only: "false"
+          min-risk-level: "LOW"
+          max-functions: ${{ github.event.inputs.max_functions }}
+          comment-on-pr: "false"
+
+      - name: Keep the report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ai-test-report
+          path: .ai-test-artifacts/
+          if-no-files-found: warn
+
+# Notes
+# -----
+# min-risk-level: LOW is deliberate. Small or young repositories score almost
+# everything LOW -- on a mature library only 1 function in 266 reached MEDIUM.
+# Leaving the default of MEDIUM on a small repository selects nothing, and the
+# run succeeds having done no work at all.
+#
+# GROQ_API_KEY goes in Settings -> Secrets and variables -> Actions.
+#
+# Pull requests from forks get a read-only token, so the comment step is
+# skipped there. The report still appears in the job summary.

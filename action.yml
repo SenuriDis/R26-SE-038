@@ -1,0 +1,75 @@
+name: "AI Test Generation and Review"
+description: >-
+  Ranks your functions by defect risk, writes pytest tests for the riskiest,
+  runs them, and reports what it found.
+author: "R26-SE-038"
+
+branding:
+  icon: check-circle
+  color: purple
+
+inputs:
+  groq-api-key:
+    description: >-
+      Groq API key. Test generation and code review both need it. Store it as
+      a repository secret and pass it in; never hard-code it in a workflow.
+    required: true
+
+  path:
+    description: "Directory to analyse, relative to the repository root."
+    required: false
+    default: "."
+
+  changed-only:
+    description: >-
+      Analyse only functions the pull request touched. Strongly recommended --
+      generating tests costs roughly 45 seconds per function, so whole-repo
+      runs are measured in hours.
+    required: false
+    default: "true"
+
+  max-functions:
+    description: >-
+      Generate tests for at most this many functions, highest risk first.
+      This is what makes a first run on an unanalysed repository finish in
+      minutes rather than hours.
+    required: false
+    default: "10"
+
+  min-risk-level:
+    description: >-
+      Lowest risk tier to generate tests for: HIGH, MEDIUM or LOW. Note that
+      small or young repositories tend to score everything LOW, so MEDIUM can
+      legitimately select nothing.
+    required: false
+    default: "MEDIUM"
+
+  comment-on-pr:
+    description: "Post the report as a pull request comment."
+    required: false
+    default: "true"
+
+  fail-on-defect:
+    description: >-
+      Fail the check when a generated test finds a likely defect. Off by
+      default: these tests are AI-written and worth reading before they gate
+      a merge.
+    required: false
+    default: "false"
+
+  github-token:
+    description: "Token used to post the comment. Defaults to the workflow's own."
+    required: false
+    default: ${{ github.token }}
+
+outputs:
+  report:
+    description: "Path to the generated Markdown report."
+  defects-found:
+    description: "How many generated tests failed in a way that looks like a real defect."
+  functions-analysed:
+    description: "How many functions were analysed."
+
+runs:
+  using: docker
+  image: Dockerfile
