@@ -107,7 +107,8 @@ def resolve_python(explicit: Optional[str] = None) -> str:
     return sys.executable
 
 
-def preview(artifact_dir: Path, min_risk_level: str = "MEDIUM") -> Dict:
+def preview(artifact_dir: Path, min_risk_level: str = "MEDIUM",
+            max_functions: Optional[int] = None) -> Dict:
     """
     What stage 3 would process, without spending anything.
 
@@ -130,9 +131,19 @@ def preview(artifact_dir: Path, min_risk_level: str = "MEDIUM") -> Dict:
         if index <= cutoff:
             selected.extend(functions)
 
+    # Highest risk first, so a budget cap keeps the functions that matter.
+    selected.sort(key=lambda f: f.get("risk_score", 0.0), reverse=True)
+
+    total_eligible = len(selected)
+    capped = max_functions is not None and total_eligible > max_functions
+    if capped:
+        selected = selected[:max_functions]
+
     return {
         "counts": counts,
         "selected": selected,
+        "total_eligible": total_eligible,
+        "capped": capped,
         "min_risk_level": min_risk_level.upper(),
         "report_path": str(report_path),
     }
@@ -169,6 +180,40 @@ def check_credentials() -> Optional[str]:
     return None
 
 
+def write_capped_report(artifact_dir: Path, plan: Dict) -> Path:
+    """
+    Write a trimmed copy of the ML report holding only the selected functions.
+
+    C3 takes a risk *level*, not a count, so a budget cap has to be applied by
+    narrowing what the report contains. The original is left untouched -- this
+    is a sibling file, so the full ranking is still there to look at.
+    """
+    original = json.loads(
+        (artifact_dir / contracts.STAGE2_ML_OUTPUT).read_text(encoding="utf-8")
+    )
+
+    keep = {(f["function_name"], f["file_path"]) for f in plan["selected"]}
+
+    tiers = {}
+    for tier, block in original.get("tier_breakdown", {}).items():
+        functions = [
+            f for f in block.get("functions", [])
+            if (f["function_name"], f["file_path"]) in keep
+        ]
+        tiers[tier] = {**block, "functions": functions}
+
+    capped = {
+        **original,
+        "tier_breakdown": tiers,
+        "ranked_functions": plan["selected"],
+        "_capped_from": original.get("summary", {}).get("total_functions"),
+    }
+
+    path = artifact_dir / "03_ml_output_capped.json"
+    path.write_text(json.dumps(capped, indent=2), encoding="utf-8")
+    return path
+
+
 def run(
     artifact_dir: Path,
     repo_path: str,
@@ -176,6 +221,7 @@ def run(
     output_dir: Optional[Path] = None,
     python_exe: Optional[str] = None,
     force_reindex: bool = False,
+    max_functions: Optional[int] = None,
 ) -> Dict:
     """Run C3 over stage 2's report."""
     if not C3_CLI.exists():
@@ -188,6 +234,11 @@ def run(
     report_path = (artifact_dir / contracts.STAGE2_ML_OUTPUT).resolve()
     if not report_path.exists():
         raise Stage3Error(f"{report_path} is missing -- run stage 2 first.")
+
+    if max_functions is not None:
+        plan = preview(artifact_dir, min_risk_level, max_functions)
+        if plan["capped"]:
+            report_path = write_capped_report(artifact_dir, plan).resolve()
 
     destination = (output_dir or (artifact_dir / "c3_output")).resolve()
     destination.mkdir(parents=True, exist_ok=True)

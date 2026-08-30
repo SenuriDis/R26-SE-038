@@ -93,6 +93,26 @@ def parse_args(argv=None):
         help="Skip git history mining. Faster, but leaves commit_frequency, "
              "author_count, bug_history and days_since_last_change at defaults.",
     )
+    parser.add_argument(
+        "--changed-only",
+        nargs="?",
+        const="",
+        default=None,
+        metavar="BASE_REF",
+        help="Only analyse functions touched since BASE_REF. With no value the "
+             "base is worked out automatically (GitHub Actions' target branch, "
+             "the default branch, or the previous commit). This is what makes "
+             "CI runs finish in seconds instead of hours.",
+    )
+    parser.add_argument(
+        "--max-functions",
+        type=int,
+        default=None,
+        metavar="N",
+        help="Generate tests for at most N functions, highest risk first. "
+             "Use on a first full scan, where testing everything would take "
+             "hours.",
+    )
     parser.add_argument("--c1-python", default=None, help="Interpreter for C1.")
     parser.add_argument("--c2-python", default=None, help="Interpreter for C2.")
     parser.add_argument("--c3-python", default=None, help="Interpreter for C3.")
@@ -135,6 +155,7 @@ def main(argv=None) -> int:
                 project_name=project_name,
                 python_exe=args.c1_python,
                 mine_git=not args.no_git,
+                changed_only=args.changed_only,
             )
         except stage1_static_analysis.Stage1Error as error:
             print(f"\n  Stage 1 failed: {error}", file=sys.stderr)
@@ -142,6 +163,13 @@ def main(argv=None) -> int:
 
         print(f"  files analysed      : {summary['files_analyzed']}")
         print(f"  functions extracted : {summary['functions_extracted']}")
+
+        diff = summary.get("diff", {})
+        if diff.get("enabled"):
+            note = diff.get("note") or ""
+            files = diff.get("changed_files")
+            detail = f"{files} changed file(s), {note}" if files is not None else note
+            print(f"  diff scope          : {detail}")
 
         git = summary.get("git", {})
         if not git.get("enabled"):
@@ -208,7 +236,9 @@ def main(argv=None) -> int:
     if show_preview:
         _banner("Stage 3 -- C3 LLM test generation")
         try:
-            plan = stage3_llm_tests.preview(artifact_dir, args.min_risk_level)
+            plan = stage3_llm_tests.preview(
+                artifact_dir, args.min_risk_level, args.max_functions
+            )
         except stage3_llm_tests.Stage3Error as error:
             print(f"\n  Stage 3 unavailable: {error}", file=sys.stderr)
             return 1
@@ -218,10 +248,17 @@ def main(argv=None) -> int:
             f"  risk tiers          : HIGH={counts.get('HIGH', 0)} "
             f"MEDIUM={counts.get('MEDIUM', 0)} LOW={counts.get('LOW', 0)}"
         )
-        print(
-            f"  at or above {plan['min_risk_level']:<6}  : "
-            f"{len(plan['selected'])} function(s) would be processed"
-        )
+        if plan.get("capped"):
+            print(
+                f"  at or above {plan['min_risk_level']:<6}  : "
+                f"{plan['total_eligible']} eligible, capped to "
+                f"{len(plan['selected'])} highest-risk (--max-functions)"
+            )
+        else:
+            print(
+                f"  at or above {plan['min_risk_level']:<6}  : "
+                f"{len(plan['selected'])} function(s) would be processed"
+            )
 
         for function in plan["selected"][:5]:
             print(
@@ -261,6 +298,7 @@ def main(argv=None) -> int:
                 min_risk_level=args.min_risk_level,
                 python_exe=args.c3_python,
                 force_reindex=args.force_reindex,
+                max_functions=args.max_functions,
             )
         except stage3_llm_tests.Stage3Error as error:
             print(f"\n  Stage 3 failed: {error}", file=sys.stderr)

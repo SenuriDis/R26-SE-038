@@ -15,6 +15,7 @@ eight AST fields C1 measures internally but never writes out, and the
 flattening from per-file to per-function.
 """
 
+import argparse
 import ast
 import json
 import os
@@ -83,7 +84,8 @@ def iter_python_files(target: Path) -> List[Path]:
 
 
 def functions_for_file(file_path: Path, c2_defaults: Dict, miner=None,
-                       repo_root: Path = None) -> Tuple[List[Dict], List[str]]:
+                       repo_root: Path = None,
+                       changed_spans: List[Tuple[int, int]] = None) -> Tuple[List[Dict], List[str]]:
     """
     Build one C2 function record per function in `file_path`.
 
@@ -109,9 +111,17 @@ def functions_for_file(file_path: Path, c2_defaults: Dict, miner=None,
     dependencies = DependencyExtractor().extract(tree)
     function_infos = FunctionInfoAdapter().build(tree, complexities, dependencies)
 
+    from pipeline.extractors import git_diff
+
     records = []
     for info in function_infos:
         derived = function_metrics.extract(info.ast_node)
+
+        # In diff-scoped mode, keep only functions the change actually touched.
+        if changed_spans is not None:
+            span = (derived["start_line"], derived["end_line"])
+            if not git_diff.overlaps(span, changed_spans):
+                continue
 
         # fan_in is the one field still without a source; it needs a
         # cross-file call graph.
@@ -241,18 +251,30 @@ def spec_records_for_file(file_path: Path, readme_requirements: Dict,
 
 
 def main() -> int:
-    if len(sys.argv) < 5:
-        print(__doc__)
-        return 2
+    parser = argparse.ArgumentParser(description="C1 analysis + the C1->C2 adapter.")
+    parser.add_argument("target")
+    parser.add_argument("artifact_dir")
+    parser.add_argument("project_name")
+    parser.add_argument("pipeline_root")
+    parser.add_argument("--no-git", action="store_true")
+    parser.add_argument(
+        "--changed-only",
+        nargs="?",
+        const="",
+        default=None,
+        help="Only analyse functions touched since a base ref. Empty means "
+             "auto-detect the base.",
+    )
+    args = parser.parse_args()
 
-    target = Path(sys.argv[1]).resolve()
-    artifact_dir = Path(sys.argv[2]).resolve()
-    project_name = sys.argv[3]
+    target = Path(args.target).resolve()
+    artifact_dir = Path(args.artifact_dir).resolve()
+    project_name = args.project_name
 
     # The *pipeline's* root, used only to import the pipeline package. Distinct
     # from the *target's* root computed below, which file paths are made
     # relative to.
-    pipeline_root = Path(sys.argv[4]).resolve()
+    pipeline_root = Path(args.pipeline_root).resolve()
 
     # Python puts *this script's* directory on sys.path, not the cwd, so C1's
     # root has to be added explicitly for its `src.*` and `main` imports.
@@ -270,15 +292,35 @@ def main() -> int:
         STAGE1_RAW, STAGE1_C2_INPUT, STAGE1_SPEC, C2_DEFAULTS,
     )
     from pipeline.extractors.git_history import GitHistoryMiner
+    from pipeline.extractors import git_diff
 
-    # "--no-git" as a 5th argument turns history mining off.
-    mine_git = not (len(sys.argv) > 5 and sys.argv[5] == "--no-git")
+    mine_git = not args.no_git
     miner = GitHistoryMiner(target) if mine_git else None
 
     # Everything downstream refers to files relative to this. C3 both joins it
     # against its --repo-path and embeds it in RAG query text, so it has to be
     # a short, meaningful path rather than an absolute one.
     repo_root = find_repo_root(target)
+
+    # ── diff scoping ─────────────────────────────────────────────────────────
+    # Falls back to a full scan rather than failing: a shallow clone or a repo
+    # with one commit has nothing to diff against, and analysing everything is
+    # a far better outcome there than analysing nothing.
+    changed_ranges = None
+    diff_note = None
+
+    if args.changed_only is not None:
+        base_ref = git_diff.resolve_base_ref(repo_root, args.changed_only or None)
+        if base_ref is None:
+            diff_note = "no base ref found (shallow clone?) -- analysing everything"
+        else:
+            try:
+                changed_ranges = git_diff.changed_line_ranges(repo_root, base_ref)
+                diff_note = f"diffed against {base_ref}"
+                if not changed_ranges:
+                    diff_note = f"no Python changes against {base_ref}"
+            except git_diff.DiffUnavailable as error:
+                diff_note = f"{error} -- analysing everything"
 
     artifact_dir.mkdir(parents=True, exist_ok=True)
 
@@ -301,6 +343,10 @@ def main() -> int:
     raw_path.write_text(json.dumps(raw, indent=2), encoding="utf-8")
 
     python_files = iter_python_files(target)
+
+    if changed_ranges is not None:
+        touched = git_diff.changed_files(changed_ranges, repo_root)
+        python_files = [f for f in python_files if f.resolve() in touched]
 
     # ── artifact 04: the documented contract, for C3 ─────────────────────────
     # Built before artifact 02 so a failure here surfaces before the expensive
@@ -337,7 +383,13 @@ def main() -> int:
     all_skipped: List[str] = []
 
     for py_file in python_files:
-        records, skipped = functions_for_file(py_file, C2_DEFAULTS, miner, repo_root)
+        spans = None
+        if changed_ranges is not None:
+            spans = changed_ranges.get(relative_path(py_file, repo_root), [])
+
+        records, skipped = functions_for_file(
+            py_file, C2_DEFAULTS, miner, repo_root, spans
+        )
         all_records.extend(records)
         all_skipped.extend(skipped)
 
@@ -361,6 +413,11 @@ def main() -> int:
         "c2_input_artifact": str(c2_input_path),
         "spec_artifact": str(spec_path),
         "repo_root": str(repo_root),
+        "diff": {
+            "enabled": args.changed_only is not None,
+            "note": diff_note,
+            "changed_files": len(changed_ranges) if changed_ranges is not None else None,
+        },
         "spec": {
             "functions": len(spec_records),
             "documented": documented,

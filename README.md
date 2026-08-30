@@ -167,6 +167,8 @@ python run_pipeline.py <target> [options]
 | `--min-risk-level {HIGH,MEDIUM,LOW}` | How far down the risk ranking to generate tests. Default MEDIUM |
 | `--only {1,2,3,4}` | Run a single stage against artifacts already on disk |
 | `--artifacts DIR` | Where to write output. Default `./artifacts` |
+| `--changed-only [REF]` | Only analyse functions touched since REF. Auto-detects the base if omitted |
+| `--max-functions N` | Generate tests for at most N functions, highest risk first |
 | `--no-git` | Skip git history mining. Faster, but weakens the risk scores |
 | `--c1-python` … `--c4-python` | Point a stage at a specific interpreter |
 
@@ -182,6 +184,63 @@ python run_pipeline.py ./my_project --only 4
 # Everything, including low-risk functions
 python run_pipeline.py ./my_project --min-risk-level LOW --stage3 --stage4
 ```
+
+---
+
+## Running it in CI
+
+Generating tests costs roughly 45 seconds per function on Groq's free tier,
+so testing an entire repository is measured in hours. Two flags make this
+practical, and they map onto the two situations a CI run is ever in.
+
+**A pull request** — only look at what changed:
+
+```bash
+python run_pipeline.py . --changed-only --stage3 --stage4
+```
+
+Functions the diff did not touch are skipped entirely, so a typical PR
+finishes in a minute or two. The base to compare against is worked out
+automatically: GitHub Actions' target branch if present, otherwise the
+default branch, otherwise the previous commit.
+
+**A first run on a repository that has never been analysed** — rank
+everything, but only write tests for what matters most:
+
+```bash
+python run_pipeline.py . --min-risk-level LOW --max-functions 20 --stage3 --stage4
+```
+
+This works because the stages differ enormously in cost. On a 266-function
+library:
+
+| stage | time |
+|---|---|
+| 1 — analysis and git history | 23s |
+| 2 — risk ranking | 3m 22s |
+| 3 — test generation, all 266 | **~3.5 hours** |
+
+Ranking everything is cheap; generating tests for everything is not. So the
+first run ranks the whole repository and spends its budget on the top 20,
+which is roughly twenty minutes rather than several hours. After that, pull
+requests keep it up to date incrementally.
+
+Choosing what to test rather than testing everything is the point of
+component 2 — the cap is that model doing the job it exists for.
+
+> **Important for GitHub Actions:** the default checkout is a shallow clone
+> with no history, and the risk model leans heavily on `bug_history` and
+> `commit_frequency`. Without full history every function looks brand new and
+> scores LOW. Use `fetch-depth: 0`:
+>
+> ```yaml
+> - uses: actions/checkout@v4
+>   with:
+>     fetch-depth: 0
+> ```
+>
+> If history genuinely is not available the pipeline says so and falls back to
+> a full scan rather than silently analysing nothing.
 
 ---
 

@@ -52,6 +52,7 @@ def run(
     project_name: str,
     python_exe: Optional[str] = None,
     mine_git: bool = True,
+    changed_only: Optional[str] = None,
 ) -> Dict:
     """Analyse `target` with C1 and write both stage-1 artifacts."""
     target_path = Path(target).resolve()
@@ -70,6 +71,9 @@ def run(
     ]
     if not mine_git:
         command.append("--no-git")
+    if changed_only is not None:
+        # Empty string means "work the base ref out yourself".
+        command.append(f"--changed-only={changed_only}")
 
     result = subprocess.run(
         command,
