@@ -51,6 +51,7 @@ def run(
     artifact_dir: Path,
     project_name: str,
     python_exe: Optional[str] = None,
+    mine_git: bool = True,
 ) -> Dict:
     """Analyse `target` with C1 and write both stage-1 artifacts."""
     target_path = Path(target).resolve()
@@ -59,15 +60,19 @@ def run(
 
     interpreter = resolve_python(python_exe)
 
+    command = [
+        interpreter,
+        str(RUNNER),
+        str(target_path),
+        str(artifact_dir.resolve()),
+        project_name,
+        str(contracts.REPO_ROOT),
+    ]
+    if not mine_git:
+        command.append("--no-git")
+
     result = subprocess.run(
-        [
-            interpreter,
-            str(RUNNER),
-            str(target_path),
-            str(artifact_dir.resolve()),
-            project_name,
-            str(contracts.REPO_ROOT),
-        ],
+        command,
         cwd=str(contracts.C1_ROOT),
         capture_output=True,
         text=True,

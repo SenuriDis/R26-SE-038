@@ -55,6 +55,12 @@ def parse_args(argv=None):
         default=None,
         help="Run a single stage against the artifacts already on disk.",
     )
+    parser.add_argument(
+        "--no-git",
+        action="store_true",
+        help="Skip git history mining. Faster, but leaves commit_frequency, "
+             "author_count, bug_history and days_since_last_change at defaults.",
+    )
     parser.add_argument("--c1-python", default=None, help="Interpreter for C1.")
     parser.add_argument("--c2-python", default=None, help="Interpreter for C2.")
     return parser.parse_args(argv)
@@ -83,6 +89,7 @@ def main(argv=None) -> int:
                 artifact_dir=artifact_dir,
                 project_name=project_name,
                 python_exe=args.c1_python,
+                mine_git=not args.no_git,
             )
         except stage1_static_analysis.Stage1Error as error:
             print(f"\n  Stage 1 failed: {error}", file=sys.stderr)
@@ -90,6 +97,19 @@ def main(argv=None) -> int:
 
         print(f"  files analysed      : {summary['files_analyzed']}")
         print(f"  functions extracted : {summary['functions_extracted']}")
+
+        git = summary.get("git", {})
+        if not git.get("enabled"):
+            print("  git history         : skipped (--no-git)")
+        elif not git.get("repo_root"):
+            print("  git history         : unavailable — target is not in a git repo")
+        else:
+            print(
+                f"  git history         : {git.get('mined', 0)} mined, "
+                f"{git.get('defaulted', 0)} defaulted, "
+                f"{git.get('cache_hits', 0)} cached"
+            )
+
         print(f"  -> {summary['raw_artifact']}")
         print(f"  -> {summary['c2_input_artifact']}")
 

@@ -41,9 +41,12 @@ def iter_python_files(target: Path) -> List[Path]:
     return sorted(found)
 
 
-def functions_for_file(file_path: Path, c2_defaults: Dict) -> Tuple[List[Dict], List[str]]:
+def functions_for_file(file_path: Path, c2_defaults: Dict, miner=None) -> Tuple[List[Dict], List[str]]:
     """
     Build one C2 function record per function in `file_path`.
+
+    `miner`, when given, supplies the four git-history fields per function;
+    without it those stay at C2's defaults.
 
     Returns (records, skipped_async). Async functions are reported rather than
     dropped silently: C1's calculators only visit ast.FunctionDef, so an async
@@ -66,6 +69,16 @@ def functions_for_file(file_path: Path, c2_defaults: Dict) -> Tuple[List[Dict], 
 
     records = []
     for info in function_infos:
+        derived = function_metrics.extract(info.ast_node)
+
+        # fan_in is the one field still without a source; it needs a
+        # cross-file call graph.
+        process_metrics = dict(c2_defaults)
+        if miner is not None:
+            process_metrics.update(
+                miner.mine(file_path, derived["start_line"], derived["end_line"])
+            )
+
         records.append({
             # ── straight from C1 ──
             "function_name": info.name,
@@ -77,10 +90,10 @@ def functions_for_file(file_path: Path, c2_defaults: Dict) -> Tuple[List[Dict], 
             "fan_out": info.dependency_count,
 
             # ── derived from the AST node C1 already holds ──
-            **function_metrics.extract(info.ast_node),
+            **derived,
 
-            # ── nothing upstream produces these yet ──
-            **c2_defaults,
+            # ── mined from git history, or defaults ──
+            **process_metrics,
         })
 
     skipped_async = [
@@ -114,6 +127,11 @@ def main() -> int:
         sys.path.append(str(repo_root))
 
     from pipeline.contracts import STAGE1_RAW, STAGE1_C2_INPUT, C2_DEFAULTS
+    from pipeline.extractors.git_history import GitHistoryMiner
+
+    # "--no-git" as a 5th argument turns history mining off.
+    mine_git = not (len(sys.argv) > 5 and sys.argv[5] == "--no-git")
+    miner = GitHistoryMiner(target) if mine_git else None
 
     artifact_dir.mkdir(parents=True, exist_ok=True)
 
@@ -133,7 +151,7 @@ def main() -> int:
     all_skipped: List[str] = []
 
     for py_file in iter_python_files(target):
-        records, skipped = functions_for_file(py_file, C2_DEFAULTS)
+        records, skipped = functions_for_file(py_file, C2_DEFAULTS, miner)
         all_records.extend(records)
         all_skipped.extend(skipped)
 
@@ -150,6 +168,11 @@ def main() -> int:
         "async_functions_skipped": all_skipped,
         "raw_artifact": str(raw_path),
         "c2_input_artifact": str(c2_input_path),
+        "git": {
+            "enabled": mine_git,
+            "repo_root": str(miner.repo_root) if miner and miner.repo_root else None,
+            **(miner.stats if miner else {}),
+        },
     }))
 
     return 0
