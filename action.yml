@@ -57,6 +57,19 @@ inputs:
     required: false
     default: "false"
 
+  groq-model:
+    description: >-
+      Which Groq model the agents use. This matters more than it looks: a
+      capable model writes tests against the function's *documented contract*
+      and so can fail when the code is wrong, while a weaker one tends to
+      assert whatever the implementation currently returns -- producing tests
+      that can never fail and never find anything.
+
+      Groq's free tier meters tokens per day per model, so switching models is
+      also a way to get a fresh daily budget.
+    required: false
+    default: "openai/gpt-oss-120b"
+
   python-version:
     description: >-
       Python to run everything on. 3.12 by default, because component 2 pins
@@ -148,6 +161,7 @@ runs:
       shell: bash
       env:
         INPUT_GROQ_API_KEY: ${{ inputs.groq-api-key }}
+        INPUT_GROQ_MODEL: ${{ inputs.groq-model }}
         INPUT_COMMENT_ON_PR: ${{ inputs.comment-on-pr }}
         INPUT_FAIL_ON_DEFECT: ${{ inputs.fail-on-defect }}
         INPUT_GITHUB_TOKEN: ${{ inputs.github-token }}
@@ -156,9 +170,13 @@ runs:
         ACTION="${{ github.action_path }}"
         ARTIFACTS="${{ github.workspace }}/.ai-test-artifacts"
 
-        # C3 resolves .env relative to its own directory. Writing the key there
-        # keeps it out of the workspace, which is the checked-out repository.
-        printf 'GROQ_API_KEY=%s\n' "${INPUT_GROQ_API_KEY}" > "${ACTION}/.env"
+        # C3 resolves .env relative to its own directory. Writing these there
+        # keeps them out of the workspace, which is the checked-out repository.
+        {
+          printf 'GROQ_API_KEY=%s\n' "${INPUT_GROQ_API_KEY}"
+          printf 'GROQ_MODEL_AGENT1=%s\n' "${INPUT_GROQ_MODEL}"
+          printf 'GROQ_MODEL_AGENT3=%s\n' "${INPUT_GROQ_MODEL}"
+        } > "${ACTION}/.env"
 
         export C1_PYTHON=python
         export C2_PYTHON="${ACTION}/.venvs/c2/bin/python"
