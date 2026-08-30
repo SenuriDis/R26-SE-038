@@ -260,23 +260,40 @@ key as a repository secret, and open a pull request. The report appears in
 the job summary and as a comment on the PR.
 
 ```yaml
-- uses: actions/checkout@v4
-  with:
-    fetch-depth: 0          # required -- see below
+on:
+  pull_request:        # analyses only what changed
+  workflow_dispatch:   # run manually for a whole-repository baseline
 
-- uses: your-org/your-repo@v1
-  with:
-    groq-api-key: ${{ secrets.GROQ_API_KEY }}
-    changed-only: "true"
-    min-risk-level: "LOW"
-    max-functions: "5"
+jobs:
+  review:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0          # required -- see below
+          ref: ${{ github.head_ref }}
+
+      - uses: your-org/your-repo@v1
+        with:
+          groq-api-key: ${{ secrets.GROQ_API_KEY }}
+          min-risk-level: "LOW"
+          commit-tests: "true"
 ```
+
+`changed-only` defaults to `auto`, so the same workflow covers both cases:
+scoped to the diff on a pull request, and a full scan when you run it
+manually. Run it manually once when you first add the action, so the
+repository gets a baseline instead of waiting for someone to touch each
+function.
 
 | Input | Default | Notes |
 |---|---|---|
 | `groq-api-key` | — | Required. Store as a secret |
 | `path` | `.` | Directory to analyse |
-| `changed-only` | `true` | Only functions the PR touched |
+| `changed-only` | `auto` | Diff on a PR, whole repo on a manual run |
 | `max-functions` | `10` | Budget cap, highest risk first |
 | `min-risk-level` | `MEDIUM` | Set to `LOW` on small repositories |
 | `comment-on-pr` | `true` | Needs `pull-requests: write` |

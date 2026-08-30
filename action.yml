@@ -22,11 +22,17 @@ inputs:
 
   changed-only:
     description: >-
-      Analyse only functions the pull request touched. Strongly recommended --
-      generating tests costs roughly 45 seconds per function, so whole-repo
-      runs are measured in hours.
+      Analyse only the functions a change touched.
+
+      Left at "auto" it decides for itself, which is almost always what you
+      want: scoped to the diff on a pull request, and a full scan on a manual
+      or scheduled run. That gives a repository a baseline the day the action
+      is added, then keeps it current incrementally without ever spending
+      45 seconds per function on code nobody touched.
+
+      Set "true" or "false" to force it.
     required: false
-    default: "true"
+    default: "auto"
 
   max-functions:
     description: >-
@@ -223,7 +229,20 @@ runs:
         ARGS=( "${{ inputs.path }}" --artifacts "${ARTIFACTS}"
                --min-risk-level "${{ inputs.min-risk-level }}" --stage3 --stage4 )
 
-        if [ "${{ inputs.changed-only }}" = "true" ]; then
+        # "auto" means: scope to the diff on a pull request, scan everything
+        # otherwise. Deciding here rather than making every caller write
+        # `${{ github.event_name == 'pull_request' }}` in their workflow.
+        CHANGED="${{ inputs.changed-only }}"
+        if [ "${CHANGED}" = "auto" ]; then
+          if [ "${GITHUB_EVENT_NAME:-}" = "pull_request" ]; then
+            CHANGED="true"
+          else
+            CHANGED="false"
+          fi
+          echo "::notice::changed-only=auto resolved to ${CHANGED} for a ${GITHUB_EVENT_NAME:-unknown} event."
+        fi
+
+        if [ "${CHANGED}" = "true" ]; then
           ARGS+=( --changed-only )
         fi
         if [ -n "${{ inputs.max-functions }}" ] && [ "${{ inputs.max-functions }}" != "0" ]; then
