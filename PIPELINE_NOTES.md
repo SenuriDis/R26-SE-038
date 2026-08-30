@@ -567,6 +567,43 @@ running, and C4's Dockerfile copies its own `src/`/`tests/` rather than a
 target, so it would need parameterising for arbitrary repos anyway. Stage 4
 runs locally instead — no isolation, but no daemon required.
 
+
+### 10. Running as a GitHub Action
+
+The pipeline is packaged as a Docker action so the four environments are baked
+into the image rather than installed per run.
+
+```
+Dockerfile              builds /opt/venvs/{c2,c3,c4}; C1 runs on system Python
+action.yml              inputs and outputs
+action/entrypoint.sh    runs the pipeline
+action/post_results.py  job summary, action outputs, PR comment
+pipeline/report.py      the seven artifacts collapsed into one Markdown doc
+examples/ai-test-review.yml   workflow template to copy
+```
+
+**Two defaults silently produce a green run that did nothing.** Both matter
+more than they look, because the run *succeeds* — there is no error to notice.
+
+- `actions/checkout` defaults to a shallow clone. The risk model's strongest
+  features are `bug_history` and `commit_frequency`, both mined from history.
+  Without `fetch-depth: 0` every function looks brand new and scores LOW. The
+  entrypoint emits a warning when it finds no history.
+- `min-risk-level` defaults to MEDIUM, but only 1 function in 266 reached
+  MEDIUM on `requests`. On a small or young repository nothing will, so the
+  template sets LOW.
+
+**Why the two flags exist.** Test generation costs ~45s per function, so a
+266-function repository is about three and a half hours. `--changed-only`
+scopes a pull request to the functions the diff touched; `--max-functions`
+caps a first full scan. Stages 1 and 2 are cheap enough (23s and 3m22 on the
+same repository) that ranking everything and generating for the top N is the
+sensible first-run behaviour.
+
+**Comment posting fails softly.** A fork's token is read-only, and a push
+event has no PR at all. Both warn rather than failing the check — a red mark
+for a missing comment teaches people to ignore the check.
+
 ## Reproducing the validation run
 
 ```bash
