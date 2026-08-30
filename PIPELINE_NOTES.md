@@ -570,17 +570,41 @@ runs locally instead — no isolation, but no daemon required.
 
 ### 10. Running as a GitHub Action
 
-The pipeline is packaged as a Docker action so the four environments are baked
-into the image rather than installed per run.
+The pipeline is packaged as a **composite** action.
 
 ```
-Dockerfile              builds /opt/venvs/{c2,c3,c4}; C1 runs on system Python
-action.yml              inputs and outputs
-action/entrypoint.sh    runs the pipeline
+action.yml              inputs, outputs, and the steps
 action/post_results.py  job summary, action outputs, PR comment
 pipeline/report.py      the seven artifacts collapsed into one Markdown doc
 examples/ai-test-review.yml   workflow template to copy
 ```
+
+**A Docker action was tried first and abandoned.** Two reasons, both worth
+recording:
+
+- `runs.image: Dockerfile` makes GitHub rebuild the image *on every run*. The
+  image reached 3.14 GB before `llama-index-embeddings-huggingface` (which
+  pulls torch) was even added, so every pull request would have spent many
+  minutes rebuilding before doing any work. Publishing to a registry and
+  pulling `docker://ghcr.io/...` would fix that, at the cost of maintaining a
+  multi-gigabyte published image.
+- The isolation is redundant. An Actions runner is already a disposable VM, so
+  a container inside it buys nothing. Nisula's own Docker use in C4 is a
+  different matter and still valid: it isolates AI-generated tests on a
+  *developer's laptop*, where there is no disposable VM.
+
+Note that C4's Docker step lives in `run.py`, above `execute_tests.py`.
+`execute_tests.py` itself contains no reference to Docker, which is why stage
+4 can run it directly.
+
+**The build did surface two real bugs**, which only appear on a clean install:
+`components/c3_llm_tests/requirements.txt` is missing `langchain-groq`
+(imported by `src/utils/llm.py`) and `llama-index-embeddings-huggingface`
+(imported by `src/rag/indexer.py`, which lists the *openai* embeddings package
+instead). Anyone doing a fresh `pip install -r requirements.txt` of C3 gets a
+broken install; it works locally only because those were installed by hand at
+some point. The action installs them explicitly as a workaround, but they
+belong in C3's requirements.txt.
 
 **Two defaults silently produce a green run that did nothing.** Both matter
 more than they look, because the run *succeeds* — there is no error to notice.

@@ -38,8 +38,8 @@ inputs:
 
   min-risk-level:
     description: >-
-      Lowest risk tier to generate tests for: HIGH, MEDIUM or LOW. Note that
-      small or young repositories tend to score everything LOW, so MEDIUM can
+      Lowest risk tier to generate tests for: HIGH, MEDIUM or LOW. Small or
+      young repositories tend to score everything LOW, so MEDIUM can
       legitimately select nothing.
     required: false
     default: "MEDIUM"
@@ -57,6 +57,13 @@ inputs:
     required: false
     default: "false"
 
+  python-version:
+    description: >-
+      Python to run everything on. 3.12 by default, because component 2 pins
+      numpy 1.26.4, which publishes no wheels for 3.13.
+    required: false
+    default: "3.12"
+
   github-token:
     description: "Token used to post the comment. Defaults to the workflow's own."
     required: false
@@ -65,11 +72,131 @@ inputs:
 outputs:
   report:
     description: "Path to the generated Markdown report."
+    value: ${{ steps.analyse.outputs.report }}
   defects-found:
     description: "How many generated tests failed in a way that looks like a real defect."
+    value: ${{ steps.analyse.outputs.defects-found }}
   functions-analysed:
     description: "How many functions were analysed."
+    value: ${{ steps.analyse.outputs.functions-analysed }}
 
+# A composite action rather than a Docker one, deliberately.
+#
+# `runs.image: Dockerfile` makes GitHub rebuild the image on every run, and
+# this pipeline's dependencies (chromadb, torch, scikit-learn) come to several
+# gigabytes -- that is many minutes of rebuild before any work starts. Caching
+# the installed packages instead means a slow first run and fast ones after.
+#
+# The isolation a container would add is largely redundant here: an Actions
+# runner is already a disposable VM.
 runs:
-  using: docker
-  image: Dockerfile
+  using: composite
+
+  steps:
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: ${{ inputs.python-version }}
+
+    - name: Cache component environments
+      id: cache
+      uses: actions/cache@v4
+      with:
+        path: ${{ github.action_path }}/.venvs
+        # A fixed version rather than hashFiles: hashFiles only sees the
+        # caller's workspace, and this action's requirements live in the action
+        # itself. Bump the number when a component's dependencies change.
+        key: r26-venvs-v1-${{ runner.os }}-py${{ inputs.python-version }}
+        restore-keys: |
+          r26-venvs-v1-${{ runner.os }}-
+
+    - name: Build component environments
+      if: steps.cache.outputs.cache-hit != 'true'
+      shell: bash
+      run: |
+        set -euo pipefail
+        cd "${{ github.action_path }}"
+        mkdir -p .venvs
+
+        # C2 imports only these three. Its requirements.txt also lists xgboost,
+        # shap, imbalanced-learn, jupyter, matplotlib and seaborn, none of
+        # which appear in any import -- "xgb_model" is an sklearn
+        # GradientBoostingClassifier.
+        python -m venv .venvs/c2
+        .venvs/c2/bin/pip install --quiet --upgrade pip
+        .venvs/c2/bin/pip install --quiet \
+          "numpy==1.26.4" "pandas==2.2.1" "scikit-learn==1.4.2"
+
+        # C3's requirements.txt is missing two packages its own code imports,
+        # so a clean install of it fails. Added here rather than editing the
+        # vendored file, which would conflict on the next `git subtree pull`:
+        #   langchain-groq                      src/utils/llm.py
+        #   llama-index-embeddings-huggingface  src/rag/indexer.py
+        # Both belong in C3's requirements.txt on its own branch.
+        python -m venv .venvs/c3
+        .venvs/c3/bin/pip install --quiet --upgrade pip
+        .venvs/c3/bin/pip install --quiet -r components/c3_llm_tests/requirements.txt
+        .venvs/c3/bin/pip install --quiet \
+          "langchain-groq>=0.1.9" "llama-index-embeddings-huggingface>=0.2.0"
+
+        python -m venv .venvs/c4
+        .venvs/c4/bin/pip install --quiet --upgrade pip
+        .venvs/c4/bin/pip install --quiet -r components/c4_test_eval/requirements.txt
+
+    - name: Analyse, generate tests, and evaluate
+      id: analyse
+      shell: bash
+      env:
+        INPUT_GROQ_API_KEY: ${{ inputs.groq-api-key }}
+        INPUT_COMMENT_ON_PR: ${{ inputs.comment-on-pr }}
+        INPUT_FAIL_ON_DEFECT: ${{ inputs.fail-on-defect }}
+        INPUT_GITHUB_TOKEN: ${{ inputs.github-token }}
+      run: |
+        set -uo pipefail
+        ACTION="${{ github.action_path }}"
+        ARTIFACTS="${{ github.workspace }}/.ai-test-artifacts"
+
+        # C3 resolves .env relative to its own directory. Writing the key there
+        # keeps it out of the workspace, which is the checked-out repository.
+        printf 'GROQ_API_KEY=%s\n' "${INPUT_GROQ_API_KEY}" > "${ACTION}/.env"
+
+        export C1_PYTHON=python
+        export C2_PYTHON="${ACTION}/.venvs/c2/bin/python"
+        export C3_PYTHON="${ACTION}/.venvs/c3/bin/python"
+        export C4_PYTHON="${ACTION}/.venvs/c4/bin/python"
+        export PYTHONIOENCODING=utf-8
+
+        cd "${{ github.workspace }}"
+
+        # Actions checks the repository out as a different user than the one
+        # running these steps, and git refuses to touch it without this. With
+        # git broken, history mining silently yields nothing and every function
+        # scores as though it were brand new.
+        git config --global --add safe.directory "${{ github.workspace }}" || true
+
+        if ! git rev-parse HEAD~1 >/dev/null 2>&1; then
+          echo "::warning::Shallow checkout detected. Risk scores depend on git history -- set fetch-depth: 0 on actions/checkout."
+        fi
+
+        ARGS=( "${{ inputs.path }}" --artifacts "${ARTIFACTS}"
+               --min-risk-level "${{ inputs.min-risk-level }}" --stage3 --stage4 )
+
+        if [ "${{ inputs.changed-only }}" = "true" ]; then
+          ARGS+=( --changed-only )
+        fi
+        if [ -n "${{ inputs.max-functions }}" ] && [ "${{ inputs.max-functions }}" != "0" ]; then
+          ARGS+=( --max-functions "${{ inputs.max-functions }}" )
+        fi
+
+        echo "::group::Pipeline"
+        python "${ACTION}/run_pipeline.py" "${ARGS[@]}"
+        STATUS=$?
+        echo "::endgroup::"
+
+        if [ "${STATUS}" -ne 0 ]; then
+          echo "::warning::The pipeline exited with status ${STATUS}. Reporting whatever it produced."
+        fi
+
+        python "${ACTION}/action/post_results.py" \
+          --artifacts "${ARTIFACTS}" \
+          --pipeline-root "${ACTION}"

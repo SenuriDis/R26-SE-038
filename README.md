@@ -246,8 +246,14 @@ component 2 — the cap is that model doing the job it exists for.
 
 ## Using it as a GitHub Action
 
-The pipeline is packaged as a Docker action, so the four environments are
-baked into the image rather than installed on every run.
+The pipeline is packaged as a composite action. It sets up Python, builds
+the component environments once, and caches them -- so the first run installs
+and later ones reuse.
+
+A composite action rather than a Docker one on purpose: `runs.image:
+Dockerfile` makes GitHub rebuild the image on every run, and these
+dependencies come to several gigabytes. The isolation a container adds is also
+largely redundant, since an Actions runner is already a disposable VM.
 
 Copy `examples/ai-test-review.yml` into `.github/workflows/`, add your Groq
 key as a repository secret, and open a pull request. The report appears in
