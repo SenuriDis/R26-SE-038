@@ -130,6 +130,94 @@ def recorded_repo_root(artifact_dir: Path) -> Optional[Path]:
     return Path(recorded) if recorded else None
 
 
+def tested_source_files(artifact_dir: Path) -> List[str]:
+    """
+    The repo-relative source files holding the functions C3 actually tested.
+
+    Used to scope both coverage and mutation. Without it C4 measures the whole
+    source tree, so tests for two functions score 24% against every statement
+    in the project and the grade is meaningless. Mutation is worse: it mutates
+    everything, which on a real repository is thousands of mutants and never
+    finishes.
+    """
+    run_dir = _latest_c3_run(artifact_dir)
+    paths: List[str] = []
+
+    if run_dir is not None:
+        review = _load_json(run_dir / "code_review_report.json")
+        if review:
+            for report in review.get("reports", []):
+                path = report.get("file_path")
+                if path and path not in paths:
+                    paths.append(path)
+
+    # Fall back to whatever the ML report selected, in case the review is
+    # missing (its agent can fail independently of test generation).
+    if not paths:
+        report = _load_json(artifact_dir / contracts.STAGE2_ML_OUTPUT)
+        if report:
+            for tier in report.get("tier_breakdown", {}).values():
+                for function in tier.get("functions", []):
+                    path = function.get("file_path")
+                    if path and path not in paths:
+                        paths.append(path)
+
+    return paths
+
+
+def _load_json(path: Path) -> Optional[Dict]:
+    if not path.exists():
+        return None
+    try:
+        return json.loads(path.read_text(encoding="utf-8"))
+    except (ValueError, OSError):
+        return None
+
+
+def _latest_c3_run(artifact_dir: Path) -> Optional[Path]:
+    root = artifact_dir / "c3_output"
+    if not root.exists():
+        return None
+    runs = sorted(
+        (p for p in root.iterdir() if p.is_dir() and p.name.startswith("run_")),
+        key=lambda p: p.stat().st_mtime,
+        reverse=True,
+    )
+    return runs[0] if runs else None
+
+
+def write_scoping_config(workdir: Path, source_files: List[str]) -> None:
+    """
+    Point coverage and mutation at the tested files only.
+
+    Both tools are configured through files C4 reads from its own directory,
+    so this needs no change to C4:
+
+      .coveragerc  read by coverage.py, narrows what --cov measures
+      setup.cfg    read by mutmut; C4 only writes its own if one is absent,
+                   so writing it first is how paths_to_mutate gets narrowed
+    """
+    if not source_files:
+        return
+
+    staged = [f"src/{path}" for path in source_files]
+
+    (workdir / ".coveragerc").write_text(
+        "[run]\nbranch = True\ninclude =\n"
+        + "".join(f"    {path}\n" for path in staged),
+        encoding="utf-8",
+    )
+
+    (workdir / "setup.cfg").write_text(
+        "[mutmut]\n"
+        f"paths_to_mutate={','.join(staged)}\n"
+        "backup=False\n"
+        "runner=python -m pytest\n"
+        "tests_dir=tests/\n",
+        encoding="utf-8",
+    )
+
+
 def stage_workdir(
     artifact_dir: Path,
     repo_root: Path,
@@ -210,6 +298,9 @@ def run(
         raise Stage4Error(problem)
 
     workdir = stage_workdir(artifact_dir, root, Path(target), tests)
+
+    scoped = tested_source_files(artifact_dir)
+    write_scoping_config(workdir, scoped)
 
     # The staged copy has to win over any installed distribution of the same
     # package, otherwise coverage measures site-packages instead of the target.
