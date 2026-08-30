@@ -514,6 +514,46 @@ matter how good the tests are.
 Scoping mutation to the functions under test would fix the second and is the
 same change as the coverage-denominator one. The first needs Docker or WSL.
 
+### 9b. C4 — the failure classifier misfires  *(this one matters)*
+
+`classify_failure` tests its patterns in the wrong order:
+
+```python
+if "assertionerror" in error_message or "assert " in error_message:
+    return "Real Defect"
+elif "syntaxerror" in ... or "typeerror" in ... or "attributeerror" in ...:
+    return "Invalid AI Test"
+```
+
+It is fed `t["call"]["longrepr"]` — pytest's full traceback, which includes
+the failing **source line**. Because most test failures happen on an `assert`
+statement, the literal substring `assert ` is present in almost every
+traceback, so the first branch catches nearly everything before the error-type
+checks are ever reached.
+
+Verified with a purpose-built probe (`scratchpad/c4probe/`), three failures
+engineered to land in three different categories:
+
+| test | actual error | expected | C4 said |
+|---|---|---|---|
+| `test_real_defect` | `AssertionError` | Real Defect | Real Defect ✅ |
+| `test_invalid_ai_test` | **`AttributeError`** | Invalid AI Test | **Real Defect ❌** |
+| `test_environment_failure` | `ModuleNotFoundError` | Environment Failure | Environment Failure ✅ |
+
+The middle traceback contains both `assert ` and `attributeerror`; the
+ordering makes `assert ` win.
+
+Consequence: C4 systematically **over-reports "Real Defect" and under-reports
+"Invalid AI Test"** — which inverts the component's headline claim of telling
+genuine defects apart from bad AI tests. On the requests run one `TypeError`
+*was* classified correctly, but only because that failure happened during the
+call rather than on an assert line.
+
+Fix is small: check the concrete exception type first and fall back to
+`assert` only when no known type matches. Better still, use the structured
+`call.crash` / `longrepr.reprcrash.message` field from pytest's JSON report,
+which gives the exception type alone without the surrounding source.
+
 **Cosmetic issues in C4's report output:** the repository name is hardcoded
 (`print("calculator-app")  # Hardcoded`), and it prints `Environment: Docker`
 / `Docker Environment: DESTROYED` unconditionally — including on this local
