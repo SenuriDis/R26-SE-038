@@ -11,14 +11,18 @@ Stages, and the artifact each one leaves behind:
     1  C1 static analysis   -> artifacts/01_static_analysis.json
        C1 -> C2 adapter     -> artifacts/02_c2_input.json
     2  C2 ML risk scoring   -> artifacts/03_ml_output.json
-    3  C3 LLM test gen         [not wired yet -- reads 03_ml_output.json]
+    3  C3 LLM test gen      -> artifacts/c3_output/run_<id>/   (--stage3)
+    4  C4 test evaluation   -> artifacts/c4_workdir/reports/   (--stage4)
 
 Each stage reads and writes JSON on disk, so any stage can be re-run on its own
 against the previous stage's output (see --only).
 
 Components pin conflicting dependencies, so each stage runs as a subprocess
 against its own interpreter. Set them with --c1-python / --c2-python or the
-C1_PYTHON / C2_PYTHON environment variables.
+C1_PYTHON ... C4_PYTHON environment variables.
+
+Stages 3 and 4 are opt-in: stage 3 makes paid Groq calls, and stage 4
+executes LLM-generated code.
 """
 
 import argparse
@@ -27,7 +31,12 @@ import sys
 from pathlib import Path
 
 from pipeline import contracts
-from pipeline.stages import stage1_static_analysis, stage2_ml_risk, stage3_llm_tests
+from pipeline.stages import (
+    stage1_static_analysis,
+    stage2_ml_risk,
+    stage3_llm_tests,
+    stage4_test_eval,
+)
 
 
 def parse_args(argv=None):
@@ -51,7 +60,7 @@ def parse_args(argv=None):
     )
     parser.add_argument(
         "--only",
-        choices=["1", "2", "3"],
+        choices=["1", "2", "3", "4"],
         default=None,
         help="Run a single stage against the artifacts already on disk.",
     )
@@ -87,6 +96,18 @@ def parse_args(argv=None):
     parser.add_argument("--c1-python", default=None, help="Interpreter for C1.")
     parser.add_argument("--c2-python", default=None, help="Interpreter for C2.")
     parser.add_argument("--c3-python", default=None, help="Interpreter for C3.")
+    parser.add_argument("--c4-python", default=None, help="Interpreter for C4.")
+    parser.add_argument(
+        "--stage4",
+        action="store_true",
+        help="Run stage 4 (C4 test execution and evaluation) on stage 3's tests.",
+    )
+    parser.add_argument(
+        "--source-root",
+        default=None,
+        help="Importable source root for the target. Inferred from the target "
+             "when omitted.",
+    )
     return parser.parse_args(argv)
 
 
@@ -246,6 +267,29 @@ def main(argv=None) -> int:
             return 1
 
         print(f"\n  -> {result['output_dir']}")
+
+    run_stage4 = args.only == "4" or (args.only is None and args.stage4)
+
+    if run_stage4:
+        _banner("Stage 4 -- C4 test execution and evaluation")
+        try:
+            outcome = stage4_test_eval.run(
+                artifact_dir=artifact_dir,
+                target=args.target,
+                source_root=args.source_root,
+                python_exe=args.c4_python,
+            )
+        except stage4_test_eval.Stage4Error as error:
+            print(f"\n  Stage 4 failed: {error}", file=sys.stderr)
+            return 1
+
+        print(f"\n  tests evaluated     : {', '.join(outcome['tests_evaluated'])}")
+        print(f"  source root         : {outcome['source_root']}")
+
+        if outcome["report"]:
+            print(f"  -> {outcome['report']}")
+        else:
+            print("  no evaluation_report.json was produced", file=sys.stderr)
 
     _banner("Done")
     return 0

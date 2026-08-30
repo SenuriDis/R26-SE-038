@@ -13,6 +13,8 @@ their full history is preserved and later updates can be pulled with
 components/
   c1_static_analysis/   <- git subtree of origin/Senuri
   c2_ml_risk/           <- git subtree of origin/Vihanga
+  c3_llm_tests/         <- git subtree of origin/Harrish-model-change
+  c4_test_eval/         <- git subtree of origin/Nisula
 pipeline/
   contracts.py          <- artifact names + the C1->C2 field mapping
   extractors/           <- the 8 AST metrics C1 measures but never writes out
@@ -40,6 +42,10 @@ target (.py file or directory)
    v  stage 3  -- C3, components/c3_llm_tests
    |
    +--> artifacts/c3_output/run_<id>/  generated tests, review, traceability
+   |
+   v  stage 4  -- C4, components/c4_test_eval
+   |
+   +--> artifacts/c4_workdir/reports/evaluation_report.json
 ```
 
 Artifact 04 leaves the chain at stage 1 and goes straight to C3:
@@ -316,7 +322,7 @@ Two things remain open:
 - [ ] Get C2's model artifacts regenerated and committed (issue 2a — Vihanga)
 - [ ] Tier thresholds vs real-world score range (issue 5b — Vihanga)
 - [x] Stage 3: C3 vendored and wired — runs end to end
-- [ ] Stage 4: vendor C4 (Nisula) for test execution
+- [x] Stage 4: C4 vendored and wired — runs end to end
 
 C1 -> C2 is connected, validated, and produces a defensible risk ranking on
 real code. 19 of the 20 fields carry real measurements; only `fan_in` is
@@ -455,6 +461,71 @@ compared descriptions would be more robust.
 **It does find real bugs.** On `requests.resolve_redirects`, Agent 3 reported
 HIGH: *"when yield_requests=True the generator yields the prepared request but
 never updates the URL or breaks the loop, causing an infinite loop."*
+
+### 9. Stage 4 notes
+
+C4 is built around its own sample project: `execute_tests.py` derives
+`SRC_DIR`, `TESTS_DIR` and `REPORTS_DIR` from `BASE_DIR` — the directory the
+script itself sits in — and its Dockerfile copies its own `src/` and `tests/`.
+
+Rather than change any of that, stage 4 stages a directory in exactly the
+shape C4 expects and drops an unmodified copy of its script in:
+
+```
+<artifacts>/c4_workdir/
+    execute_tests.py    copied from C4, unmodified
+    src/                the target's importable source root
+    tests/              C3's generated tests
+    reports/            C4's output
+```
+
+Because `BASE_DIR` follows the script, everything resolves inside the workdir
+and C4 evaluates the target instead of its own samples. The staged `src/` is
+put first on `PYTHONPATH` so it wins over any installed copy of the same
+package — otherwise coverage measures site-packages.
+
+**Result on requests** (2 generated test files, 16 tests):
+
+| metric | value |
+|---|---|
+| pass rate | 15/16 (93.75%) |
+| statement coverage | 23.96% |
+| branch coverage | 5.47% |
+| failure classification | 1 "Invalid AI Test" (a `TypeError`) |
+
+The classification is correct — that test really was malformed rather than
+finding a defect.
+
+**Coverage denominator is the whole package, not the functions under test.**
+C4 runs `--cov={SRC_DIR}`, so those percentages are "coverage of all 2,368
+statements in requests by tests for 2 functions". That is why the grade comes
+out "D — Needs Improvement". For evaluating targeted AI-generated tests, the
+meaningful denominator is the functions C3 was asked to cover. Worth raising
+with Nisula — as it stands, the grade will always look poor on a real repo no
+matter how good the tests are.
+
+**Mutation testing does not work here.** Two independent reasons:
+
+- mutmut 3.x refuses to run on Windows at all ("please use the WSL").
+- mutmut 2.4.4 does run, but mutates *all* of `src/`. On requests that is
+  thousands of mutants each requiring a full suite run; a 15-minute cap was
+  not close to enough. It is only practical on C4's own small samples.
+
+Scoping mutation to the functions under test would fix the second and is the
+same change as the coverage-denominator one. The first needs Docker or WSL.
+
+**Cosmetic issues in C4's report output:** the repository name is hardcoded
+(`print("calculator-app")  # Hardcoded`), and it prints `Environment: Docker`
+/ `Docker Environment: DESTROYED` unconditionally — including on this local
+run, where no container was involved. The JSON also carries mojibake
+(`"quality_grade": "D � Needs Improvement"`) because it is written without an
+explicit encoding.
+
+**Docker was not used.** C4's intended path is `run.py`, which builds an image
+and runs the suite inside it. Docker is installed here but the daemon is not
+running, and C4's Dockerfile copies its own `src/`/`tests/` rather than a
+target, so it would need parameterising for arbitrary repos anyway. Stage 4
+runs locally instead — no isolation, but no daemon required.
 
 ## Reproducing the validation run
 
