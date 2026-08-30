@@ -21,6 +21,7 @@ Two things make this stage different from the others:
 
 import json
 import os
+import re
 import subprocess
 import sys
 from pathlib import Path
@@ -38,13 +39,39 @@ class Stage3Error(RuntimeError):
     """Raised when C3 cannot be run or fails while generating."""
 
 
-def load_root_env() -> Dict[str, str]:
+def _parse_env_value(raw: str) -> str:
     """
-    Parse the repo-root .env into a plain dict.
+    Read one .env value the way python-dotenv does.
 
-    Deliberately simple: KEY=VALUE, ignoring blanks, comments and surrounding
-    quotes. C3's settings only needs flat string values.
+    Quoted values keep everything inside the quotes. Unquoted values end at an
+    inline comment, which is a '#' preceded by whitespace.
+
+    This matters more than it looks. The repo's .env carries
+    `CHROMA_DB_PATH=./data/chroma_db #Where to store the chunks`, and env vars
+    outrank the .env file in pydantic-settings. Passing the comment through
+    made C3 create a directory literally named 'chroma_db #Where to store the
+    chunks'.
     """
+    value = raw.strip()
+    if not value:
+        return ""
+
+    if value[0] in "\"'":
+        quote = value[0]
+        closing = value.find(quote, 1)
+        if closing != -1:
+            return value[1:closing]
+        return value[1:]
+
+    comment = re.search(r"\s#", value)
+    if comment:
+        value = value[:comment.start()]
+
+    return value.strip()
+
+
+def load_root_env() -> Dict[str, str]:
+    """Parse the repo-root .env into a plain dict of KEY -> value."""
     env_path = contracts.REPO_ROOT / ".env"
     if not env_path.exists():
         return {}
@@ -55,7 +82,7 @@ def load_root_env() -> Dict[str, str]:
         if not line or line.startswith("#") or "=" not in line:
             continue
         key, value = line.split("=", 1)
-        values[key.strip()] = value.strip().strip('"').strip("'")
+        values[key.strip()] = _parse_env_value(value)
 
     return values
 

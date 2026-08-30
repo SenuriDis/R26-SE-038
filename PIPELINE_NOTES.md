@@ -382,18 +382,23 @@ on the child to avoid it, but the real fix belongs in C3.
 
 ### 8. C3 output varies a lot between identical runs
 
-Two runs, same function, same config:
+Three runs on the same function, same config, no code changes between them:
 
-| run | test functions | traceability | repairs |
-|---|---|---|---|
-| 1 | 6, named `test_tc001…tc006` | **6/7 (86%)** | 1 |
-| 2 | 1, named `test_resolve_redirects_simple` | **0/7 (0%)** | 3 |
+| run | tests generated | valid | traceability | repairs |
+|---|---|---|---|---|
+| `9636767f` | 6, named `test_tc001…tc006` | 1/1 ✅ | **6/7 (86%)** | 1 |
+| `374a2712` | 1, named `test_resolve_redirects_simple` | 1/1 ✅ | **0/7** | 3 |
+| `163494b5` | 5 | **0/1 ❌** | **0/7** | — |
 
-The second collapsed a 7-case plan into a single generic test. Note the run
-with *more* repair iterations produced the *worse* result, which suggests
-Agent 2's repair loop can degrade tests rather than improve them — it has a
-`_build_traceability_repair_prompt` and inspects uncovered entries, so it was
-trying to fix coverage and ended at 0/7 after three attempts.
+One good result, one that collapsed a 7-case plan into a single generic test,
+and one that failed validation outright. That is a wide spread for a component
+whose output feeds C4.
+
+Note the middle run: *more* repair iterations produced the *worse* result.
+Agent 2 has a `_build_traceability_repair_prompt` and inspects uncovered
+entries, so it was actively trying to fix coverage and still ended at 0/7
+after three attempts — the repair loop can degrade tests rather than improve
+them.
 
 Worth investigating: the traceability matcher looks for a test function per
 `TC00n` id, so it only scores well when Agent 1 follows the `test_tc001_*`
