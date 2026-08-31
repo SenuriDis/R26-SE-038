@@ -16,6 +16,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
 from utils.feature_engineering import FeatureEngineer, CodeMetrics
 from models.risk_detector import MLRiskDetector, RiskPrediction
 from models.prioritizer import TestPrioritizer
+from utils.llm_prompt_generator import LLMPromptGenerator
  
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -67,7 +68,7 @@ class FunctionMetricsRequest(BaseModel):
  
     cyclomatic_complexity: int = Field(1, ge=1, example=18)
     nesting_depth: int = Field(0, ge=0, example=5)
-    lines_of_code: int = Field(1, ge=1, example=87)
+    lines_of_code: int = Field(1, ge=1, example=87) 
     fan_in: int = Field(0, ge=0, example=3)
     fan_out: int = Field(0, ge=0, example=12)
     num_parameters: int = Field(0, ge=0, example=4)
@@ -86,6 +87,7 @@ class FunctionMetricsRequest(BaseModel):
 class BatchPredictRequest(BaseModel):
     project_name: str = Field("unnamed_project", example="cloud-infra-core")
     functions: List[FunctionMetricsRequest]
+    generate_llm_prompt: bool = Field(False, description="If true, generates a structured text prompt for an LLM to generate test cases.")
  
  
 class RiskFactorResponse(BaseModel):
@@ -117,11 +119,10 @@ class BatchPredictResponse(BaseModel):
     processing_time_ms: float
     summary: Dict[str, Any]
     ranked_functions: List[FunctionRiskResponse]
+    llm_prompt: Optional[str] = None
  
  
-# ──────────────────────────────────────────────
-# Helper
-# ──────────────────────────────────────────────
+# Convert JSON to CodeMetrics object from component 1
  
 def _request_to_metrics(req: FunctionMetricsRequest) -> CodeMetrics:
     return CodeMetrics(
@@ -174,7 +175,7 @@ async def model_info():
         "ensemble": "RandomForest(40%) + XGBoost(50%) + LogisticRegression(10%)",
     }
  
- 
+ # Prediction endpoint - Functions metrics gannwa, and risk scores and prioritization gannwa.
 @app.post("/predict", response_model=BatchPredictResponse)
 async def predict(request: BatchPredictRequest):
     """
@@ -191,7 +192,7 @@ async def predict(request: BatchPredictRequest):
     # Build CodeMetrics objects
     metrics_list = [_request_to_metrics(fn) for fn in request.functions]
  
-    # Extract features
+    # Extract features needed
     fe = _feature_engineer or FeatureEngineer()
     feature_matrix = np.stack([
         fe.transform(m) for m in metrics_list
@@ -242,11 +243,16 @@ async def predict(request: BatchPredictRequest):
             xgb_score=fn["xgb_score"],
         ))
  
+    llm_prompt_text = None
+    if getattr(request, "generate_llm_prompt", False):
+        llm_prompt_text = LLMPromptGenerator.generate_prompt(payload)
+
     return BatchPredictResponse(
         project=request.project_name,
         processing_time_ms=round(elapsed_ms, 2),
         summary=payload["summary"],
         ranked_functions=ranked,
+        llm_prompt=llm_prompt_text,
     )
  
  
@@ -260,20 +266,20 @@ async def train_model():
  
     logger.info("Starting model training...")
  
-    # Import here to avoid circular deps at module load
+        # For demonstration, created synthetic dataset with 2000 samples.
     import sys, os
     sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
     from data.dataset import generate_synthetic_dataset
     from sklearn.model_selection import train_test_split
  
-    X, y, metrics_list = generate_synthetic_dataset(n_samples=2000, random_state=42)
+    X, y, metrics_list = generate_synthetic_dataset(n_samples=2000, random_state=42) # gen synthetic data
  
     X_train, X_test, y_train, y_test = train_test_split(
         X, y, test_size=0.2, stratify=y, random_state=42
     )
  
     fe = FeatureEngineer()
-    fe.fit(metrics_list[:len(X_train)])
+    fe.fit(metrics_list[:len(X_train)]) # compute normalization params on train set
  
     detector = MLRiskDetector()
     detector.fit(X_train, y_train)

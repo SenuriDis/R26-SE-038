@@ -21,7 +21,7 @@ logger = logging.getLogger(__name__)
 # ──────────────────────────────────────────────────────────────────────
  
 class SimpleSMOTE:
-    """Generates synthetic minority samples by KNN interpolation."""
+    """Generates synthetic minority samples"""
     def __init__(self, sampling_strategy: float = 0.4, k_neighbors: int = 5, random_state: int = 42):
         self.sampling_strategy = sampling_strategy
         self.k_neighbors = k_neighbors

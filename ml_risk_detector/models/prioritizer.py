@@ -143,7 +143,7 @@ class TestPrioritizer:
         """Pretty-print risk summary to console."""
         s = payload["summary"]
         print("\n" + "=" * 60)
-        print(f"  ML RISK ANALYSIS — {payload['project']}")
+        print(f"  ML RISK ANALYSIS - {payload['project']}")
         print("=" * 60)
         print(f"  Functions analysed : {s['total_functions']}")
         print(f"  HIGH risk          : {s['high_risk_count']}  ({s['high_risk_pct']}%)")
@@ -159,6 +159,6 @@ class TestPrioritizer:
                 f"score={fn['risk_score']:.3f}  conf={fn['confidence']:.2f}  "
                 f"depth={fn['recommended_test_depth']}"
             )
-            print(f"       ↳ {fn['explanation_text']}")
+            print(f"       -> {fn['explanation_text']}")
         print()
 

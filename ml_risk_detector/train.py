@@ -13,6 +13,7 @@ from data.dataset import generate_synthetic_dataset
 from utils.feature_engineering import FeatureEngineer, CodeMetrics
 from models.risk_detector import MLRiskDetector
 from models.prioritizer import TestPrioritizer
+from utils.llm_prompt_generator import LLMPromptGenerator
  
 logging.basicConfig(
     level=logging.INFO,
@@ -24,8 +25,8 @@ logger = logging.getLogger("train")
 # Function to run  the ML risk detector training pipeline 
 def train():
     print("\n" + "="*65)
-    print("  COMPONENT 2 — ML RISK DETECTOR TRAINING PIPELINE")
-    print("  W.M.V.S.B Wahundeniya — IT22292872")
+    print("   ML RISK DETECTOR TRAINING PIPELINE")
+    print("  W.M.V.S.B Wahundeniya - IT22292872")
     print("="*65 + "\n")
  
     # ── 1. Generate / load dataset ──────────────────────────────────
@@ -65,26 +66,26 @@ def train():
     print("  HOLD-OUT TEST SET RESULTS")
     print("-"*55)
     targets = {
-        "precision":       ("Precision ≥0.85", 0.85),
-        "recall":          ("Recall ≥0.80",     0.80),
-        "f1_score":        ("F1-score ≥0.82",   0.82),
-        "roc_auc":         ("ROC-AUC ≥0.80",    0.80),
+        "precision":       ("Precision >=0.85", 0.85),
+        "recall":          ("Recall >=0.80",     0.80),
+        "f1_score":        ("F1-score >=0.82",   0.82),
+        "roc_auc":         ("ROC-AUC >=0.80",    0.80),
     }
     all_pass = True
     for key, (label, threshold) in targets.items():
         val = metrics.get(key, 0)
-        status = "✓ PASS" if val >= threshold else "✗ MISS"
+        status = "[PASS]" if val >= threshold else "[MISS]"
         if val < threshold:
             all_pass = False
         print(f"  {label:<22} : {val:.4f}   {status}")
     print("-"*55)
-    print(f"  Proposal targets: {'ALL MET ✓' if all_pass else 'Some targets need tuning'}")
+    print(f"  Proposal targets: {'ALL MET [PASS]' if all_pass else 'Some targets need tuning'}")
  
     # ── 5. Cross-validation ─────────────────────────────────────────
     logger.info("Step 5: 5-fold cross-validation...")
     cv_metrics = detector.cross_validate(X_train, y_train, cv=5)
-    print(f"\n  CV F1:  {cv_metrics['cv_f1_mean']:.3f} ± {cv_metrics['cv_f1_std']:.3f}")
-    print(f"  CV AUC: {cv_metrics['cv_auc_mean']:.3f} ± {cv_metrics['cv_auc_std']:.3f}")
+    print(f"\n  CV F1:  {cv_metrics['cv_f1_mean']:.3f} +/- {cv_metrics['cv_f1_std']:.3f}")
+    print(f"  CV AUC: {cv_metrics['cv_auc_mean']:.3f} +/- {cv_metrics['cv_auc_std']:.3f}")
  
     # ── 6. Save model ───────────────────────────────────────────────
     logger.info("Step 6: Saving model...")
@@ -188,7 +189,7 @@ def train():
     prioritizer.print_summary(payload)
  
     # the output for the top function
-    print("\n  DETAILED SHAP EXPLANATION — process_transaction():")
+    print("\n  DETAILED SHAP EXPLANATION - process_transaction():")
     print("  " + "-"*55)
     top = next(p for p in predictions if p.function_name == "process_transaction")
     print(f"  Risk score  : {top.risk_score:.3f}  [{top.risk_level}]")
@@ -199,7 +200,7 @@ def train():
     print(f"  Explanation : {top.explanation_text}")
     print("\n  Top SHAP factors:")
     for factor in top.top_risk_factors:
-        bar = "█" * int(abs(factor["contribution"]) * 80)
+        bar = "=" * int(abs(factor["contribution"]) * 80)
         print(f"    {factor['feature']:<35} +{factor['contribution']:+.3f}  {bar}")
  
     # JSON file save
@@ -207,6 +208,10 @@ def train():
     with open(out_path, "w") as f:
         json.dump(payload, f, indent=2)
     logger.info(f"Sample prediction saved to {out_path}")
+    
+    prompt_out_path = "models/saved/sample_llm_prompt.txt"
+    LLMPromptGenerator.export_prompt(payload, prompt_out_path)
+    logger.info(f"Sample LLM Prompt saved to {prompt_out_path}")
  
     print("\n  Training complete. Model ready for API deployment.")
     print("  Run: uvicorn api.predict_api:app --host 0.0.0.0 --port 8000\n")
