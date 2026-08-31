@@ -9,7 +9,7 @@ sys.path.insert(0, os.path.dirname(__file__))
 import numpy as np
 from sklearn.model_selection import train_test_split
  
-from data.dataset import generate_synthetic_dataset
+from data.dataset import FEATURE_COLUMNS
 from utils.feature_engineering import FeatureEngineer, CodeMetrics
 from models.risk_detector import MLRiskDetector
 from models.prioritizer import TestPrioritizer
@@ -29,12 +29,18 @@ def train():
     print("="*65 + "\n")
  
     # ── 1. Generate / load dataset ──────────────────────────────────
-    logger.info("Step 1: Generating synthetic training dataset...")
-    X, y, metrics_list = generate_synthetic_dataset(
-        n_samples=3000,
-        defect_ratio=0.15,
-        random_state=42,
-    )
+    logger.info("Step 1: Loading real training datasets...")
+    from data.dataset import load_all_real_datasets, generate_synthetic_dataset
+
+    X, y, metrics_list = load_all_real_datasets("data")
+    if X is None or len(X) == 0:
+        logger.warning("No real datasets found — falling back to synthetic data")
+        X, y, metrics_list = generate_synthetic_dataset(
+            n_samples=3000,
+            defect_ratio=0.15,
+            random_state=42,
+        )
+
  
     # Train / test split (80/20 stratified)
     X_train, X_test, y_train, y_test, m_train, m_test = train_test_split(
