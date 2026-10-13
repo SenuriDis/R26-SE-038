@@ -11,6 +11,9 @@ __pycache__/
 *.py[cod]
 *.egg-info/
 .pytest_cache/
+.coverage
+.mutmut-cache
+htmlcov/
 
 # Environments
 venv/

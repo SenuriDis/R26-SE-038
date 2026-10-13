@@ -159,16 +159,20 @@ def run_mutation_testing():
     cmd = ["mutmut", "run"]
     try:
         result = subprocess.run(cmd, cwd=BASE_DIR, capture_output=True, text=True)
-    except FileNotFoundError as exc:
-        mutation_log = os.path.join(REPORTS_DIR, "mutation.log")
-        with open(mutation_log, "w", encoding="utf-8") as log_file:
-            log_file.write(str(exc))
-        if created_setup_cfg:
-            os.remove(setup_cfg_path)
-        return {
-            "error": "Mutation testing executable not found",
-            "log_file": "reports/mutation.log",
-        }
+    except FileNotFoundError:
+        cmd = [sys.executable, "-m", "mutmut", "run"]
+        try:
+            result = subprocess.run(cmd, cwd=BASE_DIR, capture_output=True, text=True)
+        except Exception as exc:
+            mutation_log = os.path.join(REPORTS_DIR, "mutation.log")
+            with open(mutation_log, "w", encoding="utf-8") as log_file:
+                log_file.write(str(exc))
+            if created_setup_cfg:
+                os.remove(setup_cfg_path)
+            return {
+                "error": "Mutation testing executable not found",
+                "log_file": "reports/mutation.log",
+            }
     with open(os.path.join(REPORTS_DIR, "mutation.log"), "w", encoding="utf-8") as log_file:
         log_file.write(result.stdout)
         log_file.write(result.stderr)
@@ -218,10 +222,14 @@ def run_mutation_testing():
             conn.close()
             
             status_counts = {k: v for k, v in rows}
-            total = sum(status_counts.values())
-            killed = status_counts.get("killed", 0)
-            survived = status_counts.get("survived", 0)
-            mutation_score = round((killed / total) * 100, 2) if total > 0 else 0.0
+            killed = status_counts.get("killed", 0) + status_counts.get("ok_killed", 0)
+            survived = status_counts.get("survived", 0) + status_counts.get("bad_survived", 0)
+            timeout = status_counts.get("timeout", 0) + status_counts.get("bad_timeout", 0)
+            suspicious = status_counts.get("suspicious", 0) + status_counts.get("ok_suspicious", 0)
+            tested = killed + survived + timeout + suspicious
+            total = sum(status_counts.values()) if status_counts else 0
+            score_denom = tested if tested > 0 else total
+            mutation_score = round((killed / score_denom) * 100, 2) if score_denom > 0 else 0.0
             mutation_data = {
                 "total_mutants": total,
                 "killed_mutants": killed,
