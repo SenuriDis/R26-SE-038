@@ -1,0 +1,13 @@
+{
+  "run_id": "demo-run-001",
+  "generated_at": "20260507_112522",
+  "segments_processed": 2,
+  "segments_with_valid_tests": 2,
+  "success_rate": 1.0,
+  "errors": [],
+  "output_files": [
+    "outputs\\run_demo-run-001_20260507_112522\\generated_tests\\test_divide.py",
+    "outputs\\run_demo-run-001_20260507_112522\\generated_tests\\test_calculate_average.py"
+  ],
+  "review_report": "outputs\\run_demo-run-001_20260507_112522\\code_review_report.json"
+}

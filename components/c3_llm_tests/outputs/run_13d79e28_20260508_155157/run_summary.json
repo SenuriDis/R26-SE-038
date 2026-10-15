@@ -1,0 +1,12 @@
+{
+  "run_id": "13d79e28",
+  "generated_at": "20260508_155157",
+  "segments_processed": 0,
+  "segments_with_valid_tests": 0,
+  "success_rate": 0.0,
+  "errors": [
+    "RAG indexing failed: Repository not found: D:\\Year 4 Sem 1\\temp_repos\\requests\\src\\reques"
+  ],
+  "output_files": [],
+  "review_report": "outputs\\run_13d79e28_20260508_155157\\code_review_report.json"
+}

@@ -1,0 +1,64 @@
+name: Evaluate Generated Tests
+
+on:
+  push:
+    paths-ignore:
+      - "reports/**"
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  evaluate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      # Checkout
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      # Python setup
+      - name: Set up Python 3.10
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.10"
+          cache: pip
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      # Run the full evaluation pipeline
+      - name: Run test execution & evaluation pipeline
+        run: python execute_tests.py
+
+      # Print report summary to the job log
+      - name: Show evaluation report
+        if: always()
+        run: |
+          echo "=========================================="
+          echo "  EVALUATION REPORT SUMMARY"
+          echo "=========================================="
+          if [ -f reports/evaluation_report.json ]; then
+            jq -r '
+              "Status           : \(.execution_status // "?")",
+              "Tests            : \(.test_results.passed // 0)/\(.test_results.total // 0) passed",
+              "Pass Rate        : \(.evaluation_summary.pass_rate_pct // 0)%",
+              "Statement Cov.   : \(.coverage_metrics.statement_coverage_pct // 0)%",
+              "Branch Cov.      : \(.coverage_metrics.branch_coverage_pct // 0)%",
+              "Mutation Score   : \(.evaluation_summary.mutation_score_pct // 0)%",
+              "Quality Grade    : \(.evaluation_summary.quality_grade // "?")"
+            ' reports/evaluation_report.json
+          else
+            echo "reports/evaluation_report.json not found"
+          fi
+
+      # Upload all report artifacts
+      - name: Upload evaluation reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-evaluation-reports
+          path: reports/
+          if-no-files-found: warn

@@ -1,0 +1,12 @@
+{
+  "run_id": "679d0339",
+  "generated_at": "20260508_152507",
+  "segments_processed": 1,
+  "segments_with_valid_tests": 1,
+  "success_rate": 1.0,
+  "errors": [],
+  "output_files": [
+    "outputs\\run_679d0339_20260508_152507\\generated_tests\\test_divide.py"
+  ],
+  "review_report": "outputs\\run_679d0339_20260508_152507\\code_review_report.json"
+}

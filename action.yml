@@ -1,0 +1,323 @@
+name: "AI Test Generation and Review"
+description: >-
+  Ranks your functions by defect risk, writes pytest tests for the riskiest,
+  runs them, and reports what it found.
+author: "R26-SE-038"
+
+branding:
+  icon: check-circle
+  color: purple
+
+inputs:
+  groq-api-key:
+    description: >-
+      Groq API key. Test generation and code review both need it. Store it as
+      a repository secret and pass it in; never hard-code it in a workflow.
+    required: true
+
+  path:
+    description: "Directory to analyse, relative to the repository root."
+    required: false
+    default: "."
+
+  changed-only:
+    description: >-
+      Analyse only the functions a change touched.
+
+      Left at "auto" it decides for itself, which is almost always what you
+      want: scoped to the diff on a pull request, and a full scan on a manual
+      or scheduled run. That gives a repository a baseline the day the action
+      is added, then keeps it current incrementally without ever spending
+      45 seconds per function on code nobody touched.
+
+      Set "true" or "false" to force it.
+    required: false
+    default: "auto"
+
+  max-functions:
+    description: >-
+      Generate tests for at most this many functions, highest risk first.
+      This is what makes a first run on an unanalysed repository finish in
+      minutes rather than hours.
+    required: false
+    default: "10"
+
+  min-risk-level:
+    description: >-
+      Lowest risk tier to generate tests for: HIGH, MEDIUM or LOW. Small or
+      young repositories tend to score everything LOW, so MEDIUM can
+      legitimately select nothing.
+    required: false
+    default: "MEDIUM"
+
+  comment-on-pr:
+    description: "Post the report as a pull request comment."
+    required: false
+    default: "true"
+
+  upload-artifact:
+    description: >-
+      Attach the generated tests and reports to the workflow run so they can
+      be downloaded. Without this the runner's workspace is destroyed when the
+      job ends and the generated tests are lost.
+    required: false
+    default: "true"
+
+  commit-tests:
+    description: >-
+      Commit the generated tests back to the branch under `tests-dir`.
+
+      Off by default, deliberately: these tests are AI-written, and a run that
+      silently pushes to someone's branch is a surprise. Turning it on needs
+      `permissions: contents: write`, and it cannot work for pull requests
+      from forks, where the token is read-only.
+    required: false
+    default: "false"
+
+  tests-dir:
+    description: "Where committed tests are written, relative to the repository root."
+    required: false
+    default: "tests/ai_generated"
+
+  fail-on-defect:
+    description: >-
+      Fail the check when a generated test finds a likely defect. Off by
+      default: these tests are AI-written and worth reading before they gate
+      a merge.
+    required: false
+    default: "false"
+
+  groq-model:
+    description: >-
+      Which Groq model the agents use. This matters more than it looks: a
+      capable model writes tests against the function's *documented contract*
+      and so can fail when the code is wrong, while a weaker one tends to
+      assert whatever the implementation currently returns -- producing tests
+      that can never fail and never find anything.
+
+      Groq's free tier meters tokens per day per model, so switching models is
+      also a way to get a fresh daily budget.
+    required: false
+    default: "openai/gpt-oss-120b"
+
+  python-version:
+    description: >-
+      Python to run everything on. 3.12 by default, because component 2 pins
+      numpy 1.26.4, which publishes no wheels for 3.13.
+    required: false
+    default: "3.12"
+
+  github-token:
+    description: "Token used to post the comment. Defaults to the workflow's own."
+    required: false
+    default: ${{ github.token }}
+
+outputs:
+  report:
+    description: "Path to the generated Markdown report."
+    value: ${{ steps.analyse.outputs.report }}
+  defects-found:
+    description: "How many generated tests failed in a way that looks like a real defect."
+    value: ${{ steps.analyse.outputs.defects-found }}
+  functions-analysed:
+    description: "How many functions were analysed."
+    value: ${{ steps.analyse.outputs.functions-analysed }}
+
+# A composite action rather than a Docker one, deliberately.
+#
+# `runs.image: Dockerfile` makes GitHub rebuild the image on every run, and
+# this pipeline's dependencies (chromadb, torch, scikit-learn) come to several
+# gigabytes -- that is many minutes of rebuild before any work starts. Caching
+# the installed packages instead means a slow first run and fast ones after.
+#
+# The isolation a container would add is largely redundant here: an Actions
+# runner is already a disposable VM.
+runs:
+  using: composite
+
+  steps:
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: ${{ inputs.python-version }}
+
+    - name: Cache component environments
+      id: cache
+      uses: actions/cache@v4
+      with:
+        path: ${{ github.action_path }}/.venvs
+        # A fixed version rather than hashFiles: hashFiles only sees the
+        # caller's workspace, and this action's requirements live in the action
+        # itself. Bump the number when a component's dependencies change.
+        key: r26-venvs-v1-${{ runner.os }}-py${{ inputs.python-version }}
+        restore-keys: |
+          r26-venvs-v1-${{ runner.os }}-
+
+    - name: Build component environments
+      if: steps.cache.outputs.cache-hit != 'true'
+      shell: bash
+      run: |
+        set -euo pipefail
+        cd "${{ github.action_path }}"
+        mkdir -p .venvs
+
+        # C2 imports only these three. Its requirements.txt also lists xgboost,
+        # shap, imbalanced-learn, jupyter, matplotlib and seaborn, none of
+        # which appear in any import -- "xgb_model" is an sklearn
+        # GradientBoostingClassifier.
+        python -m venv .venvs/c2
+        .venvs/c2/bin/pip install --quiet --upgrade pip
+        .venvs/c2/bin/pip install --quiet \
+          "numpy==1.26.4" "pandas==2.2.1" "scikit-learn==1.4.2"
+
+        # C3's requirements.txt is missing two packages its own code imports,
+        # so a clean install of it fails. Added here rather than editing the
+        # vendored file, which would conflict on the next `git subtree pull`:
+        #   langchain-groq                      src/utils/llm.py
+        #   llama-index-embeddings-huggingface  src/rag/indexer.py
+        # Both belong in C3's requirements.txt on its own branch.
+        python -m venv .venvs/c3
+        .venvs/c3/bin/pip install --quiet --upgrade pip
+        .venvs/c3/bin/pip install --quiet -r components/c3_llm_tests/requirements.txt
+        .venvs/c3/bin/pip install --quiet \
+          "langchain-groq>=0.1.9" "llama-index-embeddings-huggingface>=0.2.0"
+
+        python -m venv .venvs/c4
+        .venvs/c4/bin/pip install --quiet --upgrade pip
+        .venvs/c4/bin/pip install --quiet -r components/c4_test_eval/requirements.txt
+
+    - name: Analyse, generate tests, and evaluate
+      id: analyse
+      shell: bash
+      env:
+        INPUT_GROQ_API_KEY: ${{ inputs.groq-api-key }}
+        INPUT_GROQ_MODEL: ${{ inputs.groq-model }}
+        INPUT_COMMENT_ON_PR: ${{ inputs.comment-on-pr }}
+        INPUT_FAIL_ON_DEFECT: ${{ inputs.fail-on-defect }}
+        INPUT_GITHUB_TOKEN: ${{ inputs.github-token }}
+      run: |
+        set -uo pipefail
+        ACTION="${{ github.action_path }}"
+        ARTIFACTS="${{ github.workspace }}/.ai-test-artifacts"
+
+        # C3 resolves .env relative to its own directory. Writing these there
+        # keeps them out of the workspace, which is the checked-out repository.
+        {
+          printf 'GROQ_API_KEY=%s\n' "${INPUT_GROQ_API_KEY}"
+          printf 'GROQ_MODEL_AGENT1=%s\n' "${INPUT_GROQ_MODEL}"
+          printf 'GROQ_MODEL_AGENT3=%s\n' "${INPUT_GROQ_MODEL}"
+        } > "${ACTION}/.env"
+
+        export C1_PYTHON=python
+        export C2_PYTHON="${ACTION}/.venvs/c2/bin/python"
+        export C3_PYTHON="${ACTION}/.venvs/c3/bin/python"
+        export C4_PYTHON="${ACTION}/.venvs/c4/bin/python"
+        export PYTHONIOENCODING=utf-8
+
+        cd "${{ github.workspace }}"
+
+        # Actions checks the repository out as a different user than the one
+        # running these steps, and git refuses to touch it without this. With
+        # git broken, history mining silently yields nothing and every function
+        # scores as though it were brand new.
+        git config --global --add safe.directory "${{ github.workspace }}" || true
+
+        if ! git rev-parse HEAD~1 >/dev/null 2>&1; then
+          echo "::warning::Shallow checkout detected. Risk scores depend on git history -- set fetch-depth: 0 on actions/checkout."
+        fi
+
+        ARGS=( "${{ inputs.path }}" --artifacts "${ARTIFACTS}"
+               --min-risk-level "${{ inputs.min-risk-level }}" --stage3 --stage4 )
+
+        # "auto" means: scope to the diff on a pull request, scan everything
+        # otherwise. Deciding here rather than making every caller write
+        # `${{ github.event_name == 'pull_request' }}` in their workflow.
+        CHANGED="${{ inputs.changed-only }}"
+        if [ "${CHANGED}" = "auto" ]; then
+          if [ "${GITHUB_EVENT_NAME:-}" = "pull_request" ]; then
+            CHANGED="true"
+          else
+            CHANGED="false"
+          fi
+          echo "::notice::changed-only=auto resolved to ${CHANGED} for a ${GITHUB_EVENT_NAME:-unknown} event."
+        fi
+
+        if [ "${CHANGED}" = "true" ]; then
+          ARGS+=( --changed-only )
+        fi
+        if [ -n "${{ inputs.max-functions }}" ] && [ "${{ inputs.max-functions }}" != "0" ]; then
+          ARGS+=( --max-functions "${{ inputs.max-functions }}" )
+        fi
+
+        echo "::group::Pipeline"
+        python "${ACTION}/run_pipeline.py" "${ARGS[@]}"
+        STATUS=$?
+        echo "::endgroup::"
+
+        if [ "${STATUS}" -ne 0 ]; then
+          echo "::warning::The pipeline exited with status ${STATUS}. Reporting whatever it produced."
+        fi
+
+        python "${ACTION}/action/post_results.py" \
+          --artifacts "${ARTIFACTS}" \
+          --pipeline-root "${ACTION}"
+
+    - name: Commit the generated tests
+      if: inputs.commit-tests == 'true'
+      shell: bash
+      run: |
+        set -euo pipefail
+        cd "${{ github.workspace }}"
+        ARTIFACTS="${{ github.workspace }}/.ai-test-artifacts"
+        TARGET="${{ inputs.tests-dir }}"
+
+        # Newest run directory; C3 writes one per run.
+        SRC=$(ls -dt "${ARTIFACTS}"/c3_output/run_*/generated_tests 2>/dev/null | head -1 || true)
+
+        if [ -z "${SRC}" ] || [ -z "$(ls -A "${SRC}" 2>/dev/null)" ]; then
+          echo "::notice::No generated tests to commit."
+          exit 0
+        fi
+
+        mkdir -p "${TARGET}"
+        cp "${SRC}"/test_*.py "${TARGET}/"
+
+        # Commit the two documents a developer would actually read alongside
+        # the tests: what the run found, and what the reviewer suggests
+        # fixing. The intermediate JSON stays in the uploaded artifact -- it is
+        # build output, and committing it would churn every pull request with
+        # new run ids for no benefit.
+        ACTION="${{ github.action_path }}"
+        PYTHONPATH="${ACTION}" python -m pipeline.report "${ARTIFACTS}" \
+          --title "AI test analysis" -o "${TARGET}/REPORT.md" || \
+          echo "::warning::Could not write REPORT.md"
+        PYTHONPATH="${ACTION}" python -m pipeline.report "${ARTIFACTS}" \
+          --code-review -o "${TARGET}/CODE_REVIEW.md" || \
+          echo "::warning::Could not write CODE_REVIEW.md"
+
+        git config user.name  "github-actions[bot]"
+        git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+        git add "${TARGET}"
+
+        if git diff --cached --quiet; then
+          echo "::notice::Generated tests are unchanged; nothing to commit."
+          exit 0
+        fi
+
+        # [skip ci] so committing does not retrigger this workflow on its own
+        # push and loop.
+        git commit -q -m "test: add AI-generated tests [skip ci]"
+
+        BRANCH="${GITHUB_HEAD_REF:-${GITHUB_REF_NAME}}"
+        if ! git push origin "HEAD:${BRANCH}"; then
+          echo "::warning::Could not push the generated tests. A fork's token is read-only, and committing needs permissions: contents: write."
+        fi
+
+    - name: Attach the generated tests and reports
+      if: always() && inputs.upload-artifact == 'true'
+      uses: actions/upload-artifact@v4
+      with:
+        name: ai-test-results
+        path: ${{ github.workspace }}/.ai-test-artifacts
+        if-no-files-found: warn
+        retention-days: 30
