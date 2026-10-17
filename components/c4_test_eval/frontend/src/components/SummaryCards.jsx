@@ -36,7 +36,7 @@ function StatCard({ value, label, sub, accentColor, showPct }) {
         className="summary-card__value"
         style={{ color: accentColor }}
       >
-        {animated}{showPct ? "%" : ""}
+        {value == null ? "—" : `${animated}${showPct ? "%" : ""}`}
       </div>
       <div className="summary-card__label">{label}</div>
       {sub && <div className="summary-card__sub">{sub}</div>}
@@ -83,9 +83,11 @@ export default function SummaryCards({ report }) {
         showPct
       />
       <StatCard
-        value={ev.mutation_score_pct ?? mt.mutation_score_pct ?? 0}
+        value={ev.mutation_score_pct ?? mt.mutation_score_pct ?? null}
         label="Mutation Score"
-        sub={mt.killed_mutants != null ? `${mt.killed_mutants}/${mt.total_mutants} killed` : undefined}
+        sub={mt.killed_mutants != null
+          ? `${mt.killed_mutants} killed · ${mt.survived_mutants ?? 0} survived · ${mt.unscored_mutants ?? 0} unscored`
+          : mt.reason || mt.error || "Not available"}
         accentColor="#7c3aed"
         showPct
       />
