@@ -557,11 +557,12 @@ run, where no container was involved. The JSON also carries mojibake
 (`"quality_grade": "D � Needs Improvement"`) because it is written without an
 explicit encoding.
 
-**Docker was not used.** C4's intended path is `run.py`, which builds an image
-and runs the suite inside it. Docker is installed here but the daemon is not
-running, and C4's Dockerfile copies its own `src/`/`tests/` rather than a
-target, so it would need parameterising for arbitrary repos anyway. Stage 4
-runs locally instead — no isolation, but no daemon required.
+**The original integration did not use Docker.** Stage 4 ran C4 directly on
+the host because the original C4 image only copied its own sample `src/` and
+`tests/`. Stage 4 now builds the C4 image, copies the staged target and
+generated tests into an ephemeral container, and runs with networking
+disabled, dropped capabilities, and only the report directory mounted from
+the host. Its disposable filesystem is removed after the run.
 
 
 ### 10. Running as a GitHub Action
@@ -575,23 +576,17 @@ pipeline/report.py      the seven artifacts collapsed into one Markdown doc
 examples/ai-test-review.yml   workflow template to copy
 ```
 
-**A Docker action was tried first and abandoned.** Two reasons, both worth
-recording:
+**A Docker action was tried first and abandoned.** Rebuilding the full
+analysis image on every Actions run would be expensive, so GitHub Actions uses
+a composite action and caches those dependencies. Stage 4 still uses Docker
+for test isolation:
 
-- `runs.image: Dockerfile` makes GitHub rebuild the image *on every run*. The
-  image reached 3.14 GB before `llama-index-embeddings-huggingface` (which
-  pulls torch) was even added, so every pull request would have spent many
-  minutes rebuilding before doing any work. Publishing to a registry and
-  pulling `docker://ghcr.io/...` would fix that, at the cost of maintaining a
-  multi-gigabyte published image.
-- The isolation is redundant. An Actions runner is already a disposable VM, so
-  a container inside it buys nothing. Nisula's own Docker use in C4 is a
-  different matter and still valid: it isolates AI-generated tests on a
-  *developer's laptop*, where there is no disposable VM.
-
-Note that C4's Docker step lives in `run.py`, above `execute_tests.py`.
-`execute_tests.py` itself contains no reference to Docker, which is why stage
-4 can run it directly.
+- `runs.image: Dockerfile` would make GitHub rebuild the multi-gigabyte
+  analysis stack on every run. The action instead caches its Python
+  environments.
+- C4's Docker step in `run.py` is still available for its sample project.
+  Integrated pipeline runs use the same C4 image but stage the target's code
+  and generated tests into an isolated container.
 
 **The build did surface two real bugs**, which only appear on a clean install:
 `components/c3_llm_tests/requirements.txt` is missing `langchain-groq`
