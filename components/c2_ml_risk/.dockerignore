@@ -1,0 +1,7 @@
+venv/
+.venv/
+__pycache__/
+*.py[cod]
+.git/
+ml_risk_detector/frontend/node_modules/
+ml_risk_detector/frontend/dist/
