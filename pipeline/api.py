@@ -1,10 +1,11 @@
 """HTTP API for running the complete C1 -> C2 -> C3 -> C4 pipeline."""
 
+import json
 import logging
 import os
 from argparse import Namespace
 from pathlib import Path, PurePosixPath, PureWindowsPath
-from typing import Dict, Literal, Optional
+from typing import Any, Dict, List, Literal, Optional, Union
 
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
@@ -54,9 +55,9 @@ class PipelineRequest(BaseModel):
 
 
 class WizardC1Request(BaseModel):
-    c1_response: dict
-    source_files: Dict[str, str]
-    project_name: str
+    c1_response: Any = Field(..., description="C1 analysis report or list of file reports")
+    source_files: Dict[str, str] = Field(default_factory=dict, description="Mapping of relative file path to file contents")
+    project_name: Optional[str] = Field(default="project", description="Target project name")
 
 
 class WizardC3Request(WizardC1Request):
@@ -175,10 +176,23 @@ def run_full_pipeline(request: PipelineRequest) -> dict:
 @app.post("/api/wizard/c2")
 def wizard_run_c2(request: WizardC1Request) -> dict:
     """Adapt completed C1 output and pass function metrics to C2."""
+    logger.info(
+        "wizard_run_c2 received payload: project_name=%s, source_files_count=%d",
+        request.project_name,
+        len(request.source_files) if request.source_files else 0,
+    )
     _validate_wizard_source_files(request.source_files)
+    project_name = request.project_name or "project"
+    c1_response = request.c1_response
+    if isinstance(c1_response, str):
+        try:
+            c1_response = json.loads(c1_response)
+        except Exception as error:
+            logger.warning("Could not parse string c1_response as JSON: %s", error)
+
     try:
         c2_payload, _, _ = run_pipeline.adapt_c1_payload(
-            request.c1_response, request.source_files, request.project_name
+            c1_response, request.source_files, project_name
         )
         response = run_pipeline.post_json(
             f"{os.environ.get('C2_URL', 'http://localhost:8002').rstrip('/')}/predict",
@@ -188,12 +202,17 @@ def wizard_run_c2(request: WizardC1Request) -> dict:
         if not isinstance(response, dict) or not isinstance(response.get("ranked_functions"), list):
             raise PipelineError("C2 /predict response did not contain ranked_functions.")
         return response
+    except HTTPException:
+        raise
     except PipelineError as error:
         logger.warning("Wizard C2 step failed: %s", error)
         raise HTTPException(status_code=502, detail=str(error)) from error
     except (OSError, ValueError, KeyError, TypeError) as error:
         logger.exception("Wizard C2 step failed during processing.")
         raise HTTPException(status_code=502, detail=f"Could not hand off C1 results to C2: {error}") from error
+    except Exception as error:
+        logger.exception("Unexpected error in wizard_run_c2: %s", error)
+        raise HTTPException(status_code=500, detail=f"Unexpected error in wizard_run_c2: {error}") from error
 
 
 @app.post("/api/wizard/c3")
