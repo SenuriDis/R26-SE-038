@@ -706,7 +706,7 @@
               id="wizard-frame"
               class="component-frame"
               title="Step 1: C1 Static Analysis"
-              src="about:blank"
+              src="http://localhost:5173/?wizard=1"
               loading="eager"
             ></iframe>
           </div>
@@ -770,7 +770,7 @@
       const wizardError = document.getElementById("wizard-error");
       const wizardRetry = document.getElementById("wizard-retry");
       const wizardStageInfo = [
-        { label: "C1 · Static Analysis", url: "http://localhost:5173" },
+        { label: "C1 · Static Analysis", url: "http://localhost:5173/?wizard=1" },
         { label: "C2 · ML Risk", url: "http://localhost:3000/predict" },
         { label: "C3 · LLM Tests", url: "http://localhost:5174" },
         { label: "C4 · Evaluation", url: "http://localhost:5175" },
@@ -834,9 +834,14 @@
         wizard.activeStep = index;
         const stage = wizardStageInfo[index];
         wizardFrame.title = `Step ${index + 1}: ${stage.label}`;
-        const url = new URL(stage.url);
-        url.searchParams.set("wizard", "1");
-        if (wizardFrame.src !== url.href) wizardFrame.src = url.href;
+        if (index === 0) {
+          const exactUrl = "http://localhost:5173/?wizard=1";
+          if (wizardFrame.src !== exactUrl) wizardFrame.src = exactUrl;
+        } else {
+          const url = new URL(stage.url);
+          url.searchParams.set("wizard", "1");
+          if (wizardFrame.src !== url.href) wizardFrame.src = url.href;
+        }
         updateWizardSteps();
       }
 
@@ -859,6 +864,10 @@
             body: JSON.stringify(payload),
           });
         } catch (error) {
+          console.error(`[requestWizardStage] Network error contacting ${endpoint}:`, error);
+          if (error && error.response) {
+            console.error("[requestWizardStage] error.response:", error.response);
+          }
           throw new Error(`Could not reach the pipeline API at localhost:8005: ${error.message}`);
         }
 
@@ -869,10 +878,22 @@
           throw new Error(`The ${endpoint.toUpperCase()} service returned an invalid response.`);
         }
         if (!response.ok) {
+          console.error(`[requestWizardStage] Error ${response.status} from ${endpoint}:`, result);
+          if (response.status === 400 || !response.ok) {
+            console.error("[requestWizardStage] error.response details:", {
+              status: response.status,
+              statusText: response.statusText,
+              response: result,
+              endpoint,
+            });
+          }
           const detail = typeof result.detail === "string"
             ? result.detail
-            : result.error || `The ${endpoint.toUpperCase()} step returned HTTP ${response.status}.`;
-          throw new Error(detail);
+            : (typeof result.detail === "object" ? JSON.stringify(result.detail) : (result.error || `The ${endpoint.toUpperCase()} step returned HTTP ${response.status}.`));
+          const err = new Error(detail);
+          err.response = result;
+          err.status = response.status;
+          throw err;
         }
         return result;
       }
@@ -947,6 +968,9 @@
           wizard.busy = false;
           updateWizardSteps();
         } catch (error) {
+          if (error && error.response) {
+            console.error("[runWizardFrom] Caught error with error.response:", error.response);
+          }
           const message = error instanceof Error ? error.message : "An unexpected pipeline error occurred.";
           setWizardFailure(wizard.activeStep + 1, message);
         }
@@ -990,7 +1014,7 @@
           wizard.projectName = "";
           wizardStageLog.replaceChildren();
           wizardStageLog.classList.add("hidden");
-          wizardFrame.src = "about:blank";
+          wizardFrame.src = "http://localhost:5173/?wizard=1";
           wizardError.classList.add("hidden");
           wizardRetry.classList.add("hidden");
           openWizardStep(0);
@@ -1000,7 +1024,12 @@
       }
 
       for (const link of navigationLinks) {
-        link.addEventListener("click", () => showView(link.dataset.view));
+        link.addEventListener("click", () => {
+          showView(link.dataset.view);
+          if (link.dataset.view === "wizard" && (!wizardFrame.src || wizardFrame.src === "about:blank")) {
+            openWizardStep(0);
+          }
+        });
       }
 
       for (const link of document.querySelectorAll("[data-home-link], [data-back-home]")) {
@@ -1021,7 +1050,7 @@
         wizardError.classList.add("hidden");
         wizardRetry.classList.add("hidden");
         if (wizard.failedStep === 1) {
-          wizardFrame.src = `${wizardStageInfo[0].url}?wizard=1&retry=${Date.now()}`;
+          wizardFrame.src = "http://localhost:5173/?wizard=1";
           setWizardStatus("Run C1 analysis again to retry the first step.");
           return;
         }
@@ -1029,13 +1058,14 @@
       });
 
       window.addEventListener("message", (event) => {
+        console.log("Message received:", event.data);
         const message = event.data;
         if (
           !message
           || message.channel !== "intellitest:wizard"
           || message.component !== "c1"
           || event.source !== wizardFrame.contentWindow
-          || event.origin !== new URL(wizardStageInfo[0].url).origin
+          || (event.origin !== new URL(wizardStageInfo[0].url).origin && event.origin !== "http://localhost:5173" && event.origin !== "http://127.0.0.1:5173")
           || wizard.activeStep !== 0
           || wizard.busy
         ) {
