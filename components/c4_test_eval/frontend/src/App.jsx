@@ -18,6 +18,11 @@ export default function App() {
     try {
       setLoading(true);
       const res  = await fetch("/api/report");
+      if (res.status === 404) {
+        setReport(null);
+        setError(null);
+        return;
+      }
       if (!res.ok) throw new Error(`API error ${res.status}`);
       const data = await res.json();
       setReport(data);
@@ -62,6 +67,19 @@ export default function App() {
           <div style={{ fontSize: 12, color: "var(--clr-muted)" }}>
             Make sure <code style={{ fontFamily: "var(--font-mono)" }}>node server.js</code>
             &nbsp;is running on port 3001.
+          </div>
+        </div>
+      )}
+
+      {!report && !error && !loading && (
+        <div className="card section fade-up" style={{ textAlign: "center" }}>
+          <div style={{ fontWeight: 600, marginBottom: 6 }}>
+            {running ? "Evaluation is running" : "No evaluation report yet"}
+          </div>
+          <div style={{ fontSize: 12, color: "var(--clr-muted)" }}>
+            {running
+              ? "The report will appear here when the Docker test run finishes."
+              : "Run the C4 tests below to generate a report."}
           </div>
         </div>
       )}

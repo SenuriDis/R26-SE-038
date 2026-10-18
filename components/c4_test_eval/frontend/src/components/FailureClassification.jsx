@@ -51,6 +51,29 @@ export default function FailureClassification({ report }) {
                     <div className="test-reason" style={{ marginTop: 0, whiteSpace: "pre-wrap" }}>
                       {t.message || "No message available"}
                     </div>
+                    {t.classification_reason && (
+                      <div className="test-reason" style={{ color: "var(--clr-muted)" }}>
+                        {t.classification_reason}
+                      </div>
+                    )}
+                    {t.evidence && (
+                      <div style={{ marginTop: "6px", color: "var(--clr-muted)", fontSize: "11px" }}>
+                        <div>
+                          Phase: {t.evidence.phase || "unknown"}
+                          {t.evidence.exception_type && ` · ${t.evidence.exception_type}`}
+                          {t.evidence.location?.path && ` · ${t.evidence.location.path}`}
+                          {t.evidence.location?.line && `:${t.evidence.location.line}`}
+                        </div>
+                        {t.evidence.traceback && (
+                          <details>
+                            <summary style={{ cursor: "pointer" }}>Full failure evidence</summary>
+                            <pre style={{ whiteSpace: "pre-wrap", overflowWrap: "anywhere" }}>
+                              {t.evidence.traceback}
+                            </pre>
+                          </details>
+                        )}
+                      </div>
+                    )}
                   </td>
                 </tr>
               );

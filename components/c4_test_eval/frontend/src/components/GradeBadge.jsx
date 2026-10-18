@@ -22,17 +22,19 @@ export default function GradeBadge({ report }) {
   const ev       = report?.evaluation_summary ?? {};
   const mt       = report?.mutation_metrics   ?? {};
   const raw      = ev.quality_grade ?? "";
-  const info     = parseGradeLetter(raw);
 
-  const passRate  = ev.pass_rate_pct          ?? 0;
-  const coverage  = ev.statement_coverage_pct ?? 0;
-  const mutation  = ev.mutation_score_pct ?? mt.mutation_score_pct ?? 0;
-  const hasMutation = mutation > 0;
-  const score     = hasMutation
-    ? (passRate + coverage + mutation) / 3
-    : (passRate + coverage) / 2;
+  const passRate = ev.pass_rate_pct ?? null;
+  const coverage = ev.statement_coverage_pct ?? null;
+  const mutation = ev.mutation_score_pct ?? mt.mutation_score_pct ?? null;
+  const metrics = [passRate, coverage, mutation];
+  const score = Number.isFinite(ev.quality_score_pct)
+    ? ev.quality_score_pct
+    : metrics.every(Number.isFinite)
+      ? metrics.reduce((sum, value) => sum + value, 0) / metrics.length
+      : null;
+  const info = score === null ? null : parseGradeLetter(raw);
 
-  const filled = C * (1 - score / 100);
+  const filled = score === null ? C : C * (1 - score / 100);
 
   return (
     <div className="card section fade-up" style={{ animationDelay: ".14s" }}>
@@ -68,11 +70,12 @@ export default function GradeBadge({ report }) {
             className="grade-title"
             style={{ color: info?.color ?? "var(--clr-text)" }}
           >
-            {info ? `Grade ${info.letter} — ${info.label}` : "No data"}
+            {info ? `Grade ${info.letter} — ${info.label}` : raw || "Not graded"}
           </div>
           <div className="grade-desc">
-            Combined score: <strong>{Math.round(score)}%</strong>
-            &nbsp;(pass rate + statement coverage ÷ 2)
+            {score === null
+              ? "A grade requires pass rate, statement coverage and a mutation score."
+              : <>Combined score: <strong>{score.toFixed(2)}%</strong> (equal-weight mean of pass rate, statement coverage and mutation score)</>}
           </div>
 
           <div className="grade-bar">
@@ -86,13 +89,11 @@ export default function GradeBadge({ report }) {
               pct={coverage}
               color="var(--clr-cyan)"
             />
-            {hasMutation && (
-              <BarRow
-                label="Mutation"
-                pct={mutation}
-                color="var(--clr-violet)"
-              />
-            )}
+            <BarRow
+              label="Mutation"
+              pct={mutation}
+              color="var(--clr-violet)"
+            />
           </div>
         </div>
       </div>
@@ -101,16 +102,20 @@ export default function GradeBadge({ report }) {
 }
 
 function BarRow({ label, pct, color }) {
+  const available = Number.isFinite(pct);
   return (
     <div className="grade-bar__row">
       <span className="grade-bar__name">{label}</span>
       <div className="grade-bar__track">
         <div
           className="grade-bar__fill"
-          style={{ width: `${pct}%`, background: color }}
+          style={{
+            width: available ? `${Math.max(0, Math.min(100, pct))}%` : "0%",
+            background: color,
+          }}
         />
       </div>
-      <span className="grade-bar__pct">{pct}%</span>
+      <span className="grade-bar__pct">{available ? `${pct}%` : "N/A"}</span>
     </div>
   );
 }
