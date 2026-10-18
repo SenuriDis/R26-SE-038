@@ -215,7 +215,7 @@ def train():
     logger.info(f"Sample prediction saved to {out_path}")
  
     print("\n  Training complete. Model ready for API deployment.")
-    print("  Run: uvicorn api.predict_api:app --host 0.0.0.0 --port 8000\n")
+    print("  Run: uvicorn api.predict_api:app --host 0.0.0.0 --port 8002\n")
  
     return detector, fe, metrics
  
@@ -223,4 +223,3 @@ def train():
 if __name__ == "__main__":
     train()
  
-

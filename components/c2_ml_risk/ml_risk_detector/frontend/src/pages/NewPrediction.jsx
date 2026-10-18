@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import FunctionForm, { emptyFunction, formToPayload } from '../components/FunctionForm';
 import ResultCard from '../components/ResultCard';
 import { api, historyStore } from '../services/api';
@@ -17,6 +17,31 @@ export default function NewPrediction() {
   const [loading, setLoading] = useState(false);
   const [results, setResults] = useState(null);
   const [processingMs, setProcessingMs] = useState(null);
+
+  useEffect(() => {
+    const allowedOrigins = new Set([
+      "http://localhost:5176",
+      "http://127.0.0.1:5176",
+      "http://localhost:5500",
+      "http://127.0.0.1:5500",
+    ]);
+    const handleWizardResult = (event) => {
+      if (
+        event.source !== window.parent
+        || !allowedOrigins.has(event.origin)
+        || event.data?.channel !== "intellitest:wizard"
+        || event.data?.component !== "c2"
+        || event.data?.status !== "complete"
+        || !Array.isArray(event.data?.payload?.ranked_functions)
+      ) {
+        return;
+      }
+      setResults(event.data.payload);
+      setProcessingMs(event.data.payload.processing_time_ms ?? null);
+    };
+    window.addEventListener("message", handleWizardResult);
+    return () => window.removeEventListener("message", handleWizardResult);
+  }, []);
 
   const addFn    = () => setFunctions(prev => [...prev, emptyFunction()]);
   const removeFn = (id) => setFunctions(prev => prev.filter(f => f.id !== id));
