@@ -22,6 +22,7 @@ def docker_run_command(container_name, reports_dir):
         "--volume", f"{os.path.abspath(reports_dir)}:/app/reports",
         "--workdir", "/app",
         IMAGE_NAME,
+        "python", "execute_tests.py",
     ]
 
 
