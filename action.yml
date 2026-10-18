@@ -153,7 +153,7 @@ runs:
         restore-keys: |
           r26-venvs-v1-${{ runner.os }}-
 
-    - name: Build component environments
+        - name: Build component environments
       if: steps.cache.outputs.cache-hit != 'true'
       shell: bash
       run: |
@@ -161,30 +161,20 @@ runs:
         cd "${{ github.action_path }}"
         mkdir -p .venvs
 
-        # C2 imports only these three. Its requirements.txt also lists xgboost,
-        # shap, imbalanced-learn, jupyter, matplotlib and seaborn, none of
-        # which appear in any import -- "xgb_model" is an sklearn
-        # GradientBoostingClassifier.
         python -m venv .venvs/c2
-        .venvs/c2/bin/pip install --quiet --upgrade pip
-        .venvs/c2/bin/pip install --quiet \
+        .venvs/c2/bin/pip install --no-cache-dir --quiet --upgrade pip
+        .venvs/c2/bin/pip install --no-cache-dir --quiet \
           "numpy==1.26.4" "pandas==2.2.1" "scikit-learn==1.4.2"
 
-        # C3's requirements.txt is missing two packages its own code imports,
-        # so a clean install of it fails. Added here rather than editing the
-        # vendored file, which would conflict on the next `git subtree pull`:
-        #   langchain-groq                      src/utils/llm.py
-        #   llama-index-embeddings-huggingface  src/rag/indexer.py
-        # Both belong in C3's requirements.txt on its own branch.
         python -m venv .venvs/c3
-        .venvs/c3/bin/pip install --quiet --upgrade pip
-        .venvs/c3/bin/pip install --quiet -r components/c3_llm_tests/requirements.txt
-        .venvs/c3/bin/pip install --quiet \
+        .venvs/c3/bin/pip install --no-cache-dir --quiet --upgrade pip
+        .venvs/c3/bin/pip install --no-cache-dir --quiet -r components/c3_llm_tests/requirements.txt
+        .venvs/c3/bin/pip install --no-cache-dir --quiet \
           "langchain-groq>=0.1.9" "llama-index-embeddings-huggingface>=0.2.0"
 
         python -m venv .venvs/c4
-        .venvs/c4/bin/pip install --quiet --upgrade pip
-        .venvs/c4/bin/pip install --quiet -r components/c4_test_eval/requirements.txt
+        .venvs/c4/bin/pip install --no-cache-dir --quiet --upgrade pip
+        .venvs/c4/bin/pip install --no-cache-dir --quiet -r components/c4_test_eval/requirements.txt
 
     - name: Analyse, generate tests, and evaluate
       id: analyse

@@ -38,6 +38,9 @@ from pipeline.stages import (
     stage4_test_eval,
 )
 
+# Increase recursion limit to handle deeply nested ASTs (fixes RecursionError)
+sys.setrecursionlimit(10000)
+
 
 def parse_args(argv=None):
     parser = argparse.ArgumentParser(
