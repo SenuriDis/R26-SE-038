@@ -1,3 +1,4 @@
+
 import ast
 
 
@@ -29,47 +30,41 @@ class NestingDepthCalculator(ast.NodeVisitor):
     # Called when exiting a nested block
     def _exit_block(self):
 
-        # Decrease nesting level
+        # Decrease current nesting level
         self.current_depth -= 1
+
+    # Helper method to safely visit a nested block
+    def _visit_nested_block(self, node):
+
+        self._enter_block()
+
+        try:
+            self.generic_visit(node)
+        finally:
+            self._exit_block()
 
     # Visits if statements
     def visit_If(self, node):
-
-        # Enter nested if block
-        self._enter_block()
-
-        # Continue traversing nested code
-        self.generic_visit(node)
-
-        # Exit block after traversal
-        self._exit_block()
+        self._visit_nested_block(node)
 
     # Visits for loops
     def visit_For(self, node):
+        self._visit_nested_block(node)
 
-        # Enter nested for block
-        self._enter_block()
-
-        # Continue traversing nested code
-        self.generic_visit(node)
-
-        # Exit block after traversal
-        self._exit_block()
+    # Visits asynchronous for loops
+    def visit_AsyncFor(self, node):
+        self._visit_nested_block(node)
 
     # Visits while loops
     def visit_While(self, node):
-
-        # Enter nested while block
-        self._enter_block()
-
-        # Continue traversing nested code
-        self.generic_visit(node)
-
-        # Exit block after traversal
-        self._exit_block()
+        self._visit_nested_block(node)
 
     # Main method used to calculate maximum nesting depth
     def calculate(self, tree):
+
+        # Reset values before each calculation
+        self.current_depth = 0
+        self.max_depth = 0
 
         # Traverse AST tree
         self.visit(tree)

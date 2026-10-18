@@ -1,3 +1,4 @@
+
 import ast
 
 
@@ -13,22 +14,40 @@ class DependencyExtractor(ast.NodeVisitor):
         # Tracks the function currently being visited
         self.current_function = None
 
-    # Visits every function definition in the Python source code
+    # Visits every function definition
     def visit_FunctionDef(self, node):
 
-        # Store current function name
+        self._visit_function(node)
+
+    # Supports asynchronous function definitions
+    def visit_AsyncFunctionDef(self, node):
+
+        self._visit_function(node)
+
+    # Handles function traversal while preserving the parent function
+    def _visit_function(self, node):
+
+        # Save the previous function context
+        previous_function = self.current_function
+
+        # Set current function
         self.current_function = node.name
 
-        # Initialize empty dependency list for the function
-        self.function_dependencies[self.current_function] = []
+        # Initialize dependency list without overwriting existing entries
+        self.function_dependencies.setdefault(node.name, [])
 
-        # Continue traversing inside the function body
-        self.generic_visit(node)
+        try:
 
-        # Reset after finishing function traversal
-        self.current_function = None
+            # Visit only this function's body
+            for statement in node.body:
+                self.visit(statement)
 
-    # Visits every function call inside the source code
+        finally:
+
+            # Restore the previous function context
+            self.current_function = previous_function
+
+    # Visits every function call
     def visit_Call(self, node):
 
         # Only track calls inside functions
@@ -37,11 +56,14 @@ class DependencyExtractor(ast.NodeVisitor):
             # Extract called function name
             function_name = self._get_called_function_name(node)
 
-            # Add dependency if valid function name exists
+            # Add dependency only if it has not been recorded
             if function_name:
-                self.function_dependencies[self.current_function].append(
-                    function_name
-                )
+                dependencies = self.function_dependencies[
+                    self.current_function
+                ]
+
+                if function_name not in dependencies:
+                    dependencies.append(function_name)
 
         # Continue traversing AST nodes
         self.generic_visit(node)
@@ -49,13 +71,11 @@ class DependencyExtractor(ast.NodeVisitor):
     # Helper method to identify called function names
     def _get_called_function_name(self, node):
 
-        # Example:
-        # login()
+        # Example: login()
         if isinstance(node.func, ast.Name):
             return node.func.id
 
-        # Example:
-        # user.login()
+        # Example: user.login()
         if isinstance(node.func, ast.Attribute):
             return node.func.attr
 
@@ -64,14 +84,12 @@ class DependencyExtractor(ast.NodeVisitor):
     # Main extraction method
     def extract(self, tree):
 
+        # Reset results before each extraction
+        self.function_dependencies = {}
+        self.current_function = None
+
         # Traverse AST tree
         self.visit(tree)
-
-        # Remove duplicate dependencies
-        for function_name in self.function_dependencies:
-            self.function_dependencies[function_name] = list(
-                set(self.function_dependencies[function_name])
-            )
 
         # Return dependency mapping
         return self.function_dependencies
