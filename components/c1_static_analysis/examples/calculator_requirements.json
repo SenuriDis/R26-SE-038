@@ -1,0 +1,25 @@
+
+[
+  {
+    "function_name": "calculate_fee",
+    "inputs": [
+      {
+        "name": "amount",
+        "constraint": "must be non-negative"
+      }
+    ],
+    "expected_output": "the calculated fee",
+    "exceptions": ["ValueError"]
+  },
+  {
+    "function_name": "enrol_student",
+    "inputs": [
+      {
+        "name": "student_id",
+        "constraint": "must be valid"
+      }
+    ],
+    "expected_output": "enrolment confirmation",
+    "exceptions": ["ValueError"]
+  }
+]
