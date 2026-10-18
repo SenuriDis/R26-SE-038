@@ -136,7 +136,7 @@ def _tests_section(run_dir: Path) -> List[str]:
     if segments:
         lines += ["| Function | Test cases covered |", "|---|---|"]
         for seg in segments:
-            trace = seg.get("traceability", {})
+            trace = seg.get("traceability") or {}
             lines.append(
                 f"| `{seg.get('function_name')}` | "
                 f"{trace.get('covered_count', 0)}/{trace.get('total_test_cases', 0)} |"
@@ -148,7 +148,7 @@ def _tests_section(run_dir: Path) -> List[str]:
         # test files says nothing about what was meant to be covered.
         lines += ["<details><summary>Test case traceability</summary>", ""]
         for seg in segments:
-            trace = seg.get("traceability", {})
+            trace = seg.get("traceability") or {}
             entries = trace.get("entries", [])
             if not entries:
                 continue
@@ -212,9 +212,12 @@ def _review_section(run_dir: Path, limit: int = 8) -> List[str]:
 def _evaluation_section(evaluation: Dict) -> List[str]:
     tests = evaluation.get("test_results", {})
     coverage = evaluation.get("coverage_metrics", {})
+    mutation = evaluation.get("mutation_metrics", {})
 
     failed = tests.get("failed_tests", []) or []
-    real_defects = [t for t in failed if t.get("failure_type") == "Real Defect"]
+    needs_review = [t for t in failed if t.get("failure_type") == "Needs Review"]
+    invalid_tests = [t for t in failed if t.get("failure_type") == "Invalid AI Test"]
+    environment_failures = [t for t in failed if t.get("failure_type") == "Environment Failure"]
 
     lines = [
         "## Test execution",
@@ -224,15 +227,34 @@ def _evaluation_section(evaluation: Dict) -> List[str]:
         f"| Passed | {tests.get('passed', 0)} / {tests.get('total', 0)} |",
         f"| Statement coverage | {coverage.get('statement_coverage_pct', 0)}% |",
         f"| Branch coverage | {coverage.get('branch_coverage_pct', 0)}% |",
-        "",
     ]
+    if mutation.get("status") == "completed":
+        score = mutation.get("mutation_score_pct")
+        if score is None:
+            scored = mutation.get("killed_mutants", 0) + mutation.get("survived_mutants", 0)
+            lines.append(
+                f"| Mutation testing | Completed; {scored} scored mutants, no score available "
+                f"({mutation.get('unscored_mutants', 0)} unscored) |"
+            )
+        else:
+            lines.append(
+                f"| Mutation score | {score}% "
+                f"({mutation.get('killed_mutants', 0)}/{mutation.get('killed_mutants', 0) + mutation.get('survived_mutants', 0)} scored mutants; "
+                f"{mutation.get('unscored_mutants', 0)} unscored) |"
+            )
+    else:
+        reason = mutation.get("reason") or mutation.get("error") or "not available"
+        lines.append(f"| Mutation testing | Not run: {reason} |")
+    lines.append("")
 
-    if real_defects:
+    if needs_review:
         lines += [
-            f"### {len(real_defects)} likely defect(s) found",
+            f"### {len(needs_review)} failure(s) need review",
+            "",
+            "Assertion mismatches do not prove whether the implementation or the generated expectation is wrong.",
             "",
         ]
-        for test in real_defects[:5]:
+        for test in needs_review[:5]:
             name = test.get("name", "").split("::")[-1]
             assertion = next(
                 (l.strip() for l in str(test.get("message", "")).splitlines()
@@ -244,13 +266,13 @@ def _evaluation_section(evaluation: Dict) -> List[str]:
                 lines.append(f"  ```\n  {assertion.lstrip('E ').strip()}\n  ```")
         lines.append("")
 
-    other = [t for t in failed if t.get("failure_type") != "Real Defect"]
-    if other:
-        kinds = {}
-        for test in other:
-            kinds[test.get("failure_type", "?")] = kinds.get(test.get("failure_type", "?"), 0) + 1
-        detail = ", ".join(f"{count} {kind}" for kind, count in kinds.items())
-        lines += [f"Other failures: {detail}.", ""]
+    other_counts = []
+    if invalid_tests:
+        other_counts.append(f"{len(invalid_tests)} invalid AI test(s)")
+    if environment_failures:
+        other_counts.append(f"{len(environment_failures)} environment failure(s)")
+    if other_counts:
+        lines += [f"Other failures: {', '.join(other_counts)}.", ""]
 
     return lines
 
@@ -280,10 +302,10 @@ def build(artifact_dir: Path, title: str = "Automated test analysis") -> str:
     # Headline first: what did it actually find?
     if evaluation:
         failed = evaluation.get("test_results", {}).get("failed_tests", []) or []
-        defects = [t for t in failed if t.get("failure_type") == "Real Defect"]
-        if defects:
+        review_failures = [t for t in failed if t.get("failure_type") == "Needs Review"]
+        if review_failures:
             lines += [
-                f"> **{len(defects)} likely defect(s) found** by generated tests.",
+                f"> **{len(review_failures)} test failure(s) need review**; assertion mismatches alone do not confirm product defects.",
                 "",
             ]
 
