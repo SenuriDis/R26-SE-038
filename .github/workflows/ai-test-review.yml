@@ -1,5 +1,9 @@
 name: AI Test Review
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: false
+
 on:
   pull_request:
   workflow_dispatch:
