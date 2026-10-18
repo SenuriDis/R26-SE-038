@@ -123,15 +123,16 @@ outputs:
     description: "How many functions were analysed."
     value: ${{ steps.analyse.outputs.functions-analysed }}
 
-# A composite action rather than a Docker one, deliberately.
+# A composite action rather than a Docker action, deliberately.
 #
 # `runs.image: Dockerfile` makes GitHub rebuild the image on every run, and
 # this pipeline's dependencies (chromadb, torch, scikit-learn) come to several
 # gigabytes -- that is many minutes of rebuild before any work starts. Caching
 # the installed packages instead means a slow first run and fast ones after.
 #
-# The isolation a container would add is largely redundant here: an Actions
-# runner is already a disposable VM.
+# Stage 4 still uses an isolated, network-disabled Docker container to execute
+# generated tests. The composite action keeps the larger analysis stack cached
+# on the Actions runner rather than rebuilding it for every run.
 runs:
   using: composite
 
@@ -182,10 +183,6 @@ runs:
         .venvs/c3/bin/pip install --quiet \
           "langchain-groq>=0.1.9" "llama-index-embeddings-huggingface>=0.2.0"
 
-        python -m venv .venvs/c4
-        .venvs/c4/bin/pip install --quiet --upgrade pip
-        .venvs/c4/bin/pip install --quiet -r components/c4_test_eval/requirements.txt
-
     - name: Analyse, generate tests, and evaluate
       id: analyse
       shell: bash
@@ -211,7 +208,6 @@ runs:
         export C1_PYTHON=python
         export C2_PYTHON="${ACTION}/.venvs/c2/bin/python"
         export C3_PYTHON="${ACTION}/.venvs/c3/bin/python"
-        export C4_PYTHON="${ACTION}/.venvs/c4/bin/python"
         export PYTHONIOENCODING=utf-8
 
         cd "${{ github.workspace }}"
@@ -261,6 +257,12 @@ runs:
         python "${ACTION}/action/post_results.py" \
           --artifacts "${ARTIFACTS}" \
           --pipeline-root "${ACTION}"
+        REPORT_STATUS=$?
+
+        if [ "${STATUS}" -ne 0 ]; then
+          exit "${STATUS}"
+        fi
+        exit "${REPORT_STATUS}"
 
     - name: Commit the generated tests
       if: inputs.commit-tests == 'true'
