@@ -1,3 +1,4 @@
+
 import ast
 
 
@@ -28,8 +29,13 @@ class ComplexityCalculator(ast.NodeVisitor):
 
         # Loops introduce additional execution paths
         self.complexity += 1
+        self.generic_visit(node)
 
-        # Continue traversing nested nodes
+    # Visits asynchronous for loops
+    def visit_AsyncFor(self, node):
+
+        # Async loops also introduce execution paths
+        self.complexity += 1
         self.generic_visit(node)
 
     # Visits every while loop
@@ -37,8 +43,6 @@ class ComplexityCalculator(ast.NodeVisitor):
 
         # While loops also increase complexity
         self.complexity += 1
-
-        # Continue traversing nested nodes
         self.generic_visit(node)
 
     # Visits boolean operations such as:
@@ -49,12 +53,28 @@ class ComplexityCalculator(ast.NodeVisitor):
         # Example:
         # a and b and c = +2 complexity
         self.complexity += len(node.values) - 1
+        self.generic_visit(node)
 
-        # Continue traversing nested nodes
+    # Visits conditional expressions such as:
+    # result = value1 if condition else value2
+    def visit_IfExp(self, node):
+
+        # A conditional expression adds a decision path
+        self.complexity += 1
+        self.generic_visit(node)
+
+    # Visits exception handlers
+    def visit_ExceptHandler(self, node):
+
+        # An exception handler adds a decision path
+        self.complexity += 1
         self.generic_visit(node)
 
     # Main method used to calculate complexity
     def calculate(self, tree):
+
+        # Reset complexity before each calculation
+        self.complexity = 1
 
         # Traverse AST tree
         self.visit(tree)

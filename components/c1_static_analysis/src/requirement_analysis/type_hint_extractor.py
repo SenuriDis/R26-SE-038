@@ -1,71 +1,76 @@
-"""
-Auto-extracts Requirement objects from a function's type hints, as a
-second automated source alongside DocstringRequirementExtractor.
-
-Why this exists: plenty of real repositories have parameter/return type
-annotations without full Google-style docstrings. A type hint IS real
-information the original developer wrote about the function's
-contract -- it's fair game as a (weaker) specification source, and it
-means the system isn't entirely dependent on docstring conventions.
-
-Design note: this deliberately only fires for functions that have AT
-LEAST ONE annotation. A function with zero annotations and zero
-docstring gets nothing from either extractor -- which is correct: if
-the original developer documented nothing at all, there is genuinely
-no specification to compare against, and the system should say so via
-implemented_undocumented, not invent one.
-
-The "constraint" captured here is just the type name itself (e.g.
-"int", "str") -- much weaker than a Google-style docstring's prose
-description, but still a real, extractable signal. If a function has
-BOTH a parsed docstring requirement AND type hints, prefer the
-docstring version (richer) -- see composite_extractor.py.
-"""
 
 import ast
-from typing import List, Optional
+from typing import List
 
 from .models import InputConstraint, Requirement
 
 
 class TypeHintRequirementExtractor:
+    """Extract input and output requirements from Python type annotations."""
+
     def extract(self, tree: ast.AST) -> List[Requirement]:
         requirements = []
+
+        # Handle an invalid or missing AST safely.
+        if not isinstance(tree, ast.AST):
+            return requirements
+
         for node in ast.walk(tree):
-            if not isinstance(node, ast.FunctionDef):
+            # Support regular and asynchronous functions.
+            if not isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
                 continue
 
-            requirement = self._from_annotations(node)
-            if requirement is not None:
-                requirements.append(requirement)
+            inputs = []
+
+            # Collect positional-only, positional, and keyword-only arguments.
+            arguments = (
+                list(node.args.posonlyargs)
+                + list(node.args.args)
+                + list(node.args.kwonlyargs)
+            )
+
+            # Include *args and **kwargs when annotated.
+            if node.args.vararg:
+                arguments.append(node.args.vararg)
+
+            if node.args.kwarg:
+                arguments.append(node.args.kwarg)
+
+            # Extract parameter annotations.
+            for argument in arguments:
+                if argument.annotation is not None:
+                    annotation = self._annotation_to_str(argument.annotation)
+
+                    if annotation:
+                        inputs.append(
+                            InputConstraint(
+                                name=argument.arg,
+                                constraint=annotation,
+                            )
+                        )
+
+            # Extract the expected return type.
+            expected_output = ""
+            if node.returns is not None:
+                expected_output = self._annotation_to_str(node.returns)
+
+            # Ignore functions without any type annotations.
+            if inputs or expected_output:
+                requirements.append(
+                    Requirement(
+                        function_name=node.name,
+                        inputs=inputs,
+                        expected_output=expected_output,
+                        exceptions=[],
+                    )
+                )
 
         return requirements
 
-    def _from_annotations(self, node: ast.FunctionDef) -> Optional[Requirement]:
-        inputs = []
-        for arg in node.args.args:
-            if arg.annotation is not None:
-                inputs.append(
-                    InputConstraint(name=arg.arg, constraint=self._annotation_to_str(arg.annotation))
-                )
-
-        expected_output = ""
-        if node.returns is not None:
-            expected_output = self._annotation_to_str(node.returns)
-
-        if not inputs and not expected_output:
-            return None
-
-        return Requirement(
-            function_name=node.name,
-            inputs=inputs,
-            expected_output=expected_output,
-            exceptions=[],  # type hints don't declare exceptions (no exception count = check not applicable)
-        )
-
     @staticmethod
     def _annotation_to_str(annotation: ast.AST) -> str:
+        """Convert an annotation AST node into readable text."""
         try:
             return ast.unparse(annotation)
-        except Exception:
+        except (AttributeError, TypeError, ValueError):
             return ""
