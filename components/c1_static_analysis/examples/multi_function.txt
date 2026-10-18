@@ -1,0 +1,11 @@
+@'
+function: calculate_fee
+input: days >=0
+output: fee amount
+exception: ValueError
+---
+function: enrol_student
+input: student_id must be valid
+output: enrollment confirmation
+exception: ValueError
+'@ | Set-Content .\examples\multi_function.txt

@@ -1,3 +1,4 @@
+
 import ast
 
 
@@ -25,41 +26,48 @@ class FeatureExtractor(ast.NodeVisitor):
     # Visits every function definition
     def visit_FunctionDef(self, node):
 
-        # Store function name
         self.functions.append(node.name)
+        self.generic_visit(node)
 
-        # Continue traversing inside function body
+    # Supports asynchronous function definitions
+    def visit_AsyncFunctionDef(self, node):
+
+        self.functions.append(node.name)
         self.generic_visit(node)
 
     # Visits every if statement
     def visit_If(self, node):
 
-        # Increment if-statement counter
         self.if_count += 1
-
-        # Continue traversing nested nodes
         self.generic_visit(node)
 
     # Visits every for loop
     def visit_For(self, node):
 
-        # Increment for-loop counter
         self.for_count += 1
+        self.generic_visit(node)
 
-        # Continue traversing nested nodes
+    # Visits asynchronous for loops
+    def visit_AsyncFor(self, node):
+
+        self.for_count += 1
         self.generic_visit(node)
 
     # Visits every while loop
     def visit_While(self, node):
 
-        # Increment while-loop counter
         self.while_count += 1
-
-        # Continue traversing nested nodes
         self.generic_visit(node)
 
     # Main feature extraction method
     def extract(self, tree, source_code=None):
+
+        # Reset values before each extraction
+        self.functions = []
+        self.if_count = 0
+        self.for_count = 0
+        self.while_count = 0
+        self.total_lines = 0
 
         # Traverse AST tree
         self.visit(tree)

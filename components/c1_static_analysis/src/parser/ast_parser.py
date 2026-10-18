@@ -1,3 +1,4 @@
+
 import ast
 
 
@@ -17,7 +18,7 @@ def parse_python_file(file_path):
             source_code = file.read()
 
         # Convert source code into AST representation
-        tree = ast.parse(source_code)
+        tree = ast.parse(source_code, filename=file_path)
 
         # Return both AST tree and raw source code
         return tree, source_code
@@ -29,16 +30,47 @@ def parse_python_file(file_path):
 
         return None, None
 
+    # Handles directory paths instead of file paths
+    except IsADirectoryError:
+
+        print(f"Error: Expected a file but received a directory -> {file_path}")
+
+        return None, None
+
+    # Handles permission errors
+    except PermissionError:
+
+        print(f"Error: Permission denied while reading file -> {file_path}")
+
+        return None, None
+
+    # Handles invalid UTF-8 encoding errors
+    except UnicodeError as error:
+
+        print(f"Encoding Error while reading {file_path}: {error}")
+
+        return None, None
+
     # Handles invalid Python syntax errors
     except SyntaxError as error:
 
-        print(f"Syntax Error while parsing {file_path}: {error}")
+        print(
+            f"Syntax Error while parsing {file_path} "
+            f"at line {error.lineno}: {error.msg}"
+        )
+
+        return None, None
+
+    # Handles other file-related and parsing errors
+    except (OSError, ValueError) as error:
+
+        print(f"Error while reading or parsing {file_path}: {error}")
 
         return None, None
 
     # Handles any unexpected runtime errors
     except Exception as error:
 
-        print(f"Unexpected error while parsing file: {error}")
+        print(f"Unexpected error while parsing file {file_path}: {error}")
 
         return None, None

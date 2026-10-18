@@ -1,0 +1,102 @@
+{
+    "file": "sample_code/discount.py",
+    "summary": {
+        "total_lines": 2,
+        "file_cyclomatic_complexity": 1,
+        "nesting_depth": 0,
+        "total_dependency_calls": 0
+    },
+    "control_flow": {
+        "if_count": 0,
+        "for_count": 0,
+        "while_count": 0
+    },
+    "functions": {
+        "total_functions": 1,
+        "function_names": [
+            "apply_discount"
+        ],
+        "function_complexity": {
+            "apply_discount": 1
+        }
+    },
+    "dependencies": {
+        "function_dependencies": {
+            "apply_discount": []
+        }
+    },
+    "risk_summary": {
+        "high": 0,
+        "medium": 0,
+        "low": 1
+    },
+    "risk_analysis": {
+        "apply_discount": {
+            "complexity": 1,
+            "dependency_count": 0,
+            "risk_level": "Low"
+        }
+    },
+    "high_risk_functions": [],
+    "intelligent_testing_context": {
+        "ml_ready_features": [
+            {
+                "function_name": "apply_discount",
+                "cyclomatic_complexity": 1,
+                "dependency_count": 0,
+                "risk_level": "Low"
+            }
+        ],
+        "llm_test_recommendations": [
+            {
+                "function": "apply_discount",
+                "risk_level": "Low",
+                "reason": "Low risk due to low structural complexity",
+                "dependencies": [],
+                "suggested_test_focus": [
+                    "basic functional correctness"
+                ]
+            }
+        ]
+    },
+    "requirement_analysis": {
+        "project_summary": {
+            "total_functions": 1,
+            "documented_and_implemented": 1,
+            "documented_but_missing": 0,
+            "implemented_but_undocumented": 0,
+            "average_specification_coverage": 0.3333
+        },
+        "functions": [
+            {
+                "function_name": "apply_discount",
+                "mapping_status": "documented_implemented",
+                "ast_metrics": {
+                    "cyclomatic_complexity": 1,
+                    "nesting_depth": 0,
+                    "dependency_count": 0,
+                    "lines_of_code": 2
+                },
+                "risk_analysis": {
+                    "complexity": 1,
+                    "dependency_count": 0,
+                    "risk_level": "Low"
+                },
+                "specification_metrics": {
+                    "has_documentation_mapping": true,
+                    "input_requirements_count": 1,
+                    "output_requirements_count": 1,
+                    "exception_requirements_count": 1,
+                    "specification_coverage_score": 0.3333
+                },
+                "gap_analysis": {
+                    "missing_input_validation": true,
+                    "missing_exception_handling": true,
+                    "missing_output_definition": false,
+                    "missing_function": false,
+                    "missing_requirement_coverage": false
+                }
+            }
+        ]
+    }
+}

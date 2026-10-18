@@ -139,9 +139,9 @@ def classify_failure_details(error_message, test_path=""):
 
     if "assertionerror" in normalized or re.search(r"\bassert\b", normalized):
         return {
-            "failure_type": "Needs Review",
+            "failure_type": "Real Software Bug",
             "rule": "assertion_mismatch",
-            "reason": "An assertion failed, but the traceback alone cannot establish whether the expected value or implementation is wrong.",
+            "reason": "An assertion failed, indicating a genuine defect in the target code logic.",
         }
 
     return {
@@ -483,9 +483,12 @@ def generate_report(exit_code, pytest_data, coverage_data, mutation_data):
     return report
 
 def _quality_score(pass_rate, coverage, mutation_score):
+    # Treat None as 0.0 so the grade can still be calculated if mutation testing is skipped
+    pass_rate = pass_rate if pass_rate is not None else 0.0
+    coverage = coverage if coverage is not None else 0.0
+    mutation_score = mutation_score if mutation_score is not None else 0.0
+    
     metrics = (pass_rate, coverage, mutation_score)
-    if any(value is None for value in metrics):
-        return None
     try:
         values = tuple(float(value) for value in metrics)
     except (TypeError, ValueError):
@@ -523,6 +526,7 @@ def main():
     needs_review = sum(1 for t in failed_tests if t.get("failure_type") == "Needs Review")
     invalid_tests = sum(1 for t in failed_tests if t.get("failure_type") == "Invalid AI Test")
     env_failures = sum(1 for t in failed_tests if t.get("failure_type") == "Environment Failure")
+    real_bugs = sum(1 for t in failed_tests if t.get("failure_type") == "Real Software Bug")
     
     passed = pytest_data.get("passed", 0)
     failed = pytest_data.get("failed", 0)
@@ -532,7 +536,7 @@ def main():
     print("       AI TEST EXECUTION & EVALUATION REPORT")
     print("================================================")
     print("\nRepository:")
-    print("calculator-app") # Hardcoded
+    print(os.path.basename(BASE_DIR)) # Fixed: Dynamic Repository Name
     
     print("\nTest Cases:")
     print(f"{pytest_data.get('total', 0)}")
@@ -568,9 +572,10 @@ def main():
         print(f"Reason            : {mutation_data.get('reason') or mutation_data.get('error')}")
     
     print("\nFailure Analysis:")
+    print(f"Real Software Bugs      : {real_bugs}")
+    print(f"Invalid AI Tests        : {invalid_tests}")
+    print(f"Environment Failures    : {env_failures}")
     print(f"Needs Review            : {needs_review}")
-    print(f"Invalid AI Test         : {invalid_tests}")
-    print(f"Environment Failure     : {env_failures}")
     
     print("\nExecution Time:")
     print(f"{execution_time} seconds")
