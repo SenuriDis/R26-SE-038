@@ -109,14 +109,14 @@ cd ..
 
 python main.py
 
-API runs at: http://127.0.0.1:8000
+API runs at: http://127.0.0.1:8003
 
 ### Start the frontend (Terminal 2)
 
 cd frontend
 npm run dev
 
-Frontend runs at: http://localhost:5173
+Frontend runs at: http://localhost:5174
 
 ---
 

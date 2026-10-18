@@ -46,7 +46,7 @@ class Settings(BaseSettings):
 
     # API
     api_host: str = Field("0.0.0.0")
-    api_port: int = Field(8000)
+    api_port: int = Field(8003)
 
 
 settings = Settings()
