@@ -21,16 +21,18 @@ exactly the shape C4 expects and drops a copy of its script in:
 Because BASE_DIR follows the script, every path resolves inside the workdir
 and C4 runs against the target instead of its own samples.
 
-Docker is C4's intended isolation mechanism. This stage runs locally instead,
-which needs no daemon; the trade-off is that tests execute in the host
-environment rather than a container.
+The target and generated tests are copied into an ephemeral Docker container.
+Only the report directory is mounted from the host; the container has no
+network, has Linux capabilities dropped, and runs without privilege escalation.
+Container filesystem changes are discarded when it is removed.
 """
 
 import json
 import os
 import shutil
 import subprocess
-import sys
+import tarfile
+import uuid
 from pathlib import Path
 from typing import Dict, List, Optional
 
@@ -38,50 +40,12 @@ from pipeline import contracts
 
 C4_ROOT = contracts.REPO_ROOT / "components" / "c4_test_eval"
 C4_SCRIPT = C4_ROOT / "execute_tests.py"
+DOCKER_IMAGE = "r26-se038-c4-evaluator:local"
 WORKDIR_NAME = "c4_workdir"
 
 
 class Stage4Error(RuntimeError):
     """Raised when C4 cannot be run or fails while evaluating."""
-
-
-def resolve_python(explicit: Optional[str] = None) -> str:
-    """Explicit flag, then C4_PYTHON, then a venv inside C4, then our own."""
-    if explicit:
-        return explicit
-
-    from_env = os.environ.get("C4_PYTHON")
-    if from_env:
-        return from_env
-
-    for candidate in (
-        C4_ROOT / "venv" / "Scripts" / "python.exe",
-        C4_ROOT / "venv" / "bin" / "python",
-    ):
-        if candidate.exists():
-            return str(candidate)
-
-    return sys.executable
-
-
-def check_dependencies(python_exe: str) -> Optional[str]:
-    """None when C4's test tooling is importable, else a human-readable reason."""
-    if not Path(python_exe).exists() and not shutil.which(python_exe):
-        return f"interpreter not found: {python_exe}"
-
-    result = subprocess.run(
-        [python_exe, "-c", "import pytest, pytest_cov, pytest_jsonreport, coverage"],
-        capture_output=True,
-        text=True,
-    )
-    if result.returncode != 0:
-        missing = result.stderr.strip().splitlines()[-1] if result.stderr else "unknown"
-        return (
-            f"{python_exe} cannot import C4's test tooling ({missing}).\n"
-            f"    Install with: {python_exe} -m pip install -r "
-            f"{C4_ROOT / 'requirements.txt'}"
-        )
-    return None
 
 
 def find_generated_tests(artifact_dir: Path) -> List[Path]:
@@ -274,7 +238,7 @@ def run(
     source_root: Optional[str] = None,
     python_exe: Optional[str] = None,
 ) -> Dict:
-    """Evaluate C3's generated tests against the target's source."""
+    """Evaluate C3's generated tests inside an isolated Docker container."""
     if not C4_SCRIPT.exists():
         raise Stage4Error(f"C4's execute_tests.py not found at {C4_SCRIPT}")
 
@@ -292,47 +256,180 @@ def run(
     if not root.exists():
         raise Stage4Error(f"source root does not exist: {root}")
 
-    interpreter = resolve_python(python_exe)
-    problem = check_dependencies(interpreter)
-    if problem:
-        raise Stage4Error(problem)
-
     workdir = stage_workdir(artifact_dir, root, Path(target), tests)
 
     scoped = tested_source_files(artifact_dir)
     write_scoping_config(workdir, scoped)
 
-    # The staged copy has to win over any installed distribution of the same
-    # package, otherwise coverage measures site-packages instead of the target.
-    child_env = dict(os.environ)
-    staged_src = str((workdir / "src").resolve())
-    child_env["PYTHONPATH"] = os.pathsep.join(
-        [staged_src] + ([child_env["PYTHONPATH"]] if child_env.get("PYTHONPATH") else [])
-    )
-    child_env["PYTHONIOENCODING"] = "utf-8"
+    if python_exe:
+        print("Stage 4 uses its Docker image; --c4-python is ignored.")
 
-    # C4 shells out to `mutmut` as a bare command. Running the venv's python
-    # directly does not put that venv's Scripts/bin on PATH, so the executable
-    # is not found and mutation testing silently reports zero mutants.
-    scripts_dir = Path(interpreter).parent
-    child_env["PATH"] = os.pathsep.join([str(scripts_dir), child_env.get("PATH", "")])
+    container_name = f"r26-c4-{uuid.uuid4().hex[:12]}"
+    reports = workdir / "reports"
+    docker_args = [
+        "docker",
+        "build",
+        "--tag",
+        DOCKER_IMAGE,
+        "--file",
+        "Dockerfile",
+        ".",
+    ]
+    try:
+        build = subprocess.run(
+            docker_args,
+            cwd=str(C4_ROOT),
+            capture_output=True,
+            text=True,
+            timeout=1200,
+        )
+    except FileNotFoundError as error:
+        raise Stage4Error("Docker CLI was not found; install Docker and start its daemon.") from error
+    except subprocess.TimeoutExpired as error:
+        raise Stage4Error("Building the C4 Docker image timed out after 20 minutes.") from error
+    if build.returncode != 0:
+        detail = (build.stderr or build.stdout).strip()
+        raise Stage4Error(f"Could not build the C4 Docker image:\n{detail[-4000:]}")
 
-    result = subprocess.run(
-        [interpreter, "execute_tests.py"],
-        cwd=str(workdir),
-        env=child_env,
-        text=True,
-    )
+    container_created = False
+    run_result = None
+    try:
+        create = subprocess.run(
+            [
+                "docker", "create",
+                "--name", container_name,
+                "--network", "none",
+                "--cap-drop", "ALL",
+                "--security-opt", "no-new-privileges",
+                "--pids-limit", "256",
+                "--memory", "2g",
+                "--cpus", "2",
+                "--tmpfs", "/tmp:rw,nosuid,nodev,size=512m",
+                "--tmpfs", "/app:rw,nosuid,nodev,size=2g",
+                "--mount",
+                f"type=bind,source={reports.resolve()},target=/app/reports",
+                "--workdir", "/app",
+                "--env", "PYTHONPATH=/app/src",
+                "--env", "PYTHONIOENCODING=utf-8",
+                "--env", "PYTHONUTF8=1",
+                DOCKER_IMAGE,
+                "python", "-c", "import time; time.sleep(3600)",
+            ],
+            capture_output=True,
+            text=True,
+        )
+        if create.returncode != 0:
+            detail = (create.stderr or create.stdout).strip()
+            raise Stage4Error(f"Could not create the isolated C4 container:\n{detail}")
+        container_created = True
+
+        start = subprocess.run(
+            ["docker", "start", container_name],
+            capture_output=True,
+            text=True,
+        )
+        if start.returncode != 0:
+            detail = (start.stderr or start.stdout).strip()
+            raise Stage4Error(f"Could not start the isolated C4 container:\n{detail}")
+
+        _docker_stage(container_name, workdir)
+
+        run_result = _docker_exec(
+            container_name,
+            "python", "execute_tests.py",
+            timeout=1800,
+            allow_failure=True,
+        )
+    finally:
+        if container_created:
+            cleanup = subprocess.run(
+                ["docker", "rm", "--force", container_name],
+                capture_output=True,
+                text=True,
+            )
+            if cleanup.returncode != 0:
+                detail = (cleanup.stderr or cleanup.stdout).strip()
+                raise Stage4Error(f"Could not remove the C4 container:\n{detail}")
 
     report_path = workdir / "reports" / "evaluation_report.json"
+    if not report_path.exists():
+        raise Stage4Error("C4 did not produce reports/evaluation_report.json.")
 
     return {
         "workdir": str(workdir),
         "report": str(report_path) if report_path.exists() else None,
         "tests_evaluated": [t.name for t in tests],
         "source_root": str(root),
-        "exit_code": result.returncode,
+        "exit_code": run_result.returncode,
     }
+
+
+def _docker_exec(
+    container_name: str,
+    *args: str,
+    timeout: Optional[int] = None,
+    allow_failure: bool = False,
+):
+    try:
+        result = subprocess.run(
+            ["docker", "exec", container_name, *args],
+            capture_output=False,
+            text=True,
+            timeout=timeout,
+        )
+    except subprocess.TimeoutExpired as error:
+        raise Stage4Error("C4 test evaluation timed out after 30 minutes.") from error
+    if result.returncode != 0 and not allow_failure:
+        raise Stage4Error(f"Docker command failed ({result.returncode}): {' '.join(args)}")
+    return result
+
+
+def _docker_stage(container_name: str, workdir: Path) -> None:
+    extractor = """
+import pathlib
+import sys
+import tarfile
+
+with tarfile.open(fileobj=sys.stdin.buffer, mode="r|") as archive:
+    for member in archive:
+        path = pathlib.PurePosixPath(member.name)
+        if path.is_absolute() or ".." in path.parts:
+            raise ValueError("unsafe archive member")
+        if not (member.isdir() or member.isfile()):
+            raise ValueError("unsupported archive member")
+        member.mode &= 0o777
+        archive.extract(member, "/app")
+"""
+    process = subprocess.Popen(
+        ["docker", "exec", "--interactive", container_name, "python", "-c", extractor],
+        stdin=subprocess.PIPE,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+    )
+    try:
+        with tarfile.open(fileobj=process.stdin, mode="w|") as archive:
+            archive.add(workdir / "execute_tests.py", arcname="execute_tests.py")
+            archive.add(workdir / "src", arcname="src")
+            archive.add(workdir / "tests", arcname="tests")
+            for config_name in (".coveragerc", "setup.cfg"):
+                config = workdir / config_name
+                if config.exists():
+                    archive.add(config, arcname=config_name)
+        if process.stdin and not process.stdin.closed:
+            process.stdin.close()
+        stdout, stderr = process.communicate(timeout=120)
+    except subprocess.TimeoutExpired as error:
+        process.kill()
+        process.communicate()
+        raise Stage4Error("Staging C4 inputs into Docker timed out after 2 minutes.") from error
+    except (BrokenPipeError, OSError) as error:
+        process.kill()
+        process.communicate()
+        raise Stage4Error(f"Could not stage C4 inputs into Docker: {error}") from error
+
+    if process.returncode != 0:
+        detail = (stderr or stdout).decode("utf-8", errors="replace").strip()
+        raise Stage4Error(f"Could not stage C4 inputs into Docker:\n{detail}")
 
 
 def summarise(report_path: Path) -> Optional[Dict]:
