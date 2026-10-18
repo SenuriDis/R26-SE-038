@@ -15,6 +15,22 @@ import ScanConfigCard from "../components/ScanConfigCard";
 import RequirementCoverageCard from "../components/RequirementCoverageCard";
 import AnalysisResultView from "../components/AnalysisResultView";
 
+function notifyWizard(status, payload) {
+  if (window.parent === window || new URLSearchParams(window.location.search).get("wizard") !== "1") {
+    return;
+  }
+
+  try {
+    const parentOrigin = new URL(document.referrer).origin;
+    window.parent.postMessage(
+      { channel: "intellitest:wizard", component: "c1", status, payload },
+      parentOrigin
+    );
+  } catch (error) {
+    console.error("Could not notify the IntelliTest wizard.", error);
+  }
+}
+
 function StaticAnalysisPage() {
   const [repoUrl, setRepoUrl] = useState("");
   const [result, setResult] = useState(null);
@@ -50,14 +66,24 @@ function StaticAnalysisPage() {
 
       if (data.error) {
         alert(data.error);
+        notifyWizard("failed", { message: data.error });
         setLoading(false);
         return;
       }
 
-      if (Array.isArray(data.files) && data.files.length > 0) {
+      if (Array.isArray(data.files) && data.files.length > 0 && data.source_files) {
         setFolderResults(data.files);
         setResult(data.files[0]);
         setRepoSummary(data.repo_summary);
+        notifyWizard("complete", {
+          repo_url: data.repo_url,
+          files: data.files.map(({ file, functions, dependencies }) => ({
+            file,
+            functions,
+            dependencies,
+          })),
+          source_files: data.source_files,
+        });
 
         showSuccessMessage(
           `Repository analyzed successfully! ${data.files.length} Python files, ${data.repo_summary.total_functions} functions.`
@@ -67,11 +93,15 @@ function StaticAnalysisPage() {
         setResult(null);
         setRepoSummary(null);
 
-        alert("No Python files found in this repository");
+        const message = "Analysis did not include Python source files for the next pipeline stages.";
+        alert(message);
+        notifyWizard("failed", { message });
       }
     } catch (error) {
       console.error(error);
-      alert("GitHub repository analysis failed");
+      const message = error instanceof Error ? error.message : "GitHub repository analysis failed";
+      alert(message);
+      notifyWizard("failed", { message });
     } finally {
       setLoading(false);
     }
