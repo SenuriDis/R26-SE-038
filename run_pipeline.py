@@ -17,12 +17,12 @@ Stages, and the artifact each one leaves behind:
 Each stage reads and writes JSON on disk, so any stage can be re-run on its own
 against the previous stage's output (see --only).
 
-Components pin conflicting dependencies, so each stage runs as a subprocess
-against its own interpreter. Set them with --c1-python / --c2-python or the
-C1_PYTHON ... C4_PYTHON environment variables.
+Components pin conflicting dependencies, so stages 1-3 run as subprocesses
+against their own interpreters. Set them with --c1-python / --c2-python /
+--c3-python or the matching environment variables. Stage 4 runs in Docker.
 
-Stages 3 and 4 are opt-in: stage 3 makes paid Groq calls, and stage 4
-executes LLM-generated code.
+Stages 3 and 4 are opt-in: stage 3 makes Groq API calls, and stage 4 executes
+LLM-generated code in a network-disabled Docker container.
 """
 
 import argparse
@@ -116,7 +116,11 @@ def parse_args(argv=None):
     parser.add_argument("--c1-python", default=None, help="Interpreter for C1.")
     parser.add_argument("--c2-python", default=None, help="Interpreter for C2.")
     parser.add_argument("--c3-python", default=None, help="Interpreter for C3.")
-    parser.add_argument("--c4-python", default=None, help="Interpreter for C4.")
+    parser.add_argument(
+        "--c4-python",
+        default=None,
+        help="Deprecated: stage 4 now runs in Docker; retained for compatibility.",
+    )
     parser.add_argument(
         "--stage4",
         action="store_true",

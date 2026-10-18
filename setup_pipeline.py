@@ -4,17 +4,16 @@ One-time setup for the integration pipeline.
 
     python setup_pipeline.py
 
-Builds the three virtual environments the pipeline needs and reports anything
-it cannot do for you (chiefly API keys).
+Builds the two Python virtual environments the pipeline needs and reports
+anything it cannot do for you (chiefly API keys). Stage 4 runs in Docker.
 
-Why three environments rather than one: the components pin conflicting
-dependencies. C2 needs numpy 1.26, which has no Python 3.13 wheels, while C3
-is built around chromadb and needs a much newer numpy. They cannot share an
-interpreter, so each stage runs as a subprocess against its own.
+Why two environments rather than one: C2 and C3 pin conflicting dependencies.
+C2 needs numpy 1.26, which has no Python 3.13 wheels, while C3 is built around
+chromadb and needs a much newer numpy. Stage 4's dependencies are installed
+in its Docker image.
 
     venv/                            C3 + the orchestrator   (any Python 3.11+)
     components/c2_ml_risk/venv/      C2's ML stack           (Python 3.12)
-    components/c4_test_eval/venv/    C4's test tooling       (Python 3.12)
 """
 
 import argparse
@@ -27,7 +26,6 @@ REPO = Path(__file__).resolve().parent
 
 C2_ROOT = REPO / "components" / "c2_ml_risk"
 C3_ROOT = REPO / "components" / "c3_llm_tests"
-C4_ROOT = REPO / "components" / "c4_test_eval"
 
 # C2 imports only these three. Its requirements.txt also lists xgboost, shap,
 # imbalanced-learn, jupyter, matplotlib and seaborn, none of which appear in
@@ -43,7 +41,7 @@ def venv_python(venv_dir: Path) -> Path:
 
 def find_python312(explicit=None) -> str:
     """
-    Locate a Python 3.12 interpreter for C2 and C4.
+    Locate a Python 3.12 interpreter for C2.
 
     3.12 specifically: C2 pins numpy 1.26.4, which publishes no wheels for
     3.13, and its model pickle was written by scikit-learn 1.4.2 which has the
@@ -111,7 +109,7 @@ def build(name: str, venv_dir: Path, base_python: str, packages=None, requiremen
 def main() -> int:
     parser = argparse.ArgumentParser(description="Set up the pipeline environments.")
     parser.add_argument("--python312", default=None,
-                        help="Path to a Python 3.12 interpreter for C2 and C4.")
+                        help="Path to a Python 3.12 interpreter for C2.")
     args = parser.parse_args()
 
     print("=" * 62)
@@ -121,7 +119,7 @@ def main() -> int:
     py312 = find_python312(args.python312)
     if not py312:
         print(
-            "\nPython 3.12 not found. C2 and C4 need it: C2 pins numpy 1.26.4,\n"
+            "\nPython 3.12 not found. C2 needs it because it pins numpy 1.26.4,\n"
             "which has no wheels for 3.13.\n\n"
             "  Install from https://www.python.org/downloads/release/python-31210/\n"
             "  then re-run, or pass --python312 <path>."
@@ -138,9 +136,6 @@ def main() -> int:
                 requirements=C3_ROOT / "requirements.txt")
 
     ok &= build("C2 ML stack", C2_ROOT / "venv", py312, packages=C2_PACKAGES)
-
-    ok &= build("C4 test tooling", C4_ROOT / "venv", py312,
-                requirements=C4_ROOT / "requirements.txt")
 
     print("\n" + "=" * 62)
 
