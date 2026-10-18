@@ -1,0 +1,6 @@
+@'
+function: calculate_fee
+input: days >=0
+output: fee amount
+exception: ValueError
+'@ | Set-Content .\examples\calculate_fee.txt

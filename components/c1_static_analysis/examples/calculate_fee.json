@@ -1,0 +1,14 @@
+
+[
+  {
+    "function_name": "calculate_fee",
+    "inputs": [
+      {
+        "name": "days",
+        "constraint": ">=0"
+      }
+    ],
+    "expected_output": "fee amount",
+    "exceptions": ["ValueError"]
+  }
+]

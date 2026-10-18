@@ -1,0 +1,2639 @@
+{
+    "repo_url": "https://github.com/Basanta-Guragain/Saloon-management-system.git",
+    "local_path": "cloned_repos\\Saloon-management-system",
+    "repo_summary": {
+        "total_files_analyzed": 17,
+        "total_functions": 28,
+        "documented_and_implemented": 0,
+        "documented_but_missing": 0,
+        "implemented_but_undocumented": 28,
+        "overall_average_specification_coverage": 0.0
+    },
+    "files": [
+        {
+            "file": "cloned_repos\\Saloon-management-system\\manage.py",
+            "summary": {
+                "total_lines": 22,
+                "file_cyclomatic_complexity": 2,
+                "nesting_depth": 1,
+                "total_dependency_calls": 3
+            },
+            "control_flow": {
+                "if_count": 1,
+                "for_count": 0,
+                "while_count": 0
+            },
+            "functions": {
+                "total_functions": 1,
+                "function_names": [
+                    "main"
+                ],
+                "function_complexity": {
+                    "main": 1
+                }
+            },
+            "dependencies": {
+                "function_dependencies": {
+                    "main": [
+                        "ImportError",
+                        "setdefault",
+                        "execute_from_command_line"
+                    ]
+                }
+            },
+            "risk_summary": {
+                "high": 1,
+                "medium": 0,
+                "low": 0
+            },
+            "risk_analysis": {
+                "main": {
+                    "complexity": 1,
+                    "dependency_count": 3,
+                    "risk_level": "High"
+                }
+            },
+            "high_risk_functions": [
+                "main"
+            ],
+            "intelligent_testing_context": {
+                "ml_ready_features": [
+                    {
+                        "function_name": "main",
+                        "cyclomatic_complexity": 1,
+                        "dependency_count": 3,
+                        "risk_level": "High"
+                    }
+                ],
+                "llm_test_recommendations": [
+                    {
+                        "function": "main",
+                        "risk_level": "High",
+                        "reason": "High risk due to high dependency count",
+                        "dependencies": [
+                            "ImportError",
+                            "setdefault",
+                            "execute_from_command_line"
+                        ],
+                        "suggested_test_focus": [
+                            "dependency behavior",
+                            "mocking external/internal calls",
+                            "integration-related scenarios"
+                        ]
+                    }
+                ]
+            },
+            "requirement_analysis": {
+                "project_summary": {
+                    "total_functions": 1,
+                    "documented_and_implemented": 0,
+                    "documented_but_missing": 0,
+                    "implemented_but_undocumented": 1,
+                    "average_specification_coverage": 0.0
+                },
+                "functions": [
+                    {
+                        "function_name": "main",
+                        "mapping_status": "implemented_undocumented",
+                        "ast_metrics": {
+                            "cyclomatic_complexity": 1,
+                            "nesting_depth": 0,
+                            "dependency_count": 3,
+                            "lines_of_code": 12
+                        },
+                        "risk_analysis": {
+                            "complexity": 1,
+                            "dependency_count": 3,
+                            "risk_level": "High"
+                        },
+                        "specification_metrics": {
+                            "has_documentation_mapping": false,
+                            "input_requirements_count": 0,
+                            "output_requirements_count": 0,
+                            "exception_requirements_count": 0,
+                            "specification_coverage_score": 0.0
+                        },
+                        "gap_analysis": {
+                            "missing_input_validation": false,
+                            "missing_exception_handling": false,
+                            "missing_output_definition": false,
+                            "missing_function": false,
+                            "missing_requirement_coverage": true
+                        }
+                    }
+                ]
+            }
+        },
+        {
+            "file": "cloned_repos\\Saloon-management-system\\home\\admin.py",
+            "summary": {
+                "total_lines": 3,
+                "file_cyclomatic_complexity": 1,
+                "nesting_depth": 0,
+                "total_dependency_calls": 0
+            },
+            "control_flow": {
+                "if_count": 0,
+                "for_count": 0,
+                "while_count": 0
+            },
+            "functions": {
+                "total_functions": 0,
+                "function_names": [],
+                "function_complexity": {}
+            },
+            "dependencies": {
+                "function_dependencies": {}
+            },
+            "risk_summary": {
+                "high": 0,
+                "medium": 0,
+                "low": 0
+            },
+            "risk_analysis": {},
+            "high_risk_functions": [],
+            "intelligent_testing_context": {
+                "ml_ready_features": [],
+                "llm_test_recommendations": []
+            },
+            "requirement_analysis": {
+                "project_summary": {
+                    "total_functions": 0,
+                    "documented_and_implemented": 0,
+                    "documented_but_missing": 0,
+                    "implemented_but_undocumented": 0,
+                    "average_specification_coverage": 0.0
+                },
+                "functions": []
+            }
+        },
+        {
+            "file": "cloned_repos\\Saloon-management-system\\home\\apps.py",
+            "summary": {
+                "total_lines": 6,
+                "file_cyclomatic_complexity": 1,
+                "nesting_depth": 0,
+                "total_dependency_calls": 0
+            },
+            "control_flow": {
+                "if_count": 0,
+                "for_count": 0,
+                "while_count": 0
+            },
+            "functions": {
+                "total_functions": 0,
+                "function_names": [],
+                "function_complexity": {}
+            },
+            "dependencies": {
+                "function_dependencies": {}
+            },
+            "risk_summary": {
+                "high": 0,
+                "medium": 0,
+                "low": 0
+            },
+            "risk_analysis": {},
+            "high_risk_functions": [],
+            "intelligent_testing_context": {
+                "ml_ready_features": [],
+                "llm_test_recommendations": []
+            },
+            "requirement_analysis": {
+                "project_summary": {
+                    "total_functions": 0,
+                    "documented_and_implemented": 0,
+                    "documented_but_missing": 0,
+                    "implemented_but_undocumented": 0,
+                    "average_specification_coverage": 0.0
+                },
+                "functions": []
+            }
+        },
+        {
+            "file": "cloned_repos\\Saloon-management-system\\projects\\asgi.py",
+            "summary": {
+                "total_lines": 16,
+                "file_cyclomatic_complexity": 1,
+                "nesting_depth": 0,
+                "total_dependency_calls": 0
+            },
+            "control_flow": {
+                "if_count": 0,
+                "for_count": 0,
+                "while_count": 0
+            },
+            "functions": {
+                "total_functions": 0,
+                "function_names": [],
+                "function_complexity": {}
+            },
+            "dependencies": {
+                "function_dependencies": {}
+            },
+            "risk_summary": {
+                "high": 0,
+                "medium": 0,
+                "low": 0
+            },
+            "risk_analysis": {},
+            "high_risk_functions": [],
+            "intelligent_testing_context": {
+                "ml_ready_features": [],
+                "llm_test_recommendations": []
+            },
+            "requirement_analysis": {
+                "project_summary": {
+                    "total_functions": 0,
+                    "documented_and_implemented": 0,
+                    "documented_but_missing": 0,
+                    "implemented_but_undocumented": 0,
+                    "average_specification_coverage": 0.0
+                },
+                "functions": []
+            }
+        },
+        {
+            "file": "cloned_repos\\Saloon-management-system\\projects\\settings.py",
+            "summary": {
+                "total_lines": 172,
+                "file_cyclomatic_complexity": 1,
+                "nesting_depth": 0,
+                "total_dependency_calls": 0
+            },
+            "control_flow": {
+                "if_count": 0,
+                "for_count": 0,
+                "while_count": 0
+            },
+            "functions": {
+                "total_functions": 0,
+                "function_names": [],
+                "function_complexity": {}
+            },
+            "dependencies": {
+                "function_dependencies": {}
+            },
+            "risk_summary": {
+                "high": 0,
+                "medium": 0,
+                "low": 0
+            },
+            "risk_analysis": {},
+            "high_risk_functions": [],
+            "intelligent_testing_context": {
+                "ml_ready_features": [],
+                "llm_test_recommendations": []
+            },
+            "requirement_analysis": {
+                "project_summary": {
+                    "total_functions": 0,
+                    "documented_and_implemented": 0,
+                    "documented_but_missing": 0,
+                    "implemented_but_undocumented": 0,
+                    "average_specification_coverage": 0.0
+                },
+                "functions": []
+            }
+        },
+        {
+            "file": "cloned_repos\\Saloon-management-system\\projects\\urls.py",
+            "summary": {
+                "total_lines": 41,
+                "file_cyclomatic_complexity": 2,
+                "nesting_depth": 1,
+                "total_dependency_calls": 0
+            },
+            "control_flow": {
+                "if_count": 1,
+                "for_count": 0,
+                "while_count": 0
+            },
+            "functions": {
+                "total_functions": 0,
+                "function_names": [],
+                "function_complexity": {}
+            },
+            "dependencies": {
+                "function_dependencies": {}
+            },
+            "risk_summary": {
+                "high": 0,
+                "medium": 0,
+                "low": 0
+            },
+            "risk_analysis": {},
+            "high_risk_functions": [],
+            "intelligent_testing_context": {
+                "ml_ready_features": [],
+                "llm_test_recommendations": []
+            },
+            "requirement_analysis": {
+                "project_summary": {
+                    "total_functions": 0,
+                    "documented_and_implemented": 0,
+                    "documented_but_missing": 0,
+                    "implemented_but_undocumented": 0,
+                    "average_specification_coverage": 0.0
+                },
+                "functions": []
+            }
+        },
+        {
+            "file": "cloned_repos\\Saloon-management-system\\projects\\wsgi.py",
+            "summary": {
+                "total_lines": 16,
+                "file_cyclomatic_complexity": 1,
+                "nesting_depth": 0,
+                "total_dependency_calls": 0
+            },
+            "control_flow": {
+                "if_count": 0,
+                "for_count": 0,
+                "while_count": 0
+            },
+            "functions": {
+                "total_functions": 0,
+                "function_names": [],
+                "function_complexity": {}
+            },
+            "dependencies": {
+                "function_dependencies": {}
+            },
+            "risk_summary": {
+                "high": 0,
+                "medium": 0,
+                "low": 0
+            },
+            "risk_analysis": {},
+            "high_risk_functions": [],
+            "intelligent_testing_context": {
+                "ml_ready_features": [],
+                "llm_test_recommendations": []
+            },
+            "requirement_analysis": {
+                "project_summary": {
+                    "total_functions": 0,
+                    "documented_and_implemented": 0,
+                    "documented_but_missing": 0,
+                    "implemented_but_undocumented": 0,
+                    "average_specification_coverage": 0.0
+                },
+                "functions": []
+            }
+        },
+        {
+            "file": "cloned_repos\\Saloon-management-system\\userauth\\admin.py",
+            "summary": {
+                "total_lines": 134,
+                "file_cyclomatic_complexity": 4,
+                "nesting_depth": 1,
+                "total_dependency_calls": 15
+            },
+            "control_flow": {
+                "if_count": 2,
+                "for_count": 0,
+                "while_count": 0
+            },
+            "functions": {
+                "total_functions": 10,
+                "function_names": [
+                    "service_image_tag",
+                    "get_category_display",
+                    "lookups",
+                    "queryset",
+                    "formatted_date",
+                    "get_all_services",
+                    "total_services",
+                    "service_name",
+                    "customer_name",
+                    "is_eligible"
+                ],
+                "function_complexity": {
+                    "service_image_tag": 2,
+                    "get_category_display": 1,
+                    "lookups": 1,
+                    "queryset": 2,
+                    "formatted_date": 1,
+                    "get_all_services": 1,
+                    "total_services": 2,
+                    "service_name": 1,
+                    "customer_name": 1,
+                    "is_eligible": 1
+                }
+            },
+            "dependencies": {
+                "function_dependencies": {
+                    "service_image_tag": [
+                        "format_html"
+                    ],
+                    "get_category_display": [
+                        "get_category_display"
+                    ],
+                    "lookups": [
+                        "strftime",
+                        "dates"
+                    ],
+                    "queryset": [
+                        "map",
+                        "value",
+                        "filter",
+                        "split"
+                    ],
+                    "formatted_date": [
+                        "format_html",
+                        "strftime"
+                    ],
+                    "get_all_services": [
+                        "join",
+                        "all"
+                    ],
+                    "total_services": [
+                        "sum",
+                        "aggregate",
+                        "filter"
+                    ],
+                    "service_name": [],
+                    "customer_name": [],
+                    "is_eligible": []
+                }
+            },
+            "risk_summary": {
+                "high": 2,
+                "medium": 3,
+                "low": 5
+            },
+            "risk_analysis": {
+                "service_image_tag": {
+                    "complexity": 2,
+                    "dependency_count": 1,
+                    "risk_level": "Low"
+                },
+                "get_category_display": {
+                    "complexity": 1,
+                    "dependency_count": 1,
+                    "risk_level": "Low"
+                },
+                "lookups": {
+                    "complexity": 1,
+                    "dependency_count": 2,
+                    "risk_level": "Medium"
+                },
+                "queryset": {
+                    "complexity": 2,
+                    "dependency_count": 4,
+                    "risk_level": "High"
+                },
+                "formatted_date": {
+                    "complexity": 1,
+                    "dependency_count": 2,
+                    "risk_level": "Medium"
+                },
+                "get_all_services": {
+                    "complexity": 1,
+                    "dependency_count": 2,
+                    "risk_level": "Medium"
+                },
+                "total_services": {
+                    "complexity": 2,
+                    "dependency_count": 3,
+                    "risk_level": "High"
+                },
+                "service_name": {
+                    "complexity": 1,
+                    "dependency_count": 0,
+                    "risk_level": "Low"
+                },
+                "customer_name": {
+                    "complexity": 1,
+                    "dependency_count": 0,
+                    "risk_level": "Low"
+                },
+                "is_eligible": {
+                    "complexity": 1,
+                    "dependency_count": 0,
+                    "risk_level": "Low"
+                }
+            },
+            "high_risk_functions": [
+                "queryset",
+                "total_services"
+            ],
+            "intelligent_testing_context": {
+                "ml_ready_features": [
+                    {
+                        "function_name": "service_image_tag",
+                        "cyclomatic_complexity": 2,
+                        "dependency_count": 1,
+                        "risk_level": "Low"
+                    },
+                    {
+                        "function_name": "get_category_display",
+                        "cyclomatic_complexity": 1,
+                        "dependency_count": 1,
+                        "risk_level": "Low"
+                    },
+                    {
+                        "function_name": "lookups",
+                        "cyclomatic_complexity": 1,
+                        "dependency_count": 2,
+                        "risk_level": "Medium"
+                    },
+                    {
+                        "function_name": "queryset",
+                        "cyclomatic_complexity": 2,
+                        "dependency_count": 4,
+                        "risk_level": "High"
+                    },
+                    {
+                        "function_name": "formatted_date",
+                        "cyclomatic_complexity": 1,
+                        "dependency_count": 2,
+                        "risk_level": "Medium"
+                    },
+                    {
+                        "function_name": "get_all_services",
+                        "cyclomatic_complexity": 1,
+                        "dependency_count": 2,
+                        "risk_level": "Medium"
+                    },
+                    {
+                        "function_name": "total_services",
+                        "cyclomatic_complexity": 2,
+                        "dependency_count": 3,
+                        "risk_level": "High"
+                    },
+                    {
+                        "function_name": "service_name",
+                        "cyclomatic_complexity": 1,
+                        "dependency_count": 0,
+                        "risk_level": "Low"
+                    },
+                    {
+                        "function_name": "customer_name",
+                        "cyclomatic_complexity": 1,
+                        "dependency_count": 0,
+                        "risk_level": "Low"
+                    },
+                    {
+                        "function_name": "is_eligible",
+                        "cyclomatic_complexity": 1,
+                        "dependency_count": 0,
+                        "risk_level": "Low"
+                    }
+                ],
+                "llm_test_recommendations": [
+                    {
+                        "function": "service_image_tag",
+                        "risk_level": "Low",
+                        "reason": "Low risk due to low structural complexity",
+                        "dependencies": [
+                            "format_html"
+                        ],
+                        "suggested_test_focus": [
+                            "basic functional correctness"
+                        ]
+                    },
+                    {
+                        "function": "get_category_display",
+                        "risk_level": "Low",
+                        "reason": "Low risk due to low structural complexity",
+                        "dependencies": [
+                            "get_category_display"
+                        ],
+                        "suggested_test_focus": [
+                            "basic functional correctness"
+                        ]
+                    },
+                    {
+                        "function": "lookups",
+                        "risk_level": "Medium",
+                        "reason": "Medium risk due to moderate dependency count",
+                        "dependencies": [
+                            "strftime",
+                            "dates"
+                        ],
+                        "suggested_test_focus": [
+                            "dependency behavior",
+                            "mocking external/internal calls",
+                            "integration-related scenarios"
+                        ]
+                    },
+                    {
+                        "function": "queryset",
+                        "risk_level": "High",
+                        "reason": "High risk due to high dependency count",
+                        "dependencies": [
+                            "map",
+                            "value",
+                            "filter",
+                            "split"
+                        ],
+                        "suggested_test_focus": [
+                            "dependency behavior",
+                            "mocking external/internal calls",
+                            "integration-related scenarios"
+                        ]
+                    },
+                    {
+                        "function": "formatted_date",
+                        "risk_level": "Medium",
+                        "reason": "Medium risk due to moderate dependency count",
+                        "dependencies": [
+                            "format_html",
+                            "strftime"
+                        ],
+                        "suggested_test_focus": [
+                            "dependency behavior",
+                            "mocking external/internal calls",
+                            "integration-related scenarios"
+                        ]
+                    },
+                    {
+                        "function": "get_all_services",
+                        "risk_level": "Medium",
+                        "reason": "Medium risk due to moderate dependency count",
+                        "dependencies": [
+                            "join",
+                            "all"
+                        ],
+                        "suggested_test_focus": [
+                            "dependency behavior",
+                            "mocking external/internal calls",
+                            "integration-related scenarios"
+                        ]
+                    },
+                    {
+                        "function": "total_services",
+                        "risk_level": "High",
+                        "reason": "High risk due to high dependency count",
+                        "dependencies": [
+                            "sum",
+                            "aggregate",
+                            "filter"
+                        ],
+                        "suggested_test_focus": [
+                            "dependency behavior",
+                            "mocking external/internal calls",
+                            "integration-related scenarios"
+                        ]
+                    },
+                    {
+                        "function": "service_name",
+                        "risk_level": "Low",
+                        "reason": "Low risk due to low structural complexity",
+                        "dependencies": [],
+                        "suggested_test_focus": [
+                            "basic functional correctness"
+                        ]
+                    },
+                    {
+                        "function": "customer_name",
+                        "risk_level": "Low",
+                        "reason": "Low risk due to low structural complexity",
+                        "dependencies": [],
+                        "suggested_test_focus": [
+                            "basic functional correctness"
+                        ]
+                    },
+                    {
+                        "function": "is_eligible",
+                        "risk_level": "Low",
+                        "reason": "Low risk due to low structural complexity",
+                        "dependencies": [],
+                        "suggested_test_focus": [
+                            "basic functional correctness"
+                        ]
+                    }
+                ]
+            },
+            "requirement_analysis": {
+                "project_summary": {
+                    "total_functions": 10,
+                    "documented_and_implemented": 0,
+                    "documented_but_missing": 0,
+                    "implemented_but_undocumented": 10,
+                    "average_specification_coverage": 0.0
+                },
+                "functions": [
+                    {
+                        "function_name": "customer_name",
+                        "mapping_status": "implemented_undocumented",
+                        "ast_metrics": {
+                            "cyclomatic_complexity": 1,
+                            "nesting_depth": 0,
+                            "dependency_count": 0,
+                            "lines_of_code": 2
+                        },
+                        "risk_analysis": {
+                            "complexity": 1,
+                            "dependency_count": 0,
+                            "risk_level": "Low"
+                        },
+                        "specification_metrics": {
+                            "has_documentation_mapping": false,
+                            "input_requirements_count": 0,
+                            "output_requirements_count": 0,
+                            "exception_requirements_count": 0,
+                            "specification_coverage_score": 0.0
+                        },
+                        "gap_analysis": {
+                            "missing_input_validation": false,
+                            "missing_exception_handling": false,
+                            "missing_output_definition": false,
+                            "missing_function": false,
+                            "missing_requirement_coverage": true
+                        }
+                    },
+                    {
+                        "function_name": "formatted_date",
+                        "mapping_status": "implemented_undocumented",
+                        "ast_metrics": {
+                            "cyclomatic_complexity": 1,
+                            "nesting_depth": 0,
+                            "dependency_count": 2,
+                            "lines_of_code": 5
+                        },
+                        "risk_analysis": {
+                            "complexity": 1,
+                            "dependency_count": 2,
+                            "risk_level": "Medium"
+                        },
+                        "specification_metrics": {
+                            "has_documentation_mapping": false,
+                            "input_requirements_count": 0,
+                            "output_requirements_count": 0,
+                            "exception_requirements_count": 0,
+                            "specification_coverage_score": 0.0
+                        },
+                        "gap_analysis": {
+                            "missing_input_validation": false,
+                            "missing_exception_handling": false,
+                            "missing_output_definition": false,
+                            "missing_function": false,
+                            "missing_requirement_coverage": true
+                        }
+                    },
+                    {
+                        "function_name": "get_all_services",
+                        "mapping_status": "implemented_undocumented",
+                        "ast_metrics": {
+                            "cyclomatic_complexity": 1,
+                            "nesting_depth": 0,
+                            "dependency_count": 2,
+                            "lines_of_code": 5
+                        },
+                        "risk_analysis": {
+                            "complexity": 1,
+                            "dependency_count": 2,
+                            "risk_level": "Medium"
+                        },
+                        "specification_metrics": {
+                            "has_documentation_mapping": false,
+                            "input_requirements_count": 0,
+                            "output_requirements_count": 0,
+                            "exception_requirements_count": 0,
+                            "specification_coverage_score": 0.0
+                        },
+                        "gap_analysis": {
+                            "missing_input_validation": false,
+                            "missing_exception_handling": false,
+                            "missing_output_definition": false,
+                            "missing_function": false,
+                            "missing_requirement_coverage": true
+                        }
+                    },
+                    {
+                        "function_name": "get_category_display",
+                        "mapping_status": "implemented_undocumented",
+                        "ast_metrics": {
+                            "cyclomatic_complexity": 1,
+                            "nesting_depth": 0,
+                            "dependency_count": 1,
+                            "lines_of_code": 2
+                        },
+                        "risk_analysis": {
+                            "complexity": 1,
+                            "dependency_count": 1,
+                            "risk_level": "Low"
+                        },
+                        "specification_metrics": {
+                            "has_documentation_mapping": false,
+                            "input_requirements_count": 0,
+                            "output_requirements_count": 0,
+                            "exception_requirements_count": 0,
+                            "specification_coverage_score": 0.0
+                        },
+                        "gap_analysis": {
+                            "missing_input_validation": false,
+                            "missing_exception_handling": false,
+                            "missing_output_definition": false,
+                            "missing_function": false,
+                            "missing_requirement_coverage": true
+                        }
+                    },
+                    {
+                        "function_name": "is_eligible",
+                        "mapping_status": "implemented_undocumented",
+                        "ast_metrics": {
+                            "cyclomatic_complexity": 1,
+                            "nesting_depth": 0,
+                            "dependency_count": 0,
+                            "lines_of_code": 2
+                        },
+                        "risk_analysis": {
+                            "complexity": 1,
+                            "dependency_count": 0,
+                            "risk_level": "Low"
+                        },
+                        "specification_metrics": {
+                            "has_documentation_mapping": false,
+                            "input_requirements_count": 0,
+                            "output_requirements_count": 0,
+                            "exception_requirements_count": 0,
+                            "specification_coverage_score": 0.0
+                        },
+                        "gap_analysis": {
+                            "missing_input_validation": false,
+                            "missing_exception_handling": false,
+                            "missing_output_definition": false,
+                            "missing_function": false,
+                            "missing_requirement_coverage": true
+                        }
+                    },
+                    {
+                        "function_name": "lookups",
+                        "mapping_status": "implemented_undocumented",
+                        "ast_metrics": {
+                            "cyclomatic_complexity": 1,
+                            "nesting_depth": 0,
+                            "dependency_count": 2,
+                            "lines_of_code": 6
+                        },
+                        "risk_analysis": {
+                            "complexity": 1,
+                            "dependency_count": 2,
+                            "risk_level": "Medium"
+                        },
+                        "specification_metrics": {
+                            "has_documentation_mapping": false,
+                            "input_requirements_count": 0,
+                            "output_requirements_count": 0,
+                            "exception_requirements_count": 0,
+                            "specification_coverage_score": 0.0
+                        },
+                        "gap_analysis": {
+                            "missing_input_validation": false,
+                            "missing_exception_handling": false,
+                            "missing_output_definition": false,
+                            "missing_function": false,
+                            "missing_requirement_coverage": true
+                        }
+                    },
+                    {
+                        "function_name": "queryset",
+                        "mapping_status": "implemented_undocumented",
+                        "ast_metrics": {
+                            "cyclomatic_complexity": 2,
+                            "nesting_depth": 1,
+                            "dependency_count": 4,
+                            "lines_of_code": 8
+                        },
+                        "risk_analysis": {
+                            "complexity": 2,
+                            "dependency_count": 4,
+                            "risk_level": "High"
+                        },
+                        "specification_metrics": {
+                            "has_documentation_mapping": false,
+                            "input_requirements_count": 0,
+                            "output_requirements_count": 0,
+                            "exception_requirements_count": 0,
+                            "specification_coverage_score": 0.0
+                        },
+                        "gap_analysis": {
+                            "missing_input_validation": false,
+                            "missing_exception_handling": false,
+                            "missing_output_definition": false,
+                            "missing_function": false,
+                            "missing_requirement_coverage": true
+                        }
+                    },
+                    {
+                        "function_name": "service_image_tag",
+                        "mapping_status": "implemented_undocumented",
+                        "ast_metrics": {
+                            "cyclomatic_complexity": 2,
+                            "nesting_depth": 1,
+                            "dependency_count": 1,
+                            "lines_of_code": 4
+                        },
+                        "risk_analysis": {
+                            "complexity": 2,
+                            "dependency_count": 1,
+                            "risk_level": "Low"
+                        },
+                        "specification_metrics": {
+                            "has_documentation_mapping": false,
+                            "input_requirements_count": 0,
+                            "output_requirements_count": 0,
+                            "exception_requirements_count": 0,
+                            "specification_coverage_score": 0.0
+                        },
+                        "gap_analysis": {
+                            "missing_input_validation": false,
+                            "missing_exception_handling": false,
+                            "missing_output_definition": false,
+                            "missing_function": false,
+                            "missing_requirement_coverage": true
+                        }
+                    },
+                    {
+                        "function_name": "service_name",
+                        "mapping_status": "implemented_undocumented",
+                        "ast_metrics": {
+                            "cyclomatic_complexity": 1,
+                            "nesting_depth": 0,
+                            "dependency_count": 0,
+                            "lines_of_code": 2
+                        },
+                        "risk_analysis": {
+                            "complexity": 1,
+                            "dependency_count": 0,
+                            "risk_level": "Low"
+                        },
+                        "specification_metrics": {
+                            "has_documentation_mapping": false,
+                            "input_requirements_count": 0,
+                            "output_requirements_count": 0,
+                            "exception_requirements_count": 0,
+                            "specification_coverage_score": 0.0
+                        },
+                        "gap_analysis": {
+                            "missing_input_validation": false,
+                            "missing_exception_handling": false,
+                            "missing_output_definition": false,
+                            "missing_function": false,
+                            "missing_requirement_coverage": true
+                        }
+                    },
+                    {
+                        "function_name": "total_services",
+                        "mapping_status": "implemented_undocumented",
+                        "ast_metrics": {
+                            "cyclomatic_complexity": 2,
+                            "nesting_depth": 0,
+                            "dependency_count": 3,
+                            "lines_of_code": 2
+                        },
+                        "risk_analysis": {
+                            "complexity": 2,
+                            "dependency_count": 3,
+                            "risk_level": "High"
+                        },
+                        "specification_metrics": {
+                            "has_documentation_mapping": false,
+                            "input_requirements_count": 0,
+                            "output_requirements_count": 0,
+                            "exception_requirements_count": 0,
+                            "specification_coverage_score": 0.0
+                        },
+                        "gap_analysis": {
+                            "missing_input_validation": false,
+                            "missing_exception_handling": false,
+                            "missing_output_definition": false,
+                            "missing_function": false,
+                            "missing_requirement_coverage": true
+                        }
+                    }
+                ]
+            }
+        },
+        {
+            "file": "cloned_repos\\Saloon-management-system\\userauth\\apps.py",
+            "summary": {
+                "total_lines": 17,
+                "file_cyclomatic_complexity": 1,
+                "nesting_depth": 0,
+                "total_dependency_calls": 0
+            },
+            "control_flow": {
+                "if_count": 0,
+                "for_count": 0,
+                "while_count": 0
+            },
+            "functions": {
+                "total_functions": 1,
+                "function_names": [
+                    "ready"
+                ],
+                "function_complexity": {
+                    "ready": 1
+                }
+            },
+            "dependencies": {
+                "function_dependencies": {
+                    "ready": []
+                }
+            },
+            "risk_summary": {
+                "high": 0,
+                "medium": 0,
+                "low": 1
+            },
+            "risk_analysis": {
+                "ready": {
+                    "complexity": 1,
+                    "dependency_count": 0,
+                    "risk_level": "Low"
+                }
+            },
+            "high_risk_functions": [],
+            "intelligent_testing_context": {
+                "ml_ready_features": [
+                    {
+                        "function_name": "ready",
+                        "cyclomatic_complexity": 1,
+                        "dependency_count": 0,
+                        "risk_level": "Low"
+                    }
+                ],
+                "llm_test_recommendations": [
+                    {
+                        "function": "ready",
+                        "risk_level": "Low",
+                        "reason": "Low risk due to low structural complexity",
+                        "dependencies": [],
+                        "suggested_test_focus": [
+                            "basic functional correctness"
+                        ]
+                    }
+                ]
+            },
+            "requirement_analysis": {
+                "project_summary": {
+                    "total_functions": 1,
+                    "documented_and_implemented": 0,
+                    "documented_but_missing": 0,
+                    "implemented_but_undocumented": 1,
+                    "average_specification_coverage": 0.0
+                },
+                "functions": [
+                    {
+                        "function_name": "ready",
+                        "mapping_status": "implemented_undocumented",
+                        "ast_metrics": {
+                            "cyclomatic_complexity": 1,
+                            "nesting_depth": 0,
+                            "dependency_count": 0,
+                            "lines_of_code": 2
+                        },
+                        "risk_analysis": {
+                            "complexity": 1,
+                            "dependency_count": 0,
+                            "risk_level": "Low"
+                        },
+                        "specification_metrics": {
+                            "has_documentation_mapping": false,
+                            "input_requirements_count": 0,
+                            "output_requirements_count": 0,
+                            "exception_requirements_count": 0,
+                            "specification_coverage_score": 0.0
+                        },
+                        "gap_analysis": {
+                            "missing_input_validation": false,
+                            "missing_exception_handling": false,
+                            "missing_output_definition": false,
+                            "missing_function": false,
+                            "missing_requirement_coverage": true
+                        }
+                    }
+                ]
+            }
+        },
+        {
+            "file": "cloned_repos\\Saloon-management-system\\userauth\\auth_backend.py",
+            "summary": {
+                "total_lines": 1,
+                "file_cyclomatic_complexity": 1,
+                "nesting_depth": 0,
+                "total_dependency_calls": 0
+            },
+            "control_flow": {
+                "if_count": 0,
+                "for_count": 0,
+                "while_count": 0
+            },
+            "functions": {
+                "total_functions": 0,
+                "function_names": [],
+                "function_complexity": {}
+            },
+            "dependencies": {
+                "function_dependencies": {}
+            },
+            "risk_summary": {
+                "high": 0,
+                "medium": 0,
+                "low": 0
+            },
+            "risk_analysis": {},
+            "high_risk_functions": [],
+            "intelligent_testing_context": {
+                "ml_ready_features": [],
+                "llm_test_recommendations": []
+            },
+            "requirement_analysis": {
+                "project_summary": {
+                    "total_functions": 0,
+                    "documented_and_implemented": 0,
+                    "documented_but_missing": 0,
+                    "implemented_but_undocumented": 0,
+                    "average_specification_coverage": 0.0
+                },
+                "functions": []
+            }
+        },
+        {
+            "file": "cloned_repos\\Saloon-management-system\\userauth\\forms.py",
+            "summary": {
+                "total_lines": 17,
+                "file_cyclomatic_complexity": 1,
+                "nesting_depth": 0,
+                "total_dependency_calls": 1
+            },
+            "control_flow": {
+                "if_count": 0,
+                "for_count": 0,
+                "while_count": 0
+            },
+            "functions": {
+                "total_functions": 1,
+                "function_names": [
+                    "clean_password"
+                ],
+                "function_complexity": {
+                    "clean_password": 1
+                }
+            },
+            "dependencies": {
+                "function_dependencies": {
+                    "clean_password": [
+                        "get"
+                    ]
+                }
+            },
+            "risk_summary": {
+                "high": 0,
+                "medium": 0,
+                "low": 1
+            },
+            "risk_analysis": {
+                "clean_password": {
+                    "complexity": 1,
+                    "dependency_count": 1,
+                    "risk_level": "Low"
+                }
+            },
+            "high_risk_functions": [],
+            "intelligent_testing_context": {
+                "ml_ready_features": [
+                    {
+                        "function_name": "clean_password",
+                        "cyclomatic_complexity": 1,
+                        "dependency_count": 1,
+                        "risk_level": "Low"
+                    }
+                ],
+                "llm_test_recommendations": [
+                    {
+                        "function": "clean_password",
+                        "risk_level": "Low",
+                        "reason": "Low risk due to low structural complexity",
+                        "dependencies": [
+                            "get"
+                        ],
+                        "suggested_test_focus": [
+                            "basic functional correctness"
+                        ]
+                    }
+                ]
+            },
+            "requirement_analysis": {
+                "project_summary": {
+                    "total_functions": 1,
+                    "documented_and_implemented": 0,
+                    "documented_but_missing": 0,
+                    "implemented_but_undocumented": 1,
+                    "average_specification_coverage": 0.0
+                },
+                "functions": [
+                    {
+                        "function_name": "clean_password",
+                        "mapping_status": "implemented_undocumented",
+                        "ast_metrics": {
+                            "cyclomatic_complexity": 1,
+                            "nesting_depth": 0,
+                            "dependency_count": 1,
+                            "lines_of_code": 4
+                        },
+                        "risk_analysis": {
+                            "complexity": 1,
+                            "dependency_count": 1,
+                            "risk_level": "Low"
+                        },
+                        "specification_metrics": {
+                            "has_documentation_mapping": false,
+                            "input_requirements_count": 0,
+                            "output_requirements_count": 0,
+                            "exception_requirements_count": 0,
+                            "specification_coverage_score": 0.0
+                        },
+                        "gap_analysis": {
+                            "missing_input_validation": false,
+                            "missing_exception_handling": false,
+                            "missing_output_definition": false,
+                            "missing_function": false,
+                            "missing_requirement_coverage": true
+                        }
+                    }
+                ]
+            }
+        },
+        {
+            "file": "cloned_repos\\Saloon-management-system\\userauth\\models.py",
+            "summary": {
+                "total_lines": 90,
+                "file_cyclomatic_complexity": 1,
+                "nesting_depth": 0,
+                "total_dependency_calls": 0
+            },
+            "control_flow": {
+                "if_count": 0,
+                "for_count": 0,
+                "while_count": 0
+            },
+            "functions": {
+                "total_functions": 1,
+                "function_names": [
+                    "__str__"
+                ],
+                "function_complexity": {
+                    "__str__": 1
+                }
+            },
+            "dependencies": {
+                "function_dependencies": {
+                    "__str__": []
+                }
+            },
+            "risk_summary": {
+                "high": 0,
+                "medium": 0,
+                "low": 1
+            },
+            "risk_analysis": {
+                "__str__": {
+                    "complexity": 1,
+                    "dependency_count": 0,
+                    "risk_level": "Low"
+                }
+            },
+            "high_risk_functions": [],
+            "intelligent_testing_context": {
+                "ml_ready_features": [
+                    {
+                        "function_name": "__str__",
+                        "cyclomatic_complexity": 1,
+                        "dependency_count": 0,
+                        "risk_level": "Low"
+                    }
+                ],
+                "llm_test_recommendations": [
+                    {
+                        "function": "__str__",
+                        "risk_level": "Low",
+                        "reason": "Low risk due to low structural complexity",
+                        "dependencies": [],
+                        "suggested_test_focus": [
+                            "basic functional correctness"
+                        ]
+                    }
+                ]
+            },
+            "requirement_analysis": {
+                "project_summary": {
+                    "total_functions": 1,
+                    "documented_and_implemented": 0,
+                    "documented_but_missing": 0,
+                    "implemented_but_undocumented": 1,
+                    "average_specification_coverage": 0.0
+                },
+                "functions": [
+                    {
+                        "function_name": "__str__",
+                        "mapping_status": "implemented_undocumented",
+                        "ast_metrics": {
+                            "cyclomatic_complexity": 1,
+                            "nesting_depth": 0,
+                            "dependency_count": 0,
+                            "lines_of_code": 2
+                        },
+                        "risk_analysis": {
+                            "complexity": 1,
+                            "dependency_count": 0,
+                            "risk_level": "Low"
+                        },
+                        "specification_metrics": {
+                            "has_documentation_mapping": false,
+                            "input_requirements_count": 0,
+                            "output_requirements_count": 0,
+                            "exception_requirements_count": 0,
+                            "specification_coverage_score": 0.0
+                        },
+                        "gap_analysis": {
+                            "missing_input_validation": false,
+                            "missing_exception_handling": false,
+                            "missing_output_definition": false,
+                            "missing_function": false,
+                            "missing_requirement_coverage": true
+                        }
+                    }
+                ]
+            }
+        },
+        {
+            "file": "cloned_repos\\Saloon-management-system\\userauth\\signals.py",
+            "summary": {
+                "total_lines": 55,
+                "file_cyclomatic_complexity": 8,
+                "nesting_depth": 2,
+                "total_dependency_calls": 11
+            },
+            "control_flow": {
+                "if_count": 4,
+                "for_count": 2,
+                "while_count": 0
+            },
+            "functions": {
+                "total_functions": 2,
+                "function_names": [
+                    "update_loyalty_records_on_services",
+                    "update_loyalty_records_on_additional_services"
+                ],
+                "function_complexity": {
+                    "update_loyalty_records_on_services": 5,
+                    "update_loyalty_records_on_additional_services": 4
+                }
+            },
+            "dependencies": {
+                "function_dependencies": {
+                    "update_loyalty_records_on_services": [
+                        "get",
+                        "info",
+                        "hasattr",
+                        "receiver",
+                        "update_loyalty_record",
+                        "warning"
+                    ],
+                    "update_loyalty_records_on_additional_services": [
+                        "get",
+                        "info",
+                        "receiver",
+                        "update_loyalty_record",
+                        "warning"
+                    ]
+                }
+            },
+            "risk_summary": {
+                "high": 2,
+                "medium": 0,
+                "low": 0
+            },
+            "risk_analysis": {
+                "update_loyalty_records_on_services": {
+                    "complexity": 5,
+                    "dependency_count": 6,
+                    "risk_level": "High"
+                },
+                "update_loyalty_records_on_additional_services": {
+                    "complexity": 4,
+                    "dependency_count": 5,
+                    "risk_level": "High"
+                }
+            },
+            "high_risk_functions": [
+                "update_loyalty_records_on_services",
+                "update_loyalty_records_on_additional_services"
+            ],
+            "intelligent_testing_context": {
+                "ml_ready_features": [
+                    {
+                        "function_name": "update_loyalty_records_on_services",
+                        "cyclomatic_complexity": 5,
+                        "dependency_count": 6,
+                        "risk_level": "High"
+                    },
+                    {
+                        "function_name": "update_loyalty_records_on_additional_services",
+                        "cyclomatic_complexity": 4,
+                        "dependency_count": 5,
+                        "risk_level": "High"
+                    }
+                ],
+                "llm_test_recommendations": [
+                    {
+                        "function": "update_loyalty_records_on_services",
+                        "risk_level": "High",
+                        "reason": "High risk due to high cyclomatic complexity and high dependency count",
+                        "dependencies": [
+                            "get",
+                            "info",
+                            "hasattr",
+                            "receiver",
+                            "update_loyalty_record",
+                            "warning"
+                        ],
+                        "suggested_test_focus": [
+                            "branch coverage",
+                            "edge cases",
+                            "multiple execution paths",
+                            "dependency behavior",
+                            "mocking external/internal calls",
+                            "integration-related scenarios"
+                        ]
+                    },
+                    {
+                        "function": "update_loyalty_records_on_additional_services",
+                        "risk_level": "High",
+                        "reason": "High risk due to high cyclomatic complexity and high dependency count",
+                        "dependencies": [
+                            "get",
+                            "info",
+                            "receiver",
+                            "update_loyalty_record",
+                            "warning"
+                        ],
+                        "suggested_test_focus": [
+                            "branch coverage",
+                            "edge cases",
+                            "multiple execution paths",
+                            "dependency behavior",
+                            "mocking external/internal calls",
+                            "integration-related scenarios"
+                        ]
+                    }
+                ]
+            },
+            "requirement_analysis": {
+                "project_summary": {
+                    "total_functions": 2,
+                    "documented_and_implemented": 0,
+                    "documented_but_missing": 0,
+                    "implemented_but_undocumented": 2,
+                    "average_specification_coverage": 0.0
+                },
+                "functions": [
+                    {
+                        "function_name": "update_loyalty_records_on_additional_services",
+                        "mapping_status": "implemented_undocumented",
+                        "ast_metrics": {
+                            "cyclomatic_complexity": 4,
+                            "nesting_depth": 2,
+                            "dependency_count": 5,
+                            "lines_of_code": 22
+                        },
+                        "risk_analysis": {
+                            "complexity": 4,
+                            "dependency_count": 5,
+                            "risk_level": "High"
+                        },
+                        "specification_metrics": {
+                            "has_documentation_mapping": false,
+                            "input_requirements_count": 0,
+                            "output_requirements_count": 0,
+                            "exception_requirements_count": 0,
+                            "specification_coverage_score": 0.0
+                        },
+                        "gap_analysis": {
+                            "missing_input_validation": false,
+                            "missing_exception_handling": false,
+                            "missing_output_definition": false,
+                            "missing_function": false,
+                            "missing_requirement_coverage": true
+                        }
+                    },
+                    {
+                        "function_name": "update_loyalty_records_on_services",
+                        "mapping_status": "implemented_undocumented",
+                        "ast_metrics": {
+                            "cyclomatic_complexity": 5,
+                            "nesting_depth": 2,
+                            "dependency_count": 6,
+                            "lines_of_code": 17
+                        },
+                        "risk_analysis": {
+                            "complexity": 5,
+                            "dependency_count": 6,
+                            "risk_level": "High"
+                        },
+                        "specification_metrics": {
+                            "has_documentation_mapping": false,
+                            "input_requirements_count": 0,
+                            "output_requirements_count": 0,
+                            "exception_requirements_count": 0,
+                            "specification_coverage_score": 0.0
+                        },
+                        "gap_analysis": {
+                            "missing_input_validation": false,
+                            "missing_exception_handling": false,
+                            "missing_output_definition": false,
+                            "missing_function": false,
+                            "missing_requirement_coverage": true
+                        }
+                    }
+                ]
+            }
+        },
+        {
+            "file": "cloned_repos\\Saloon-management-system\\userauth\\tests.py",
+            "summary": {
+                "total_lines": 3,
+                "file_cyclomatic_complexity": 1,
+                "nesting_depth": 0,
+                "total_dependency_calls": 0
+            },
+            "control_flow": {
+                "if_count": 0,
+                "for_count": 0,
+                "while_count": 0
+            },
+            "functions": {
+                "total_functions": 0,
+                "function_names": [],
+                "function_complexity": {}
+            },
+            "dependencies": {
+                "function_dependencies": {}
+            },
+            "risk_summary": {
+                "high": 0,
+                "medium": 0,
+                "low": 0
+            },
+            "risk_analysis": {},
+            "high_risk_functions": [],
+            "intelligent_testing_context": {
+                "ml_ready_features": [],
+                "llm_test_recommendations": []
+            },
+            "requirement_analysis": {
+                "project_summary": {
+                    "total_functions": 0,
+                    "documented_and_implemented": 0,
+                    "documented_but_missing": 0,
+                    "implemented_but_undocumented": 0,
+                    "average_specification_coverage": 0.0
+                },
+                "functions": []
+            }
+        },
+        {
+            "file": "cloned_repos\\Saloon-management-system\\userauth\\urls.py",
+            "summary": {
+                "total_lines": 21,
+                "file_cyclomatic_complexity": 1,
+                "nesting_depth": 0,
+                "total_dependency_calls": 0
+            },
+            "control_flow": {
+                "if_count": 0,
+                "for_count": 0,
+                "while_count": 0
+            },
+            "functions": {
+                "total_functions": 0,
+                "function_names": [],
+                "function_complexity": {}
+            },
+            "dependencies": {
+                "function_dependencies": {}
+            },
+            "risk_summary": {
+                "high": 0,
+                "medium": 0,
+                "low": 0
+            },
+            "risk_analysis": {},
+            "high_risk_functions": [],
+            "intelligent_testing_context": {
+                "ml_ready_features": [],
+                "llm_test_recommendations": []
+            },
+            "requirement_analysis": {
+                "project_summary": {
+                    "total_functions": 0,
+                    "documented_and_implemented": 0,
+                    "documented_but_missing": 0,
+                    "implemented_but_undocumented": 0,
+                    "average_specification_coverage": 0.0
+                },
+                "functions": []
+            }
+        },
+        {
+            "file": "cloned_repos\\Saloon-management-system\\userauth\\utils.py",
+            "summary": {
+                "total_lines": 25,
+                "file_cyclomatic_complexity": 2,
+                "nesting_depth": 1,
+                "total_dependency_calls": 4
+            },
+            "control_flow": {
+                "if_count": 1,
+                "for_count": 0,
+                "while_count": 0
+            },
+            "functions": {
+                "total_functions": 1,
+                "function_names": [
+                    "update_loyalty_record"
+                ],
+                "function_complexity": {
+                    "update_loyalty_record": 2
+                }
+            },
+            "dependencies": {
+                "function_dependencies": {
+                    "update_loyalty_record": [
+                        "get",
+                        "save",
+                        "print",
+                        "get_or_create"
+                    ]
+                }
+            },
+            "risk_summary": {
+                "high": 1,
+                "medium": 0,
+                "low": 0
+            },
+            "risk_analysis": {
+                "update_loyalty_record": {
+                    "complexity": 2,
+                    "dependency_count": 4,
+                    "risk_level": "High"
+                }
+            },
+            "high_risk_functions": [
+                "update_loyalty_record"
+            ],
+            "intelligent_testing_context": {
+                "ml_ready_features": [
+                    {
+                        "function_name": "update_loyalty_record",
+                        "cyclomatic_complexity": 2,
+                        "dependency_count": 4,
+                        "risk_level": "High"
+                    }
+                ],
+                "llm_test_recommendations": [
+                    {
+                        "function": "update_loyalty_record",
+                        "risk_level": "High",
+                        "reason": "High risk due to high dependency count",
+                        "dependencies": [
+                            "get",
+                            "save",
+                            "print",
+                            "get_or_create"
+                        ],
+                        "suggested_test_focus": [
+                            "dependency behavior",
+                            "mocking external/internal calls",
+                            "integration-related scenarios"
+                        ]
+                    }
+                ]
+            },
+            "requirement_analysis": {
+                "project_summary": {
+                    "total_functions": 1,
+                    "documented_and_implemented": 0,
+                    "documented_but_missing": 0,
+                    "implemented_but_undocumented": 1,
+                    "average_specification_coverage": 0.0
+                },
+                "functions": [
+                    {
+                        "function_name": "update_loyalty_record",
+                        "mapping_status": "implemented_undocumented",
+                        "ast_metrics": {
+                            "cyclomatic_complexity": 2,
+                            "nesting_depth": 1,
+                            "dependency_count": 4,
+                            "lines_of_code": 23
+                        },
+                        "risk_analysis": {
+                            "complexity": 2,
+                            "dependency_count": 4,
+                            "risk_level": "High"
+                        },
+                        "specification_metrics": {
+                            "has_documentation_mapping": false,
+                            "input_requirements_count": 0,
+                            "output_requirements_count": 0,
+                            "exception_requirements_count": 0,
+                            "specification_coverage_score": 0.0
+                        },
+                        "gap_analysis": {
+                            "missing_input_validation": false,
+                            "missing_exception_handling": false,
+                            "missing_output_definition": false,
+                            "missing_function": false,
+                            "missing_requirement_coverage": true
+                        }
+                    }
+                ]
+            }
+        },
+        {
+            "file": "cloned_repos\\Saloon-management-system\\userauth\\views.py",
+            "summary": {
+                "total_lines": 326,
+                "file_cyclomatic_complexity": 30,
+                "nesting_depth": 2,
+                "total_dependency_calls": 90
+            },
+            "control_flow": {
+                "if_count": 24,
+                "for_count": 0,
+                "while_count": 2
+            },
+            "functions": {
+                "total_functions": 11,
+                "function_names": [
+                    "home",
+                    "about",
+                    "signupPage",
+                    "loginP",
+                    "custom_logout",
+                    "contact",
+                    "customer_register",
+                    "get",
+                    "booking_create",
+                    "customer_dashboard",
+                    "booking_page"
+                ],
+                "function_complexity": {
+                    "home": 3,
+                    "about": 1,
+                    "signupPage": 7,
+                    "loginP": 3,
+                    "custom_logout": 1,
+                    "contact": 2,
+                    "customer_register": 3,
+                    "get": 4,
+                    "booking_create": 10,
+                    "customer_dashboard": 2,
+                    "booking_page": 4
+                }
+            },
+            "dependencies": {
+                "function_dependencies": {
+                    "home": [
+                        "login_required",
+                        "redirect",
+                        "render"
+                    ],
+                    "about": [
+                        "login_required",
+                        "render"
+                    ],
+                    "signupPage": [
+                        "create",
+                        "get",
+                        "success",
+                        "render",
+                        "error",
+                        "create_user",
+                        "redirect",
+                        "search",
+                        "exists",
+                        "filter",
+                        "save",
+                        "len"
+                    ],
+                    "loginP": [
+                        "get",
+                        "render",
+                        "error",
+                        "authenticate",
+                        "redirect",
+                        "login"
+                    ],
+                    "custom_logout": [
+                        "login_required",
+                        "redirect",
+                        "logout"
+                    ],
+                    "contact": [
+                        "send_mail",
+                        "login_required",
+                        "render",
+                        "redirect",
+                        "create"
+                    ],
+                    "customer_register": [
+                        "get",
+                        "render",
+                        "is_valid",
+                        "redirect",
+                        "make_password",
+                        "save",
+                        "Customerform"
+                    ],
+                    "get": [
+                        "distinct",
+                        "combine",
+                        "render",
+                        "list",
+                        "date",
+                        "lstrip",
+                        "time",
+                        "count",
+                        "filter",
+                        "append",
+                        "strftime",
+                        "timedelta",
+                        "warning",
+                        "values_list",
+                        "get_full_name",
+                        "today",
+                        "values"
+                    ],
+                    "booking_create": [
+                        "split",
+                        "add",
+                        "get",
+                        "success",
+                        "error",
+                        "date",
+                        "now",
+                        "redirect",
+                        "int",
+                        "time",
+                        "count",
+                        "getlist",
+                        "Booking",
+                        "strptime",
+                        "set",
+                        "filter",
+                        "save",
+                        "today"
+                    ],
+                    "customer_dashboard": [
+                        "render",
+                        "first",
+                        "getattr",
+                        "filter"
+                    ],
+                    "booking_page": [
+                        "get",
+                        "combine",
+                        "render",
+                        "date",
+                        "append",
+                        "time",
+                        "count",
+                        "strptime",
+                        "strftime",
+                        "timedelta",
+                        "get_full_name",
+                        "filter",
+                        "today"
+                    ]
+                }
+            },
+            "risk_summary": {
+                "high": 10,
+                "medium": 1,
+                "low": 0
+            },
+            "risk_analysis": {
+                "home": {
+                    "complexity": 3,
+                    "dependency_count": 3,
+                    "risk_level": "High"
+                },
+                "about": {
+                    "complexity": 1,
+                    "dependency_count": 2,
+                    "risk_level": "Medium"
+                },
+                "signupPage": {
+                    "complexity": 7,
+                    "dependency_count": 12,
+                    "risk_level": "High"
+                },
+                "loginP": {
+                    "complexity": 3,
+                    "dependency_count": 6,
+                    "risk_level": "High"
+                },
+                "custom_logout": {
+                    "complexity": 1,
+                    "dependency_count": 3,
+                    "risk_level": "High"
+                },
+                "contact": {
+                    "complexity": 2,
+                    "dependency_count": 5,
+                    "risk_level": "High"
+                },
+                "customer_register": {
+                    "complexity": 3,
+                    "dependency_count": 7,
+                    "risk_level": "High"
+                },
+                "get": {
+                    "complexity": 4,
+                    "dependency_count": 17,
+                    "risk_level": "High"
+                },
+                "booking_create": {
+                    "complexity": 10,
+                    "dependency_count": 18,
+                    "risk_level": "High"
+                },
+                "customer_dashboard": {
+                    "complexity": 2,
+                    "dependency_count": 4,
+                    "risk_level": "High"
+                },
+                "booking_page": {
+                    "complexity": 4,
+                    "dependency_count": 13,
+                    "risk_level": "High"
+                }
+            },
+            "high_risk_functions": [
+                "home",
+                "signupPage",
+                "loginP",
+                "custom_logout",
+                "contact",
+                "customer_register",
+                "get",
+                "booking_create",
+                "customer_dashboard",
+                "booking_page"
+            ],
+            "intelligent_testing_context": {
+                "ml_ready_features": [
+                    {
+                        "function_name": "home",
+                        "cyclomatic_complexity": 3,
+                        "dependency_count": 3,
+                        "risk_level": "High"
+                    },
+                    {
+                        "function_name": "about",
+                        "cyclomatic_complexity": 1,
+                        "dependency_count": 2,
+                        "risk_level": "Medium"
+                    },
+                    {
+                        "function_name": "signupPage",
+                        "cyclomatic_complexity": 7,
+                        "dependency_count": 12,
+                        "risk_level": "High"
+                    },
+                    {
+                        "function_name": "loginP",
+                        "cyclomatic_complexity": 3,
+                        "dependency_count": 6,
+                        "risk_level": "High"
+                    },
+                    {
+                        "function_name": "custom_logout",
+                        "cyclomatic_complexity": 1,
+                        "dependency_count": 3,
+                        "risk_level": "High"
+                    },
+                    {
+                        "function_name": "contact",
+                        "cyclomatic_complexity": 2,
+                        "dependency_count": 5,
+                        "risk_level": "High"
+                    },
+                    {
+                        "function_name": "customer_register",
+                        "cyclomatic_complexity": 3,
+                        "dependency_count": 7,
+                        "risk_level": "High"
+                    },
+                    {
+                        "function_name": "get",
+                        "cyclomatic_complexity": 4,
+                        "dependency_count": 17,
+                        "risk_level": "High"
+                    },
+                    {
+                        "function_name": "booking_create",
+                        "cyclomatic_complexity": 10,
+                        "dependency_count": 18,
+                        "risk_level": "High"
+                    },
+                    {
+                        "function_name": "customer_dashboard",
+                        "cyclomatic_complexity": 2,
+                        "dependency_count": 4,
+                        "risk_level": "High"
+                    },
+                    {
+                        "function_name": "booking_page",
+                        "cyclomatic_complexity": 4,
+                        "dependency_count": 13,
+                        "risk_level": "High"
+                    }
+                ],
+                "llm_test_recommendations": [
+                    {
+                        "function": "home",
+                        "risk_level": "High",
+                        "reason": "High risk due to moderate cyclomatic complexity and high dependency count",
+                        "dependencies": [
+                            "login_required",
+                            "redirect",
+                            "render"
+                        ],
+                        "suggested_test_focus": [
+                            "branch coverage",
+                            "edge cases",
+                            "multiple execution paths",
+                            "dependency behavior",
+                            "mocking external/internal calls",
+                            "integration-related scenarios"
+                        ]
+                    },
+                    {
+                        "function": "about",
+                        "risk_level": "Medium",
+                        "reason": "Medium risk due to moderate dependency count",
+                        "dependencies": [
+                            "login_required",
+                            "render"
+                        ],
+                        "suggested_test_focus": [
+                            "dependency behavior",
+                            "mocking external/internal calls",
+                            "integration-related scenarios"
+                        ]
+                    },
+                    {
+                        "function": "signupPage",
+                        "risk_level": "High",
+                        "reason": "High risk due to high cyclomatic complexity and high dependency count",
+                        "dependencies": [
+                            "create",
+                            "get",
+                            "success",
+                            "render",
+                            "error",
+                            "create_user",
+                            "redirect",
+                            "search",
+                            "exists",
+                            "filter",
+                            "save",
+                            "len"
+                        ],
+                        "suggested_test_focus": [
+                            "branch coverage",
+                            "edge cases",
+                            "multiple execution paths",
+                            "dependency behavior",
+                            "mocking external/internal calls",
+                            "integration-related scenarios"
+                        ]
+                    },
+                    {
+                        "function": "loginP",
+                        "risk_level": "High",
+                        "reason": "High risk due to moderate cyclomatic complexity and high dependency count",
+                        "dependencies": [
+                            "get",
+                            "render",
+                            "error",
+                            "authenticate",
+                            "redirect",
+                            "login"
+                        ],
+                        "suggested_test_focus": [
+                            "branch coverage",
+                            "edge cases",
+                            "multiple execution paths",
+                            "dependency behavior",
+                            "mocking external/internal calls",
+                            "integration-related scenarios"
+                        ]
+                    },
+                    {
+                        "function": "custom_logout",
+                        "risk_level": "High",
+                        "reason": "High risk due to high dependency count",
+                        "dependencies": [
+                            "login_required",
+                            "redirect",
+                            "logout"
+                        ],
+                        "suggested_test_focus": [
+                            "dependency behavior",
+                            "mocking external/internal calls",
+                            "integration-related scenarios"
+                        ]
+                    },
+                    {
+                        "function": "contact",
+                        "risk_level": "High",
+                        "reason": "High risk due to high dependency count",
+                        "dependencies": [
+                            "send_mail",
+                            "login_required",
+                            "render",
+                            "redirect",
+                            "create"
+                        ],
+                        "suggested_test_focus": [
+                            "dependency behavior",
+                            "mocking external/internal calls",
+                            "integration-related scenarios"
+                        ]
+                    },
+                    {
+                        "function": "customer_register",
+                        "risk_level": "High",
+                        "reason": "High risk due to moderate cyclomatic complexity and high dependency count",
+                        "dependencies": [
+                            "get",
+                            "render",
+                            "is_valid",
+                            "redirect",
+                            "make_password",
+                            "save",
+                            "Customerform"
+                        ],
+                        "suggested_test_focus": [
+                            "branch coverage",
+                            "edge cases",
+                            "multiple execution paths",
+                            "dependency behavior",
+                            "mocking external/internal calls",
+                            "integration-related scenarios"
+                        ]
+                    },
+                    {
+                        "function": "get",
+                        "risk_level": "High",
+                        "reason": "High risk due to high cyclomatic complexity and high dependency count",
+                        "dependencies": [
+                            "distinct",
+                            "combine",
+                            "render",
+                            "list",
+                            "date",
+                            "lstrip",
+                            "time",
+                            "count",
+                            "filter",
+                            "append",
+                            "strftime",
+                            "timedelta",
+                            "warning",
+                            "values_list",
+                            "get_full_name",
+                            "today",
+                            "values"
+                        ],
+                        "suggested_test_focus": [
+                            "branch coverage",
+                            "edge cases",
+                            "multiple execution paths",
+                            "dependency behavior",
+                            "mocking external/internal calls",
+                            "integration-related scenarios"
+                        ]
+                    },
+                    {
+                        "function": "booking_create",
+                        "risk_level": "High",
+                        "reason": "High risk due to high cyclomatic complexity and high dependency count",
+                        "dependencies": [
+                            "split",
+                            "add",
+                            "get",
+                            "success",
+                            "error",
+                            "date",
+                            "now",
+                            "redirect",
+                            "int",
+                            "time",
+                            "count",
+                            "getlist",
+                            "Booking",
+                            "strptime",
+                            "set",
+                            "filter",
+                            "save",
+                            "today"
+                        ],
+                        "suggested_test_focus": [
+                            "branch coverage",
+                            "edge cases",
+                            "multiple execution paths",
+                            "dependency behavior",
+                            "mocking external/internal calls",
+                            "integration-related scenarios"
+                        ]
+                    },
+                    {
+                        "function": "customer_dashboard",
+                        "risk_level": "High",
+                        "reason": "High risk due to high dependency count",
+                        "dependencies": [
+                            "render",
+                            "first",
+                            "getattr",
+                            "filter"
+                        ],
+                        "suggested_test_focus": [
+                            "dependency behavior",
+                            "mocking external/internal calls",
+                            "integration-related scenarios"
+                        ]
+                    },
+                    {
+                        "function": "booking_page",
+                        "risk_level": "High",
+                        "reason": "High risk due to high cyclomatic complexity and high dependency count",
+                        "dependencies": [
+                            "get",
+                            "combine",
+                            "render",
+                            "date",
+                            "append",
+                            "time",
+                            "count",
+                            "strptime",
+                            "strftime",
+                            "timedelta",
+                            "get_full_name",
+                            "filter",
+                            "today"
+                        ],
+                        "suggested_test_focus": [
+                            "branch coverage",
+                            "edge cases",
+                            "multiple execution paths",
+                            "dependency behavior",
+                            "mocking external/internal calls",
+                            "integration-related scenarios"
+                        ]
+                    }
+                ]
+            },
+            "requirement_analysis": {
+                "project_summary": {
+                    "total_functions": 11,
+                    "documented_and_implemented": 0,
+                    "documented_but_missing": 0,
+                    "implemented_but_undocumented": 11,
+                    "average_specification_coverage": 0.0
+                },
+                "functions": [
+                    {
+                        "function_name": "about",
+                        "mapping_status": "implemented_undocumented",
+                        "ast_metrics": {
+                            "cyclomatic_complexity": 1,
+                            "nesting_depth": 0,
+                            "dependency_count": 2,
+                            "lines_of_code": 2
+                        },
+                        "risk_analysis": {
+                            "complexity": 1,
+                            "dependency_count": 2,
+                            "risk_level": "Medium"
+                        },
+                        "specification_metrics": {
+                            "has_documentation_mapping": false,
+                            "input_requirements_count": 0,
+                            "output_requirements_count": 0,
+                            "exception_requirements_count": 0,
+                            "specification_coverage_score": 0.0
+                        },
+                        "gap_analysis": {
+                            "missing_input_validation": false,
+                            "missing_exception_handling": false,
+                            "missing_output_definition": false,
+                            "missing_function": false,
+                            "missing_requirement_coverage": true
+                        }
+                    },
+                    {
+                        "function_name": "booking_create",
+                        "mapping_status": "implemented_undocumented",
+                        "ast_metrics": {
+                            "cyclomatic_complexity": 10,
+                            "nesting_depth": 2,
+                            "dependency_count": 18,
+                            "lines_of_code": 64
+                        },
+                        "risk_analysis": {
+                            "complexity": 10,
+                            "dependency_count": 18,
+                            "risk_level": "High"
+                        },
+                        "specification_metrics": {
+                            "has_documentation_mapping": false,
+                            "input_requirements_count": 0,
+                            "output_requirements_count": 0,
+                            "exception_requirements_count": 0,
+                            "specification_coverage_score": 0.0
+                        },
+                        "gap_analysis": {
+                            "missing_input_validation": false,
+                            "missing_exception_handling": false,
+                            "missing_output_definition": false,
+                            "missing_function": false,
+                            "missing_requirement_coverage": true
+                        }
+                    },
+                    {
+                        "function_name": "booking_page",
+                        "mapping_status": "implemented_undocumented",
+                        "ast_metrics": {
+                            "cyclomatic_complexity": 4,
+                            "nesting_depth": 2,
+                            "dependency_count": 13,
+                            "lines_of_code": 32
+                        },
+                        "risk_analysis": {
+                            "complexity": 4,
+                            "dependency_count": 13,
+                            "risk_level": "High"
+                        },
+                        "specification_metrics": {
+                            "has_documentation_mapping": false,
+                            "input_requirements_count": 0,
+                            "output_requirements_count": 0,
+                            "exception_requirements_count": 0,
+                            "specification_coverage_score": 0.0
+                        },
+                        "gap_analysis": {
+                            "missing_input_validation": false,
+                            "missing_exception_handling": false,
+                            "missing_output_definition": false,
+                            "missing_function": false,
+                            "missing_requirement_coverage": true
+                        }
+                    },
+                    {
+                        "function_name": "contact",
+                        "mapping_status": "implemented_undocumented",
+                        "ast_metrics": {
+                            "cyclomatic_complexity": 2,
+                            "nesting_depth": 1,
+                            "dependency_count": 5,
+                            "lines_of_code": 20
+                        },
+                        "risk_analysis": {
+                            "complexity": 2,
+                            "dependency_count": 5,
+                            "risk_level": "High"
+                        },
+                        "specification_metrics": {
+                            "has_documentation_mapping": false,
+                            "input_requirements_count": 0,
+                            "output_requirements_count": 0,
+                            "exception_requirements_count": 0,
+                            "specification_coverage_score": 0.0
+                        },
+                        "gap_analysis": {
+                            "missing_input_validation": false,
+                            "missing_exception_handling": false,
+                            "missing_output_definition": false,
+                            "missing_function": false,
+                            "missing_requirement_coverage": true
+                        }
+                    },
+                    {
+                        "function_name": "custom_logout",
+                        "mapping_status": "implemented_undocumented",
+                        "ast_metrics": {
+                            "cyclomatic_complexity": 1,
+                            "nesting_depth": 0,
+                            "dependency_count": 3,
+                            "lines_of_code": 3
+                        },
+                        "risk_analysis": {
+                            "complexity": 1,
+                            "dependency_count": 3,
+                            "risk_level": "High"
+                        },
+                        "specification_metrics": {
+                            "has_documentation_mapping": false,
+                            "input_requirements_count": 0,
+                            "output_requirements_count": 0,
+                            "exception_requirements_count": 0,
+                            "specification_coverage_score": 0.0
+                        },
+                        "gap_analysis": {
+                            "missing_input_validation": false,
+                            "missing_exception_handling": false,
+                            "missing_output_definition": false,
+                            "missing_function": false,
+                            "missing_requirement_coverage": true
+                        }
+                    },
+                    {
+                        "function_name": "customer_dashboard",
+                        "mapping_status": "implemented_undocumented",
+                        "ast_metrics": {
+                            "cyclomatic_complexity": 2,
+                            "nesting_depth": 1,
+                            "dependency_count": 4,
+                            "lines_of_code": 29
+                        },
+                        "risk_analysis": {
+                            "complexity": 2,
+                            "dependency_count": 4,
+                            "risk_level": "High"
+                        },
+                        "specification_metrics": {
+                            "has_documentation_mapping": false,
+                            "input_requirements_count": 0,
+                            "output_requirements_count": 0,
+                            "exception_requirements_count": 0,
+                            "specification_coverage_score": 0.0
+                        },
+                        "gap_analysis": {
+                            "missing_input_validation": false,
+                            "missing_exception_handling": false,
+                            "missing_output_definition": false,
+                            "missing_function": false,
+                            "missing_requirement_coverage": true
+                        }
+                    },
+                    {
+                        "function_name": "customer_register",
+                        "mapping_status": "implemented_undocumented",
+                        "ast_metrics": {
+                            "cyclomatic_complexity": 3,
+                            "nesting_depth": 2,
+                            "dependency_count": 7,
+                            "lines_of_code": 17
+                        },
+                        "risk_analysis": {
+                            "complexity": 3,
+                            "dependency_count": 7,
+                            "risk_level": "High"
+                        },
+                        "specification_metrics": {
+                            "has_documentation_mapping": false,
+                            "input_requirements_count": 0,
+                            "output_requirements_count": 0,
+                            "exception_requirements_count": 0,
+                            "specification_coverage_score": 0.0
+                        },
+                        "gap_analysis": {
+                            "missing_input_validation": false,
+                            "missing_exception_handling": false,
+                            "missing_output_definition": false,
+                            "missing_function": false,
+                            "missing_requirement_coverage": true
+                        }
+                    },
+                    {
+                        "function_name": "get",
+                        "mapping_status": "implemented_undocumented",
+                        "ast_metrics": {
+                            "cyclomatic_complexity": 4,
+                            "nesting_depth": 2,
+                            "dependency_count": 17,
+                            "lines_of_code": 37
+                        },
+                        "risk_analysis": {
+                            "complexity": 4,
+                            "dependency_count": 17,
+                            "risk_level": "High"
+                        },
+                        "specification_metrics": {
+                            "has_documentation_mapping": false,
+                            "input_requirements_count": 0,
+                            "output_requirements_count": 0,
+                            "exception_requirements_count": 0,
+                            "specification_coverage_score": 0.0
+                        },
+                        "gap_analysis": {
+                            "missing_input_validation": false,
+                            "missing_exception_handling": false,
+                            "missing_output_definition": false,
+                            "missing_function": false,
+                            "missing_requirement_coverage": true
+                        }
+                    },
+                    {
+                        "function_name": "home",
+                        "mapping_status": "implemented_undocumented",
+                        "ast_metrics": {
+                            "cyclomatic_complexity": 3,
+                            "nesting_depth": 1,
+                            "dependency_count": 3,
+                            "lines_of_code": 4
+                        },
+                        "risk_analysis": {
+                            "complexity": 3,
+                            "dependency_count": 3,
+                            "risk_level": "High"
+                        },
+                        "specification_metrics": {
+                            "has_documentation_mapping": false,
+                            "input_requirements_count": 0,
+                            "output_requirements_count": 0,
+                            "exception_requirements_count": 0,
+                            "specification_coverage_score": 0.0
+                        },
+                        "gap_analysis": {
+                            "missing_input_validation": false,
+                            "missing_exception_handling": false,
+                            "missing_output_definition": false,
+                            "missing_function": false,
+                            "missing_requirement_coverage": true
+                        }
+                    },
+                    {
+                        "function_name": "loginP",
+                        "mapping_status": "implemented_undocumented",
+                        "ast_metrics": {
+                            "cyclomatic_complexity": 3,
+                            "nesting_depth": 2,
+                            "dependency_count": 6,
+                            "lines_of_code": 20
+                        },
+                        "risk_analysis": {
+                            "complexity": 3,
+                            "dependency_count": 6,
+                            "risk_level": "High"
+                        },
+                        "specification_metrics": {
+                            "has_documentation_mapping": false,
+                            "input_requirements_count": 0,
+                            "output_requirements_count": 0,
+                            "exception_requirements_count": 0,
+                            "specification_coverage_score": 0.0
+                        },
+                        "gap_analysis": {
+                            "missing_input_validation": false,
+                            "missing_exception_handling": false,
+                            "missing_output_definition": false,
+                            "missing_function": false,
+                            "missing_requirement_coverage": true
+                        }
+                    },
+                    {
+                        "function_name": "signupPage",
+                        "mapping_status": "implemented_undocumented",
+                        "ast_metrics": {
+                            "cyclomatic_complexity": 7,
+                            "nesting_depth": 2,
+                            "dependency_count": 12,
+                            "lines_of_code": 45
+                        },
+                        "risk_analysis": {
+                            "complexity": 7,
+                            "dependency_count": 12,
+                            "risk_level": "High"
+                        },
+                        "specification_metrics": {
+                            "has_documentation_mapping": false,
+                            "input_requirements_count": 0,
+                            "output_requirements_count": 0,
+                            "exception_requirements_count": 0,
+                            "specification_coverage_score": 0.0
+                        },
+                        "gap_analysis": {
+                            "missing_input_validation": false,
+                            "missing_exception_handling": false,
+                            "missing_output_definition": false,
+                            "missing_function": false,
+                            "missing_requirement_coverage": true
+                        }
+                    }
+                ]
+            }
+        }
+    ]
+}
