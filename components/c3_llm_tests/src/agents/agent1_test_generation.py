@@ -63,6 +63,19 @@ You must respond with ONLY a valid JSON object in this exact format:
 }
 
 Categories must be one of: normal, edge, negative, exception
+
+Expected outputs (the test oracle):
+- Derive every expected_output from the SPECIFICATION: the docstring
+  (Args / Returns / Raises), the function and parameter names, and
+  conventional meaning (e.g. "percent, 0 to 100" means 20 is 20%).
+- NEVER derive an expected value by tracing the implementation. The code
+  may contain bugs; tests exist to catch them, not to confirm them.
+- If the code appears to contradict the specification, still use the
+  specified behaviour, and start that test case's description with
+  "SPEC MISMATCH:" followed by what the code seems to do instead.
+- Give exact values and compute them carefully. Prefer simple inputs whose
+  correct result is easy to verify (e.g. 20% off 100 is 80.0).
+
 Return valid JSON only. No markdown. No explanation outside the JSON."""
 
 
@@ -173,7 +186,11 @@ Rules:
 3. Only use imports that exist in the project context
 4. Always import pytest at the top
 5. Use pytest.raises() for exception cases
-6. Return ONLY the Python test code, no markdown, no explanation"""
+6. Assert exactly the Expected value given in each specification. Never
+   change it to match what the source code would return: the
+   specifications describe intended behaviour, and a test that fails
+   against buggy code is a correct test
+7. Return ONLY the Python test code, no markdown, no explanation"""
 
 
 def _build_phase_b_prompt(
@@ -472,6 +489,10 @@ Import the function under test with exactly:
 
 Project context:
 {rag_context}
+
+Base every expected value on the docstring and the function's intended
+behaviour, not on what the implementation happens to return: the code may
+be buggy, and a test that fails against a bug is a correct test.
 
 Return only the Python test code."""
 
