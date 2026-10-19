@@ -751,7 +751,7 @@
               id="wizard-frame"
               class="component-frame"
               title="Step 1: C1 Static Analysis"
-              src="http://localhost:5173/?wizard=1"
+              src="http://localhost:5173/analysis?wizard=1"
               loading="eager"
             ></iframe>
           </div>
@@ -815,7 +815,7 @@
       const wizardError = document.getElementById("wizard-error");
       const wizardRetry = document.getElementById("wizard-retry");
       const wizardStageInfo = [
-        { label: "C1 · Static Analysis", url: "http://localhost:5173/?wizard=1" },
+        { label: "C1 · Static Analysis", url: "http://localhost:5173/analysis?wizard=1" },
         { label: "C2 · ML Risk", url: "http://localhost:3000/predict" },
         { label: "C3 · LLM Tests", url: "http://localhost:5174" },
         { label: "C4 · Evaluation", url: "http://localhost:5175" },
@@ -911,7 +911,7 @@
           return;
         }
         if (index === 0) {
-          const exactUrl = "http://localhost:5173/?wizard=1";
+          const exactUrl = "http://localhost:5173/analysis?wizard=1";
           if (wizardFrame.src !== exactUrl) wizardFrame.src = exactUrl;
         } else {
           const url = new URL(stage.url);
@@ -1346,7 +1346,7 @@
           c3SelectedFunction = null;
           wizardStageLog.replaceChildren();
           wizardStageLog.classList.add("hidden");
-          wizardFrame.src = "http://localhost:5173/?wizard=1";
+          wizardFrame.src = "http://localhost:5173/analysis?wizard=1";
           wizardError.classList.add("hidden");
           wizardRetry.classList.add("hidden");
           openWizardStep(0);
@@ -1382,7 +1382,7 @@
         wizardError.classList.add("hidden");
         wizardRetry.classList.add("hidden");
         if (wizard.failedStep === 1) {
-          wizardFrame.src = "http://localhost:5173/?wizard=1";
+          wizardFrame.src = "http://localhost:5173/analysis?wizard=1";
           setWizardStatus("Run C1 analysis again to retry the first step.");
           return;
         }
