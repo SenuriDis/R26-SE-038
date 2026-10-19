@@ -1,0 +1,93 @@
+{
+  "project_name": "ecommerce-checkout-service",
+  "functions": [
+    {
+      "function_name": "process_transaction",
+      "file_path": "src/payments/processor.py",
+      "start_line": 45, "end_line": 132,
+      "cyclomatic_complexity": 18, "nesting_depth": 5, "lines_of_code": 87,
+      "fan_in": 3, "fan_out": 12, "num_parameters": 4,
+      "commit_frequency": 23, "author_count": 4, "bug_history": 3, "days_since_last_change": 7,
+      "num_return_statements": 5, "num_exception_handlers": 3, "num_loops": 4, "num_conditionals": 12,
+      "has_recursion": false,
+      "dependencies": ["validate_input", "calculate_tax", "update_ledger", "send_notification", "check_limits", "apply_currency_conversion", "notify_fraud_service", "record_audit"]
+    },
+    {
+      "function_name": "apply_discount_rules",
+      "file_path": "src/pricing/discounts.py",
+      "start_line": 20, "end_line": 210,
+      "cyclomatic_complexity": 24, "nesting_depth": 6, "lines_of_code": 190,
+      "fan_in": 2, "fan_out": 9, "num_parameters": 6,
+      "commit_frequency": 31, "author_count": 5, "bug_history": 4, "days_since_last_change": 3,
+      "num_return_statements": 7, "num_exception_handlers": 2, "num_loops": 5, "num_conditionals": 17,
+      "has_recursion": true,
+      "dependencies": ["get_coupon", "get_loyalty_tier", "check_expiry", "stack_promotions", "round_currency", "log_event"]
+    },
+    {
+      "function_name": "reserve_inventory",
+      "file_path": "src/inventory/stock.py",
+      "start_line": 58, "end_line": 120,
+      "cyclomatic_complexity": 11, "nesting_depth": 4, "lines_of_code": 62,
+      "fan_in": 4, "fan_out": 7, "num_parameters": 4,
+      "commit_frequency": 14, "author_count": 3, "bug_history": 2, "days_since_last_change": 12,
+      "num_return_statements": 4, "num_exception_handlers": 2, "num_loops": 2, "num_conditionals": 8,
+      "has_recursion": false,
+      "dependencies": ["lock_sku", "get_warehouse", "update_stock", "release_lock", "emit_event"]
+    },
+    {
+      "function_name": "validate_payment",
+      "file_path": "src/payments/validation.py",
+      "start_line": 112, "end_line": 157,
+      "cyclomatic_complexity": 9, "nesting_depth": 3, "lines_of_code": 45,
+      "fan_in": 8, "fan_out": 5, "num_parameters": 3,
+      "commit_frequency": 12, "author_count": 2, "bug_history": 1, "days_since_last_change": 14,
+      "num_return_statements": 4, "num_exception_handlers": 1, "num_loops": 1, "num_conditionals": 6,
+      "has_recursion": false,
+      "dependencies": ["check_card", "verify_cvv", "validate_amount", "check_expiry", "lookup_bank"]
+    },
+    {
+      "function_name": "calculate_shipping",
+      "file_path": "src/shipping/rates.py",
+      "start_line": 30, "end_line": 70,
+      "cyclomatic_complexity": 7, "nesting_depth": 3, "lines_of_code": 40,
+      "fan_in": 5, "fan_out": 4, "num_parameters": 4,
+      "commit_frequency": 8, "author_count": 2, "bug_history": 1, "days_since_last_change": 30,
+      "num_return_statements": 3, "num_exception_handlers": 1, "num_loops": 1, "num_conditionals": 5,
+      "has_recursion": false,
+      "dependencies": ["get_zone", "get_weight", "lookup_carrier_rate"]
+    },
+    {
+      "function_name": "send_order_confirmation",
+      "file_path": "src/notifications/email.py",
+      "start_line": 15, "end_line": 43,
+      "cyclomatic_complexity": 4, "nesting_depth": 2, "lines_of_code": 28,
+      "fan_in": 3, "fan_out": 3, "num_parameters": 2,
+      "commit_frequency": 5, "author_count": 1, "bug_history": 0, "days_since_last_change": 60,
+      "num_return_statements": 1, "num_exception_handlers": 1, "num_loops": 1, "num_conditionals": 2,
+      "has_recursion": false,
+      "dependencies": ["render_template", "send_email"]
+    },
+    {
+      "function_name": "format_receipt",
+      "file_path": "src/output/receipt.py",
+      "start_line": 34, "end_line": 52,
+      "cyclomatic_complexity": 2, "nesting_depth": 1, "lines_of_code": 18,
+      "fan_in": 5, "fan_out": 1, "num_parameters": 2,
+      "commit_frequency": 3, "author_count": 1, "bug_history": 0, "days_since_last_change": 90,
+      "num_return_statements": 1, "num_exception_handlers": 0, "num_loops": 0, "num_conditionals": 1,
+      "has_recursion": false,
+      "dependencies": ["format_date"]
+    },
+    {
+      "function_name": "get_user_display_name",
+      "file_path": "src/users/profile.py",
+      "start_line": 8, "end_line": 16,
+      "cyclomatic_complexity": 1, "nesting_depth": 0, "lines_of_code": 8,
+      "fan_in": 9, "fan_out": 0, "num_parameters": 1,
+      "commit_frequency": 1, "author_count": 1, "bug_history": 0, "days_since_last_change": 240,
+      "num_return_statements": 1, "num_exception_handlers": 0, "num_loops": 0, "num_conditionals": 0,
+      "has_recursion": false,
+      "dependencies": []
+    }
+  ]
+}

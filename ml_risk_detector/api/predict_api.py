@@ -152,7 +152,7 @@ def _request_to_metrics(req: FunctionMetricsRequest) -> CodeMetrics:
 
 # Endpoints
 
-app.get("/health")
+@app.get("/health")
 async def health():
     return {
         "status": "healthy",

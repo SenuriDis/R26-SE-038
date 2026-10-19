@@ -14,7 +14,7 @@ import json
 
 from utils.feature_engineering import FeatureEngineer, CodeMetrics
 from models.risk_detector import MLRiskDetector, RiskThresholds, RiskPrediction
-from models.prioritizer import TestPrioritizer
+from models.prioritizer import TestPrioritizer as Prioritizer
 from data.dataset import generate_synthetic_dataset
 
 
@@ -83,9 +83,8 @@ def trained_detector():
 @pytest.fixture(scope="module")
 def feature_engineer(trained_detector):
     X, y, metrics_list = generate_synthetic_dataset(n_samples=500, random_state=42)
-    fe = FeatureEngineer()
-    fe.fit(metrics_list)
-    return fe
+    # The detector is trained on raw (un-normalised) features, so inference must use them too
+    return FeatureEngineer()
 
 
 # ──────────────────────────────────────────────────────────────────────
@@ -281,7 +280,7 @@ class TestPrioritizer:
             for m in metrics_list[:20]
         ]
         predictions = trained_detector.predict_batch(feature_matrix, metadata)
-        prioritizer = TestPrioritizer()
+        prioritizer = Prioritizer()
         payload = prioritizer.prioritize(predictions, project_name="test_project")
 
         assert "summary" in payload
@@ -300,7 +299,7 @@ class TestPrioritizer:
             for m in metrics_list[:20]
         ]
         predictions = trained_detector.predict_batch(feature_matrix, metadata)
-        prioritizer = TestPrioritizer()
+        prioritizer = Prioritizer()
         payload = prioritizer.prioritize(predictions)
 
         s = payload["summary"]
@@ -316,7 +315,7 @@ class TestPrioritizer:
             for m in metrics_list[:10]
         ]
         predictions = trained_detector.predict_batch(feature_matrix, metadata)
-        prioritizer = TestPrioritizer()
+        prioritizer = Prioritizer()
         payload = prioritizer.prioritize(predictions)
 
         out = str(tmp_path / "output.json")
