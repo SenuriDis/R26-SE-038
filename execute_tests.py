@@ -5,6 +5,7 @@ import sys
 import datetime
 import sqlite3
 import re
+import math
 
 # Configuration
 BASE_DIR     = os.path.dirname(os.path.abspath(__file__))
@@ -106,15 +107,132 @@ def parse_coverage():
         "function_coverage_pct": func_pct,
     }
 
-def classify_failure(error_message):
-    error_message = str(error_message).lower()
-    if "assertionerror" in error_message or "assert " in error_message:
-        return "Real Defect"
-    elif "syntaxerror" in error_message or "typeerror" in error_message or "valueerror" in error_message or "attributeerror" in error_message or "nameerror" in error_message:
-        return "Invalid AI Test"
-    elif "importerror" in error_message or "modulenotfounderror" in error_message or "timeout" in error_message:
-        return "Environment Failure"
-    return "Environment Failure"
+def classify_failure_details(error_message, test_path=""):
+    """Apply deterministic rules, and keep ambiguous failures available for review."""
+    message = str(error_message)
+    normalized = message.lower().replace("\\", "/")
+    normalized_path = str(test_path).lower().replace("\\", "/")
+    test_source = normalized_path.startswith("tests/") or (
+        "tests/" in normalized and "test_" in normalized
+    )
+
+    if test_source and re.search(r"\b(syntaxerror|indentationerror)\b", normalized):
+        return {
+            "failure_type": "Invalid AI Test",
+            "rule": "generated_test_syntax_error",
+            "reason": "Python could not parse a generated test file.",
+        }
+
+    environment_markers = (
+        "no module named",
+        "modulenotfounderror",
+        "pytest-cov",
+        "no space left on device",
+        "docker daemon",
+    )
+    if any(marker in normalized for marker in environment_markers):
+        return {
+            "failure_type": "Environment Failure",
+            "rule": "known_environment_error",
+            "reason": "The failure contains a known missing-dependency or execution-environment marker.",
+        }
+
+    if "assertionerror" in normalized or re.search(r"\bassert\b", normalized):
+        return {
+            "failure_type": "Real Software Bug",
+            "rule": "assertion_mismatch",
+            "reason": "An assertion failed, indicating a genuine defect in the target code logic.",
+        }
+
+    return {
+        "failure_type": "Needs Review",
+        "rule": "unclassified_test_failure",
+        "reason": "The failure does not match a conclusive rule and needs human review.",
+    }
+
+
+def classify_failure(error_message, test_path=""):
+    return classify_failure_details(error_message, test_path)["failure_type"]
+
+
+def _report_value_text(value):
+    if isinstance(value, str):
+        return value
+    if value is None:
+        return ""
+    return json.dumps(value, ensure_ascii=False, default=str)
+
+
+def extract_failure_evidence(test):
+    phases = ("call", "setup", "teardown")
+    phase = next(
+        (
+            candidate for candidate in phases
+            if (test.get(candidate) or {}).get("outcome") in {"failed", "error"}
+            or (test.get(candidate) or {}).get("longrepr")
+            or (test.get(candidate) or {}).get("crash")
+        ),
+        "call",
+    )
+    phase_report = test.get(phase) or {}
+    crash = phase_report.get("crash") or {}
+    traceback_text = _report_value_text(phase_report.get("longrepr"))
+    crash_message = _report_value_text(crash.get("message"))
+    failure_text = "\n".join(
+        text for text in (crash_message, traceback_text) if text
+    )
+
+    concise_message = crash_message
+    if not concise_message:
+        error_lines = [
+            line.strip()[2:].strip()
+            for line in traceback_text.splitlines()
+            if line.strip().startswith("E ")
+        ]
+        concise_message = error_lines[-1] if error_lines else next(
+            (line.strip() for line in traceback_text.splitlines() if line.strip()),
+            "No failure message available.",
+        )
+
+    exception_match = re.search(
+        r"\b([A-Za-z_][A-Za-z0-9_]*(?:Error|Exception))\b",
+        "\n".join((crash_message, traceback_text)),
+    )
+    location = {}
+    if crash.get("path") is not None:
+        location["path"] = str(crash["path"])
+    if crash.get("lineno") is not None:
+        location["line"] = crash["lineno"]
+
+    classification = classify_failure_details(
+        failure_text,
+        test.get("nodeid", ""),
+    )
+    return {
+        "phase": phase,
+        "exception_type": exception_match.group(1) if exception_match else None,
+        "message": concise_message[:1200],
+        "location": location or None,
+        "traceback": traceback_text[:20000] or None,
+        **classification,
+    }
+
+
+def summarize_mutation_statuses(status_counts):
+    """Calculate mutation score from mutants with a conclusive outcome only."""
+    normalized = {str(status).lower(): int(count) for status, count in status_counts.items()}
+    killed = normalized.get("killed", 0) + normalized.get("ok_killed", 0)
+    survived = normalized.get("survived", 0) + normalized.get("bad_survived", 0)
+    total = sum(normalized.values())
+    scored = killed + survived
+    unscored = total - scored
+    return {
+        "total_mutants": total,
+        "killed_mutants": killed,
+        "survived_mutants": survived,
+        "unscored_mutants": unscored,
+        "mutation_score_pct": round((killed / scored) * 100, 2) if scored else None,
+    }
 
 def parse_pytest_results():
     json_report_path = os.path.join(REPORTS_DIR, "pytest_results.json")
@@ -128,26 +246,73 @@ def parse_pytest_results():
     summary = data.get("summary", {})
     tests   = data.get("tests", [])
 
-    failed_tests = [
-        {"name": t["nodeid"], "outcome": t["outcome"],
-         "message": str(t.get("call", {}).get("longrepr", ""))[:300],
-         "failure_type": classify_failure(t.get("call", {}).get("longrepr", ""))}
-        for t in tests if t.get("outcome") != "passed"
-    ]
+    failed_tests = []
+    for test in tests:
+        if test.get("outcome") not in {"failed", "error"}:
+            continue
+        evidence = extract_failure_evidence(test)
+        failed_tests.append({
+            "name": test.get("nodeid", "Unknown test"),
+            "outcome": test.get("outcome"),
+            "message": evidence["message"],
+            "failure_type": evidence["failure_type"],
+            "failure_rule": evidence["rule"],
+            "classification_reason": evidence["reason"],
+            "evidence": evidence,
+        })
+
+    passed = summary.get("passed", 0)
+    failed = summary.get("failed", 0)
+    errors = summary.get("error", 0)
+    executed = passed + failed + errors
 
     return {
         "total"   : summary.get("total", 0),
-        "passed"  : summary.get("passed", 0),
-        "failed"  : summary.get("failed", 0),
-        "errors"  : summary.get("error", 0),
+        "passed"  : passed,
+        "failed"  : failed,
+        "errors"  : errors,
         "skipped" : summary.get("skipped", 0),
-        "pass_rate_pct": round(
-            summary.get("passed", 0) / summary.get("total", 1) * 100, 2
-        ) if summary.get("total", 0) > 0 else 0.0,
+        "pass_rate_pct": round(passed / executed * 100, 2) if executed else 0.0,
         "failed_tests": failed_tests,
     }
 
 def run_mutation_testing():
+    if os.path.exists(PYTEST_REPORT_FILE):
+        try:
+            with open(PYTEST_REPORT_FILE, "r", encoding="utf-8") as report_file:
+                baseline = json.load(report_file).get("summary", {})
+        except (OSError, ValueError) as exc:
+            return {
+                "status": "error",
+                "error": f"Could not read pytest baseline report: {exc}",
+                "log_file": "reports/pytest_results.json",
+            }
+        if baseline.get("failed", 0) or baseline.get("error", 0):
+            reason = (
+                "Mutation testing was skipped because the baseline test suite "
+                "has failures; mutmut requires a passing baseline."
+            )
+            with open(os.path.join(REPORTS_DIR, "mutation.log"), "w",
+                      encoding="utf-8") as log_file:
+                log_file.write(reason + "\n")
+            return {
+                "status": "skipped",
+                "reason": reason,
+                "log_file": "reports/mutation.log",
+            }
+        if baseline.get("passed", 0) == 0:
+            return {
+                "status": "skipped",
+                "reason": "Mutation testing was skipped because the baseline has no passing tests to evaluate.",
+                "log_file": "reports/mutation.log",
+            }
+    else:
+        return {
+            "status": "error",
+            "error": "Pytest baseline report is missing; mutation testing cannot verify a passing baseline.",
+            "log_file": "reports/pytest_results.json",
+        }
+
     # Create setup.cfg for mutmut to avoid CLI option errors
     setup_cfg_path = os.path.join(BASE_DIR, "setup.cfg")
     created_setup_cfg = not os.path.exists(setup_cfg_path)
@@ -156,26 +321,37 @@ def run_mutation_testing():
         with open(setup_cfg_path, "w", encoding="utf-8") as config_file:
             config_file.write(setup_cfg)
 
-    cmd = ["mutmut", "run"]
+    cmd = ["mutmut", "run", "--CI"]
     try:
-        result = subprocess.run(cmd, cwd=BASE_DIR, capture_output=True, text=True)
-    except FileNotFoundError:
-        cmd = [sys.executable, "-m", "mutmut", "run"]
         try:
             result = subprocess.run(cmd, cwd=BASE_DIR, capture_output=True, text=True)
-        except Exception as exc:
-            mutation_log = os.path.join(REPORTS_DIR, "mutation.log")
-            with open(mutation_log, "w", encoding="utf-8") as log_file:
-                log_file.write(str(exc))
-            if created_setup_cfg:
-                os.remove(setup_cfg_path)
-            return {
-                "error": "Mutation testing executable not found",
-                "log_file": "reports/mutation.log",
-            }
+        except FileNotFoundError:
+            cmd = [sys.executable, "-m", "mutmut", "run", "--CI"]
+            result = subprocess.run(cmd, cwd=BASE_DIR, capture_output=True, text=True)
+    except (OSError, subprocess.SubprocessError) as exc:
+        mutation_log = os.path.join(REPORTS_DIR, "mutation.log")
+        with open(mutation_log, "w", encoding="utf-8") as log_file:
+            log_file.write(str(exc))
+        if created_setup_cfg:
+            os.remove(setup_cfg_path)
+        return {
+            "status": "error",
+            "error": f"Could not start mutation testing: {exc}",
+            "log_file": "reports/mutation.log",
+        }
     with open(os.path.join(REPORTS_DIR, "mutation.log"), "w", encoding="utf-8") as log_file:
         log_file.write(result.stdout)
         log_file.write(result.stderr)
+
+    if result.returncode != 0:
+        if created_setup_cfg:
+            os.remove(setup_cfg_path)
+        return {
+            "status": "error",
+            "error": f"mutmut exited with code {result.returncode}.",
+            "exit_code": result.returncode,
+            "log_file": "reports/mutation.log",
+        }
 
     # Parse sqlite cache
     cache_path = os.path.join(BASE_DIR, ".mutmut-cache")
@@ -183,62 +359,72 @@ def run_mutation_testing():
     if not os.path.exists(cache_path):
         if os.path.exists(stats_path):
             statuses = {}
-            results = subprocess.run(["mutmut", "results"], cwd=BASE_DIR,
-                                     capture_output=True, text=True)
-            for status in re.findall(r":\s+(killed|survived|timeout|suspicious|no tests|skipped)\s*$",
-                                     results.stdout, re.MULTILINE):
-                statuses[status] = statuses.get(status, 0) + 1
-            progress_totals = [
-                int(match.group(2))
-                for match in re.finditer(r"(?m)(\d+)/(\d+)\s+.*$", result.stdout)
-                if match.group(1) == match.group(2)
-            ]
-            if progress_totals:
-                total_mutants = max(progress_totals)
-                statuses["killed"] = max(total_mutants - sum(statuses.values()), 0)
-            total = sum(statuses.values())
-            killed = statuses.get("killed", 0)
-            survived = statuses.get("survived", 0)
-            mutation_data = {
-                "total_mutants": total,
-                "killed_mutants": killed,
-                "survived_mutants": survived,
-                "mutation_score_pct": round((killed / total) * 100, 2) if total else 0.0,
-                "details": statuses,
-                "result_file": "mutants/mutmut-stats.json",
-            }
+            try:
+                try:
+                    results = subprocess.run(
+                        ["mutmut", "results"],
+                        cwd=BASE_DIR,
+                        capture_output=True,
+                        text=True,
+                    )
+                except FileNotFoundError:
+                    results = subprocess.run(
+                        [sys.executable, "-m", "mutmut", "results"],
+                        cwd=BASE_DIR,
+                        capture_output=True,
+                        text=True,
+                    )
+            except (OSError, subprocess.SubprocessError) as exc:
+                results = None
+                mutation_data = {
+                    "status": "error",
+                    "error": f"Could not read mutmut results: {exc}",
+                    "log_file": "reports/mutation.log",
+                }
+            if results is not None and results.returncode != 0:
+                mutation_data = {
+                    "status": "error",
+                    "error": f"mutmut results exited with code {results.returncode}.",
+                    "exit_code": results.returncode,
+                    "log_file": "reports/mutation.log",
+                }
+                results = None
+            if results is not None:
+                for status in re.findall(r":\s+(killed|survived|timeout|suspicious|no tests|skipped)\s*$",
+                                         results.stdout, re.MULTILINE):
+                    statuses[status] = statuses.get(status, 0) + 1
+                counts = summarize_mutation_statuses(statuses)
+                mutation_data = {
+                    "status": "completed",
+                    **counts,
+                    "details": statuses,
+                    "result_file": "mutants/mutmut-stats.json",
+                }
         else:
             mutation_data = {
+                "status": "error",
                 "error": "Mutation cache not found",
                 "exit_code": result.returncode,
                 "log_file": "reports/mutation.log",
             }
     else:
         try:
-            conn = sqlite3.connect(cache_path)
-            c = conn.cursor()
-            c.execute("SELECT status, count(*) FROM mutant GROUP BY status")
-            rows = c.fetchall()
-            conn.close()
-            
-            status_counts = {k: v for k, v in rows}
-            killed = status_counts.get("killed", 0) + status_counts.get("ok_killed", 0)
-            survived = status_counts.get("survived", 0) + status_counts.get("bad_survived", 0)
-            timeout = status_counts.get("timeout", 0) + status_counts.get("bad_timeout", 0)
-            suspicious = status_counts.get("suspicious", 0) + status_counts.get("ok_suspicious", 0)
-            tested = killed + survived + timeout + suspicious
-            total = sum(status_counts.values()) if status_counts else 0
-            score_denom = tested if tested > 0 else total
-            mutation_score = round((killed / score_denom) * 100, 2) if score_denom > 0 else 0.0
+            with sqlite3.connect(cache_path) as conn:
+                rows = conn.execute(
+                    "SELECT status, count(*) FROM mutant GROUP BY status"
+                ).fetchall()
+
+            status_counts = {status: count for status, count in rows}
             mutation_data = {
-                "total_mutants": total,
-                "killed_mutants": killed,
-                "survived_mutants": survived,
-                "mutation_score_pct": mutation_score,
-                "details": status_counts
+                "status": "completed",
+                **summarize_mutation_statuses(status_counts),
+                "details": status_counts,
             }
-        except Exception as exc:
-            mutation_data = {"error": f"Failed to parse mutmut cache: {str(exc)}"}
+        except (OSError, sqlite3.Error, ValueError) as exc:
+            mutation_data = {
+                "status": "error",
+                "error": f"Failed to parse mutmut cache: {str(exc)}",
+            }
 
     if created_setup_cfg:
         os.remove(setup_cfg_path)
@@ -246,6 +432,18 @@ def run_mutation_testing():
 
 def generate_report(exit_code, pytest_data, coverage_data, mutation_data):
     print("\n[4/4] Generating structured JSON evaluation report...\n")
+
+    mutation_score = mutation_data.get("mutation_score_pct")
+    quality_score = _quality_score(
+        pytest_data.get("pass_rate_pct"),
+        coverage_data.get("statement_coverage_pct"),
+        mutation_score,
+    )
+    quality_grade = _grade(
+        pytest_data.get("pass_rate_pct"),
+        coverage_data.get("statement_coverage_pct"),
+        mutation_score,
+    )
 
     report = {
         "project"          : "LLM and ML Enhanced Software Testing System",
@@ -259,12 +457,23 @@ def generate_report(exit_code, pytest_data, coverage_data, mutation_data):
         "evaluation_summary": {
             "pass_rate_pct"            : pytest_data.get("pass_rate_pct", 0),
             "statement_coverage_pct"   : coverage_data.get("statement_coverage_pct", 0),
-            "mutation_score_pct"       : mutation_data.get("mutation_score_pct", 0) if "mutation_score_pct" in mutation_data else 0,
-            "quality_grade"            : _grade(
-                pytest_data.get("pass_rate_pct", 0),
-                coverage_data.get("statement_coverage_pct", 0),
-                mutation_data.get("mutation_score_pct", 0) if "mutation_score_pct" in mutation_data else 0
-            ),
+            "mutation_score_pct"       : mutation_score,
+            "quality_score_pct"        : quality_score,
+            "quality_grade"            : quality_grade,
+            "grading_model": {
+                "method": "equal-weight arithmetic mean",
+                "weights": {
+                    "pass_rate_pct": 1 / 3,
+                    "statement_coverage_pct": 1 / 3,
+                    "mutation_score_pct": 1 / 3,
+                },
+                "grade_thresholds": {
+                    "A": "90-100",
+                    "B": "75-89.99",
+                    "C": "60-74.99",
+                    "D": "below 60",
+                },
+            },
         }
     }
 
@@ -273,8 +482,26 @@ def generate_report(exit_code, pytest_data, coverage_data, mutation_data):
 
     return report
 
+def _quality_score(pass_rate, coverage, mutation_score):
+    # Treat None as 0.0 so the grade can still be calculated if mutation testing is skipped
+    pass_rate = pass_rate if pass_rate is not None else 0.0
+    coverage = coverage if coverage is not None else 0.0
+    mutation_score = mutation_score if mutation_score is not None else 0.0
+    
+    metrics = (pass_rate, coverage, mutation_score)
+    try:
+        values = tuple(float(value) for value in metrics)
+    except (TypeError, ValueError):
+        return None
+    if not all(math.isfinite(value) for value in values):
+        return None
+    return round(sum(values) / 3, 2)
+
+
 def _grade(pass_rate, coverage, mutation_score):
-    score = (pass_rate + coverage + mutation_score) / 3
+    score = _quality_score(pass_rate, coverage, mutation_score)
+    if score is None:
+        return "Not graded — one or more required metrics are unavailable"
     if score >= 90: return "A — Excellent"
     if score >= 75: return "B — Good"
     if score >= 60: return "C — Acceptable"
@@ -296,19 +523,20 @@ def main():
 
     # Calculate Failure Analysis metrics
     failed_tests = pytest_data.get("failed_tests", [])
-    real_defects = sum(1 for t in failed_tests if t.get("failure_type") == "Real Defect")
+    needs_review = sum(1 for t in failed_tests if t.get("failure_type") == "Needs Review")
     invalid_tests = sum(1 for t in failed_tests if t.get("failure_type") == "Invalid AI Test")
     env_failures = sum(1 for t in failed_tests if t.get("failure_type") == "Environment Failure")
+    real_bugs = sum(1 for t in failed_tests if t.get("failure_type") == "Real Software Bug")
     
     passed = pytest_data.get("passed", 0)
     failed = pytest_data.get("failed", 0)
-    total = passed + failed
+    total = passed + failed + pytest_data.get("errors", 0)
 
     print("================================================")
     print("       AI TEST EXECUTION & EVALUATION REPORT")
     print("================================================")
     print("\nRepository:")
-    print("calculator-app") # Hardcoded
+    print(os.path.basename(BASE_DIR)) # Fixed: Dynamic Repository Name
     
     print("\nTest Cases:")
     print(f"{pytest_data.get('total', 0)}")
@@ -316,32 +544,38 @@ def main():
     print("\nExecution:")
     print(f"Executed       : {pytest_data.get('total', 0)}")
     print(f"Passed         : {passed}")
-    print(f"Failed         : {failed}")
+    print(f"Failed         : {failed + pytest_data.get('errors', 0)}")
     
     print("\nFunctional Correctness:")
     print(f"Correct        : {passed}")
-    print(f"Incorrect      : {failed}")
+    print(f"Incorrect      : {failed + pytest_data.get('errors', 0)}")
     
     print("\nCoverage:")
     print(f"Line Coverage     : {coverage_data.get('statement_coverage_pct', 0)}%")
     print(f"Branch Coverage   : {coverage_data.get('branch_coverage_pct', 0)}%") 
     print(f"Function Coverage : {coverage_data.get('function_coverage_pct', 0)}%")
     
-    mutation_total = mutation_data.get("total_mutants", 0) if isinstance(mutation_data, dict) else 0
+    mutation_total = mutation_data.get("total_mutants") if isinstance(mutation_data, dict) else None
     mutation_killed = mutation_data.get("killed_mutants", 0) if isinstance(mutation_data, dict) else 0
     mutation_survived = mutation_data.get("survived_mutants", 0) if isinstance(mutation_data, dict) else 0
-    mutation_score = mutation_data.get("mutation_score_pct", 0) if isinstance(mutation_data, dict) else 0
+    mutation_score = mutation_data.get("mutation_score_pct") if isinstance(mutation_data, dict) else None
+    mutation_status = mutation_data.get("status", "error") if isinstance(mutation_data, dict) else "error"
     
     print("\nMutation Testing:")
-    print(f"Total Mutants     : {mutation_total}")
-    print(f"Killed Mutants    : {mutation_killed}")
-    print(f"Survived Mutants  : {mutation_survived}")
-    print(f"Mutation Score    : {mutation_score}%")
+    if mutation_status == "completed":
+        print(f"Total Mutants     : {mutation_total}")
+        print(f"Killed Mutants    : {mutation_killed}")
+        print(f"Survived Mutants  : {mutation_survived}")
+        print(f"Mutation Score    : {mutation_score}%")
+    else:
+        print(f"Status            : {mutation_status}")
+        print(f"Reason            : {mutation_data.get('reason') or mutation_data.get('error')}")
     
     print("\nFailure Analysis:")
-    print(f"Real Defect             : {real_defects}")
-    print(f"Invalid AI Test         : {invalid_tests}")
-    print(f"Environment Failure     : {env_failures}")
+    print(f"Real Software Bugs      : {real_bugs}")
+    print(f"Invalid AI Tests        : {invalid_tests}")
+    print(f"Environment Failures    : {env_failures}")
+    print(f"Needs Review            : {needs_review}")
     
     print("\nExecution Time:")
     print(f"{execution_time} seconds")
