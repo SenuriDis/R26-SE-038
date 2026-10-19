@@ -414,6 +414,8 @@ def get_dashboard_stats():
 if __name__ == "__main__":
     # Run Flask development server
     app.run(
+        host="0.0.0.0",
+        port=int(os.environ.get("PORT", "8001")),
         debug=False,
         use_reloader=False
     )

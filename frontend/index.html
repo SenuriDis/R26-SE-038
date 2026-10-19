@@ -1,0 +1,1452 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="theme-color" content="#080d18">
+    <meta
+      name="description"
+      content="An AI-powered quality engineering pipeline for code analysis, risk detection, test generation, and secure evaluation."
+    >
+    <title>IntelliTest | Automatic Software Testing</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+      tailwind.config = {
+        theme: {
+          extend: {
+            fontFamily: {
+              sans: ["Inter", "ui-sans-serif", "system-ui", "sans-serif"],
+            },
+            boxShadow: {
+              glow: "0 0 32px rgba(59, 130, 246, .38)",
+            },
+          },
+        },
+      };
+    </script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+      href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Inter:wght@400;500;600;700;800&display=swap"
+      rel="stylesheet"
+    >
+    <style>
+      :root { color-scheme: dark; }
+      html { scroll-behavior: smooth; }
+      body { min-width: 320px; }
+      .hero-backdrop {
+        background-image:
+          linear-gradient(rgba(0, 0, 0, .70), rgba(0, 0, 0, .70)),
+          url('./images/hero-bg.jpg');
+        background-position: center;
+        background-size: cover;
+      }
+      .glass-card {
+        background: linear-gradient(145deg, rgba(255, 255, 255, .13), rgba(255, 255, 255, .055));
+        -webkit-backdrop-filter: blur(18px);
+        backdrop-filter: blur(18px);
+      }
+      .tab-active {
+        border-color: rgba(96, 165, 250, .85) !important;
+        background: rgba(37, 99, 235, .15) !important;
+        box-shadow: 0 0 0 1px rgba(59, 130, 246, .2), 0 0 22px rgba(37, 99, 235, .2);
+        color: #fff !important;
+      }
+      .wizard-step {
+        border-color: rgba(255, 255, 255, .12);
+        background: rgba(255, 255, 255, .035);
+        color: #cbd5e1;
+      }
+      .wizard-step:not(:disabled):hover {
+        border-color: rgba(147, 197, 253, .45);
+        background: rgba(255, 255, 255, .07);
+      }
+      .wizard-step-active {
+        border-color: rgba(96, 165, 250, .85);
+        background: rgba(37, 99, 235, .16);
+        box-shadow: 0 0 18px rgba(37, 99, 235, .18);
+        color: #fff;
+      }
+      .wizard-step-done {
+        border-color: rgba(52, 211, 153, .4);
+        color: #a7f3d0;
+      }
+      .wizard-step:disabled:not(.wizard-step-active) { cursor: not-allowed; opacity: .55; }
+      .component-frame {
+        display: block;
+        width: 100%;
+        height: min(78vh, 900px);
+        min-height: 620px;
+        border: 0;
+        background: #fff;
+      }
+      .split-component-frame {
+        display: block;
+        width: 100%;
+        height: min(58vh, 640px);
+        min-height: 380px;
+        border: 0;
+        background: #fff;
+      }
+      @media (max-width: 640px) {
+        .component-frame { height: 76vh; min-height: 520px; }
+        .split-component-frame { height: 68vh; min-height: 440px; }
+      }
+      @media (min-width: 1024px) {
+        .split-component-frame { height: max(360px, calc((100vh - 190px) / 2)); }
+      }
+      @media (prefers-reduced-motion: reduce) {
+        *, *::before, *::after {
+          scroll-behavior: auto !important;
+          animation-duration: .01ms !important;
+          animation-iteration-count: 1 !important;
+          transition-duration: .01ms !important;
+        }
+      }
+    </style>
+  </head>
+  <body class="bg-slate-950 font-sans text-slate-100 antialiased">
+    <header class="sticky top-0 z-50 border-b border-white/10 bg-[#080d18]/95 shadow-lg shadow-black/10 backdrop-blur-xl">
+      <div class="mx-auto flex max-w-[1600px] items-center gap-4 px-4 py-3 sm:px-6 lg:px-10">
+        <a
+          class="flex shrink-0 items-center gap-3 rounded-xl outline-none transition hover:opacity-90 focus-visible:ring-2 focus-visible:ring-blue-400"
+          href="#home"
+          aria-label="IntelliTest Home"
+          data-home-link
+        >
+          <span class="grid h-10 w-10 place-items-center rounded-xl bg-gradient-to-br from-blue-400 to-indigo-600 shadow-lg shadow-blue-600/25">
+            <svg viewBox="0 0 24 24" class="h-6 w-6 text-white" fill="none" aria-hidden="true">
+              <path d="M4 18.5 9 5l3 8 2-5 6 10.5H4Z" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8"/>
+              <path d="M7 15h10" stroke="currentColor" stroke-linecap="round" stroke-width="1.8"/>
+            </svg>
+          </span>
+          <span class="hidden sm:block">
+            <span class="block text-base font-extrabold tracking-wide text-white">IntelliTest</span>
+          </span>
+        </a>
+
+        <nav class="flex flex-1 flex-wrap items-center justify-center gap-1 sm:gap-2" aria-label="Main navigation">
+          <button
+            id="nav-home"
+            class="tab-active rounded-lg border border-transparent px-2 py-2 text-xs font-semibold text-slate-300 transition hover:border-white/10 hover:bg-white/5 hover:text-white sm:px-3 sm:text-sm"
+            type="button"
+            aria-current="page"
+            data-view="home"
+          >Home</button>
+          <button
+            id="nav-about"
+            class="rounded-lg border border-transparent px-2 py-2 text-xs font-semibold text-slate-300 transition hover:border-white/10 hover:bg-white/5 hover:text-white sm:px-3 sm:text-sm"
+            type="button"
+            data-view="about"
+          >About</button>
+        </nav>
+
+      </div>
+    </header>
+
+    <main>
+      <section id="panel-home" aria-labelledby="nav-home" data-view-panel="home">
+        <div class="hero-backdrop relative isolate overflow-hidden border-b border-white/10">
+          <div class="mx-auto max-w-7xl px-5 pb-40 pt-20 text-center sm:px-8 sm:pb-44 sm:pt-28 lg:pt-32">
+            <h1 class="mx-auto mt-7 max-w-5xl text-4xl font-extrabold leading-[1.08] tracking-tight text-white sm:text-5xl lg:text-7xl">
+              LLM &amp; ML Enhanced
+              <span class="block bg-gradient-to-r from-blue-300 via-cyan-200 to-indigo-300 bg-clip-text pb-2 text-transparent">
+                Automatic Software Testing System
+              </span>
+            </h1>
+            <p class="mx-auto mt-6 max-w-3xl text-lg leading-8 text-slate-200/90 sm:text-xl">
+              An intelligent, end-to-end pipeline that uses Large Language Models (LLMs) and Machine Learning (ML) to analyze your code, predict high-risk areas, generate unit tests, and execute them securely in a Docker sandbox.
+            </p>
+            <button
+              id="start-pipeline"
+              data-start-pipeline
+              class="group mt-9 inline-flex items-center gap-3 rounded-xl bg-gradient-to-r from-blue-600 via-blue-500 to-indigo-500 px-6 py-3.5 text-sm font-bold text-white shadow-glow ring-1 ring-white/20 transition hover:-translate-y-0.5 hover:from-blue-500 hover:via-blue-400 hover:to-indigo-400 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-300 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-950 sm:px-7 sm:text-base"
+              type="button"
+            >
+              Start Pipeline
+            </button>
+          </div>
+
+          <div class="pointer-events-none absolute -bottom-24 left-1/2 -z-0 h-56 w-[min(90vw,900px)] -translate-x-1/2 rounded-full bg-blue-500/15 blur-3xl"></div>
+        </div>
+
+        <section class="bg-white px-5 py-20 text-slate-900 sm:px-8 sm:py-24" aria-labelledby="features-heading">
+          <div class="mx-auto max-w-7xl">
+            <header class="mx-auto max-w-2xl text-center">
+              <h2 id="features-heading" class="text-3xl font-extrabold tracking-tight text-slate-900 sm:text-4xl">Why Use IntelliTest?</h2>
+              <p class="mt-4 text-base leading-7 text-slate-600 sm:text-lg">
+                An automated pipeline from code analysis to secure test execution.
+              </p>
+            </header>
+
+            <div class="mt-12 grid gap-6 md:grid-cols-3">
+              <article class="group rounded-2xl border border-slate-200 bg-white p-7 shadow-sm transition duration-300 hover:-translate-y-1 hover:shadow-xl hover:shadow-slate-900/10">
+                <div class="grid h-12 w-12 place-items-center rounded-xl bg-blue-50 text-blue-600" aria-hidden="true">
+                  <svg class="h-6 w-6" viewBox="0 0 24 24" fill="none">
+                    <path d="m8 8-4 4 4 4m8-8 4 4-4 4m-3-11-2 14" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+                  </svg>
+                </div>
+                <h3 class="mt-6 text-lg font-bold text-slate-900">Static Code Analysis</h3>
+                <p class="mt-3 text-sm leading-7 text-slate-600">
+                  Extracts AST features, metrics, and dependencies from your repository automatically.
+                </p>
+              </article>
+
+              <article class="group rounded-2xl border border-slate-200 bg-white p-7 shadow-sm transition duration-300 hover:-translate-y-1 hover:shadow-xl hover:shadow-slate-900/10">
+                <div class="grid h-12 w-12 place-items-center rounded-xl bg-violet-50 text-violet-600" aria-hidden="true">
+                  <svg class="h-6 w-6" viewBox="0 0 24 24" fill="none">
+                    <path d="M12 3v2m0 14v2m9-9h-2M5 12H3m15.36-6.36-1.42 1.42M7.06 16.94l-1.42 1.42m12.72 0-1.42-1.42M7.06 7.06 5.64 5.64" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/>
+                    <circle cx="12" cy="12" r="5" stroke="currentColor" stroke-width="1.7"/>
+                    <path d="m10.5 12 1 1 2-2" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/>
+                  </svg>
+                </div>
+                <h3 class="mt-6 text-lg font-bold text-slate-900">ML Risk &amp; LLM Generation</h3>
+                <p class="mt-3 text-sm leading-7 text-slate-600">
+                  Predicts high-risk functions using machine learning and generates unit tests using LLMs.
+                </p>
+              </article>
+
+              <article class="group rounded-2xl border border-slate-200 bg-white p-7 shadow-sm transition duration-300 hover:-translate-y-1 hover:shadow-xl hover:shadow-slate-900/10">
+                <div class="grid h-12 w-12 place-items-center rounded-xl bg-emerald-50 text-emerald-600" aria-hidden="true">
+                  <svg class="h-6 w-6" viewBox="0 0 24 24" fill="none">
+                    <path d="M12 3 4.5 6v5.4c0 4.1 2.8 7.7 7.5 9.6 4.7-1.9 7.5-5.5 7.5-9.6V6L12 3Z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/>
+                    <path d="m9 12 2 2 4-4" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/>
+                  </svg>
+                </div>
+                <h3 class="mt-6 text-lg font-bold text-slate-900">Secure Docker Execution</h3>
+                <p class="mt-3 text-sm leading-7 text-slate-600">
+                  Runs generated tests in an isolated Docker sandbox and grades quality (A/B/C/D).
+                </p>
+              </article>
+            </div>
+
+          </div>
+        </section>
+
+        <section class="hidden relative z-10 mx-auto -mt-28 max-w-7xl px-5 sm:-mt-32 sm:px-8" aria-label="Pipeline components" hidden>
+          <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            <button
+              class="glass-card group rounded-2xl border border-white/20 p-5 text-left shadow-2xl shadow-black/25 transition duration-300 hover:-translate-y-2 hover:border-blue-300/60 hover:shadow-blue-950/50 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-300"
+              type="button"
+              data-go="c1"
+              data-component="c1"
+              data-title="1. Static Analysis"
+              data-url="http://localhost:5173"
+            >
+              <span class="grid h-11 w-11 place-items-center rounded-xl border border-sky-300/20 bg-sky-400/15 text-sky-200 transition group-hover:bg-sky-400/25">
+                <svg viewBox="0 0 24 24" class="h-5 w-5" fill="none" aria-hidden="true">
+                  <path d="m8 8-4 4 4 4m8-8 4 4-4 4m-3-11-2 14" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8"/>
+                </svg>
+              </span>
+              <span class="mt-5 block text-base font-bold text-white">Static Analysis</span>
+              <span class="mt-2 block text-sm leading-6 text-slate-300">Extracts AST features and code metrics.</span>
+              <span class="mt-5 inline-flex items-center gap-2 text-xs font-semibold text-sky-200">
+                Component 01 <span aria-hidden="true">→</span>
+              </span>
+            </button>
+
+            <button
+              class="glass-card group rounded-2xl border border-white/20 p-5 text-left shadow-2xl shadow-black/25 transition duration-300 hover:-translate-y-2 hover:border-violet-300/60 hover:shadow-violet-950/40 focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-300"
+              type="button"
+              data-go="c2"
+              data-component="c2"
+              data-title="2. ML Risk"
+              data-url="http://localhost:3000"
+            >
+              <span class="grid h-11 w-11 place-items-center rounded-xl border border-violet-300/20 bg-violet-400/15 text-violet-200 transition group-hover:bg-violet-400/25">
+                <svg viewBox="0 0 24 24" class="h-5 w-5" fill="none" aria-hidden="true">
+                  <path d="M12 3v2m0 14v2m9-9h-2M5 12H3m15.36-6.36-1.42 1.42M7.06 16.94l-1.42 1.42m12.72 0-1.42-1.42M7.06 7.06 5.64 5.64" stroke="currentColor" stroke-linecap="round" stroke-width="1.7"/>
+                  <circle cx="12" cy="12" r="5" stroke="currentColor" stroke-width="1.7"/>
+                  <path d="m10.5 12 1 1 2-2" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.7"/>
+                </svg>
+              </span>
+              <span class="mt-5 block text-base font-bold text-white">ML Risk Detection</span>
+              <span class="mt-2 block text-sm leading-6 text-slate-300">Predicts high-risk functions using XGBoost.</span>
+              <span class="mt-5 inline-flex items-center gap-2 text-xs font-semibold text-violet-200">
+                Component 02 <span aria-hidden="true">→</span>
+              </span>
+            </button>
+
+            <button
+              class="glass-card group rounded-2xl border border-white/20 p-5 text-left shadow-2xl shadow-black/25 transition duration-300 hover:-translate-y-2 hover:border-amber-300/60 hover:shadow-amber-950/40 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-300"
+              type="button"
+              data-go="c3"
+              data-component="c3"
+              data-title="3. LLM Tests"
+              data-url="http://localhost:5174"
+            >
+              <span class="grid h-11 w-11 place-items-center rounded-xl border border-amber-300/20 bg-amber-400/15 text-amber-200 transition group-hover:bg-amber-400/25">
+                <svg viewBox="0 0 24 24" class="h-5 w-5" fill="none" aria-hidden="true">
+                  <path d="M8 8V5a4 4 0 0 1 8 0v3m-9 0h10a2 2 0 0 1 2 2v7a4 4 0 0 1-4 4H9a4 4 0 0 1-4-4v-7a2 2 0 0 1 2-2Z" stroke="currentColor" stroke-linejoin="round" stroke-width="1.7"/>
+                  <circle cx="9" cy="13" r="1" fill="currentColor"/>
+                  <circle cx="15" cy="13" r="1" fill="currentColor"/>
+                  <path d="M9 17h6" stroke="currentColor" stroke-linecap="round" stroke-width="1.7"/>
+                </svg>
+              </span>
+              <span class="mt-5 block text-base font-bold text-white">LLM Test Gen</span>
+              <span class="mt-2 block text-sm leading-6 text-slate-300">Generates unit and boundary tests.</span>
+              <span class="mt-5 inline-flex items-center gap-2 text-xs font-semibold text-green-200">
+                Component 03 <span aria-hidden="true">→</span>
+              </span>
+            </button>
+
+            <button
+              class="glass-card group rounded-2xl border border-white/20 p-5 text-left shadow-2xl shadow-black/25 transition duration-300 hover:-translate-y-2 hover:border-emerald-300/60 hover:shadow-emerald-950/40 focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-300"
+              type="button"
+              data-go="c4"
+              data-component="c4"
+              data-title="4. Test Evaluation"
+              data-url="http://localhost:5175"
+            >
+              <span class="grid h-11 w-11 place-items-center rounded-xl border border-emerald-300/20 bg-emerald-400/15 text-emerald-200 transition group-hover:bg-emerald-400/25">
+                <svg viewBox="0 0 24 24" class="h-5 w-5" fill="none" aria-hidden="true">
+                  <path d="M12 3 19 6v5c0 4.72-2.9 8.1-7 10-4.1-1.9-7-5.28-7-10V6l7-3Z" stroke="currentColor" stroke-linejoin="round" stroke-width="1.7"/>
+                  <path d="m9 12 2 2 4-4" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8"/>
+                </svg>
+              </span>
+              <span class="mt-5 block text-base font-bold text-white">Test Evaluation</span>
+              <span class="mt-2 block text-sm leading-6 text-slate-300">Docker-isolated execution and grading.</span>
+              <span class="mt-5 inline-flex items-center gap-2 text-xs font-semibold text-emerald-200">
+                Component 04 <span aria-hidden="true">→</span>
+              </span>
+            </button>Automated Test Handoff
+          </div>
+        </section>
+
+        <section class="hidden relative isolate mt-20 overflow-hidden border-y border-white/10 bg-gradient-to-br from-gray-950 via-slate-900 to-[#10152b] px-5 py-16 sm:px-8 sm:py-20 lg:mt-24" hidden>
+          <div class="pointer-events-none absolute -left-28 top-0 -z-10 h-80 w-80 rounded-full bg-blue-500/10 blur-3xl"></div>
+          <div class="pointer-events-none absolute -bottom-40 right-0 -z-10 h-96 w-96 rounded-full bg-violet-500/10 blur-3xl"></div>
+          <div class="mx-auto max-w-7xl">
+            <div class="mx-auto max-w-2xl text-center">
+              <span class="text-xs font-bold uppercase tracking-[.2em] text-blue-300">The Pipeline in Action</span>
+              <h2 class="mt-3 text-3xl font-extrabold tracking-tight text-white sm:text-4xl">How the Pipeline Works</h2>
+              <p class="mt-4 text-base leading-7 text-slate-300">
+                From source code to quality insights, each component hands its results to the next.
+              </p>
+            </div>
+
+            <div class="mt-12 grid grid-cols-1 items-center gap-4 md:grid-cols-2 lg:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)_auto_minmax(0,1fr)_auto_minmax(0,1fr)]">
+              <article class="group h-full rounded-2xl border border-blue-300/25 bg-white/[0.06] p-6 shadow-lg shadow-blue-950/20 backdrop-blur-xl transition duration-300 hover:-translate-y-1 hover:border-blue-300/60 hover:shadow-blue-500/10">
+                <div class="flex items-center justify-between">
+                  <span class="grid h-12 w-12 place-items-center rounded-xl border border-blue-300/20 bg-blue-400/10 text-blue-200">
+                    <svg viewBox="0 0 24 24" class="h-6 w-6" fill="none" aria-hidden="true">
+                      <path d="m8 8-4 4 4 4m8-8 4 4-4 4m-3-11-2 14" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8"/>
+                    </svg>
+                  </span>
+                  <span class="text-xs font-bold tracking-[.18em] text-blue-200/70">STEP 01</span>
+                </div>
+                <h3 class="mt-5 text-lg font-bold text-white">Analyze</h3>
+                <p class="mt-2 text-sm leading-6 text-slate-300">C1 extracts AST features and code metrics.</p>
+              </article>
+
+              <span class="hidden justify-center text-3xl font-light text-blue-300 drop-shadow-[0_0_10px_rgba(96,165,250,0.7)] lg:flex" aria-hidden="true">→</span>
+
+              <article class="group h-full rounded-2xl border border-orange-300/25 bg-white/[0.06] p-6 shadow-lg shadow-orange-950/20 backdrop-blur-xl transition duration-300 hover:-translate-y-1 hover:border-orange-300/60 hover:shadow-orange-500/10">
+                <div class="flex items-center justify-between">
+                  <span class="grid h-12 w-12 place-items-center rounded-xl border border-orange-300/20 bg-orange-400/10 text-orange-200">
+                    <svg viewBox="0 0 24 24" class="h-6 w-6" fill="none" aria-hidden="true">
+                      <path d="M9 4.5a3 3 0 0 0-5.7 1.2A3.5 3.5 0 0 0 4 12a3.5 3.5 0 0 0-.7 6.3A3 3 0 0 0 9 19.5V4.5Zm6 0a3 3 0 0 1 5.7 1.2A3.5 3.5 0 0 1 20 12a3.5 3.5 0 0 1 .7 6.3 3 3 0 0 1-5.7 1.2V4.5Z" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.6"/>
+                      <path d="M9 8H7m2 5H6m9-5h2m-2 5h3m-9 4H7m8 0h2" stroke="currentColor" stroke-linecap="round" stroke-width="1.6"/>
+                    </svg>
+                  </span>
+                  <span class="text-xs font-bold tracking-[.18em] text-orange-200/70">STEP 02</span>
+                </div>
+                <h3 class="mt-5 text-lg font-bold text-white">Predict</h3>
+                <p class="mt-2 text-sm leading-6 text-slate-300">C2 uses ML to rank high-risk functions.</p>
+              </article>
+
+              <span class="hidden justify-center text-3xl font-light text-violet-300 drop-shadow-[0_0_10px_rgba(167,139,250,0.7)] lg:flex" aria-hidden="true">→</span>
+
+              <article class="group h-full rounded-2xl border border-green-300/25 bg-white/[0.06] p-6 shadow-lg shadow-green-950/20 backdrop-blur-xl transition duration-300 hover:-translate-y-1 hover:border-green-300/60 hover:shadow-green-500/10">
+                <div class="flex items-center justify-between">
+                  <span class="grid h-12 w-12 place-items-center rounded-xl border border-green-300/20 bg-green-400/10 text-green-200">
+                    <svg viewBox="0 0 24 24" class="h-6 w-6" fill="none" aria-hidden="true">
+                      <path d="M7 9a5 5 0 0 1 10 0v5.5a2.5 2.5 0 0 1-5 0V13m-5-4v5.5a2.5 2.5 0 0 0 5 0M7 9H5.5A2.5 2.5 0 0 0 3 11.5v1A2.5 2.5 0 0 0 5.5 15H7m10-6h1.5a2.5 2.5 0 0 1 2.5 2.5v1a2.5 2.5 0 0 1-2.5 2.5H17M9 4V2m6 2V2m-8 7h.01M17 9h.01" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.6"/>
+                    </svg>
+                  </span>
+                  <span class="text-xs font-bold tracking-[.18em] text-green-200/70">STEP 03</span>
+                </div>
+                <h3 class="mt-5 text-lg font-bold text-white">Generate</h3>
+                <p class="mt-2 text-sm leading-6 text-slate-300">C3 uses LLMs to generate unit tests.</p>
+              </article>
+
+              <span class="hidden justify-center text-3xl font-light text-amber-300 drop-shadow-[0_0_10px_rgba(252,211,77,0.7)] lg:flex" aria-hidden="true">→</span>
+
+              <article class="group h-full rounded-2xl border border-red-300/25 bg-white/[0.06] p-6 shadow-lg shadow-red-950/20 backdrop-blur-xl transition duration-300 hover:-translate-y-1 hover:border-red-300/60 hover:shadow-red-500/10">
+                <div class="flex items-center justify-between">
+                  <span class="grid h-12 w-12 place-items-center rounded-xl border border-red-300/20 bg-red-400/10 text-red-200">
+                    <svg viewBox="0 0 24 24" class="h-6 w-6" fill="none" aria-hidden="true">
+                      <path d="M12 3 19 6v5c0 4.72-2.9 8.1-7 10-4.1-1.9-7-5.28-7-10V6l7-3Z" stroke="currentColor" stroke-linejoin="round" stroke-width="1.7"/>
+                      <path d="m9 12 2 2 4-4" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8"/>
+                    </svg>
+                  </span>
+                  <span class="text-xs font-bold tracking-[.18em] text-red-200/70">STEP 04</span>
+                </div>
+                <h3 class="mt-5 text-lg font-bold text-white">Evaluate</h3>
+                <p class="mt-2 text-sm leading-6 text-slate-300">C4 executes tests in Docker and assigns a quality grade.</p>
+              </article>
+            </div>
+          </div>
+        </section>
+      </section>
+
+      <section
+        id="panel-split"
+        class="hidden min-h-[calc(100vh-72px)] bg-gradient-to-br from-slate-950 via-[#0c1528] to-[#100d25] px-3 py-4 sm:px-5 sm:py-6"
+        aria-label="All pipeline components"
+        data-view-panel="split"
+        hidden
+      >
+        <div class="mx-auto max-w-[1800px]">
+          <div class="mb-5 flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <p class="text-xs font-bold uppercase tracking-[.18em] text-blue-300">Live component dashboards</p>
+              <h1 class="mt-1 text-2xl font-extrabold text-white sm:text-3xl">Pipeline Split View</h1>
+            </div>
+            <button class="rounded-lg border border-white/15 bg-white/[.04] px-4 py-2 text-sm font-semibold text-slate-200 transition hover:border-blue-300/40 hover:bg-white/10 hover:text-white" type="button" data-back-home>
+              Back to Home
+            </button>
+          </div>
+          <div class="grid grid-cols-1 gap-4 lg:grid-cols-2">
+            <section class="overflow-hidden rounded-2xl border border-blue-300/25 bg-white/[.04] shadow-xl shadow-blue-950/20">
+              <div class="flex items-center gap-3 border-b border-blue-300/15 bg-blue-400/[.06] px-4 py-3">
+                <span class="h-2.5 w-2.5 rounded-full bg-blue-300 shadow-[0_0_12px_rgba(96,165,250,.8)]"></span>
+                <h2 class="text-sm font-bold text-white">C1 · Static Analysis</h2>
+              </div>
+              <iframe class="split-component-frame" src="http://localhost:5173" title="C1 Static Analysis" loading="lazy"></iframe>
+            </section>
+            <section class="overflow-hidden rounded-2xl border border-orange-300/25 bg-white/[.04] shadow-xl shadow-orange-950/20">
+              <div class="flex items-center gap-3 border-b border-orange-300/15 bg-orange-400/[.06] px-4 py-3">
+                <span class="h-2.5 w-2.5 rounded-full bg-orange-300 shadow-[0_0_12px_rgba(253,186,116,.8)]"></span>
+                <h2 class="text-sm font-bold text-white">C2 · ML Risk Detection</h2>
+              </div>
+              <iframe class="split-component-frame" src="http://localhost:3000" title="C2 ML Risk Detection" loading="lazy"></iframe>
+            </section>
+            <section class="overflow-hidden rounded-2xl border border-green-300/25 bg-white/[.04] shadow-xl shadow-green-950/20">
+              <div class="flex items-center gap-3 border-b border-green-300/15 bg-green-400/[.06] px-4 py-3">
+                <span class="h-2.5 w-2.5 rounded-full bg-green-300 shadow-[0_0_12px_rgba(134,239,172,.8)]"></span>
+                <h2 class="text-sm font-bold text-white">C3 · LLM Test Generation</h2>
+              </div>
+              <iframe class="split-component-frame" src="http://localhost:5174" title="C3 LLM Test Generation" loading="lazy"></iframe>
+            </section>
+            <section class="overflow-hidden rounded-2xl border border-red-300/25 bg-white/[.04] shadow-xl shadow-red-950/20">
+              <div class="flex items-center gap-3 border-b border-red-300/15 bg-red-400/[.06] px-4 py-3">
+                <span class="h-2.5 w-2.5 rounded-full bg-red-300 shadow-[0_0_12px_rgba(252,165,165,.8)]"></span>
+                <h2 class="text-sm font-bold text-white">C4 · Test Evaluation</h2>
+              </div>
+              <iframe class="split-component-frame" src="http://localhost:5175" title="C4 Test Evaluation" loading="lazy"></iframe>
+            </section>
+          </div>
+        </div>
+      </section>
+
+      <section
+        id="pipeline-loading"
+        class="hidden min-h-[calc(100vh-72px)] flex items-center justify-center bg-gradient-to-br from-slate-950 via-[#0c1528] to-[#100d25] px-5 py-16"
+        data-view-panel="loading"
+        aria-live="polite"
+        aria-busy="true"
+        hidden
+      >
+        <div class="w-full max-w-xl rounded-3xl border border-blue-300/20 bg-white/[0.05] p-8 text-center shadow-2xl shadow-blue-950/30 backdrop-blur-xl sm:p-12">
+          <div class="mx-auto grid h-20 w-20 place-items-center rounded-full border border-blue-300/20 bg-blue-400/10">
+            <span id="pipeline-loading-spinner" class="h-11 w-11 animate-spin rounded-full border-[3px] border-blue-200/20 border-t-blue-300" aria-hidden="true"></span>
+          </div>
+          <p class="mt-7 text-xs font-bold uppercase tracking-[.2em] text-blue-200">IntelliTest is working</p>
+          <h1 class="mt-3 text-3xl font-extrabold text-white sm:text-4xl">Running Full Pipeline</h1>
+          <p class="mt-3 text-slate-300">C1 <span class="text-blue-300">→</span> C2 <span class="text-orange-300">→</span> C3 <span class="text-green-300">→</span> C4</p>
+          <p id="pipeline-loading-message" class="mt-7 text-sm font-medium text-blue-100">Running C1 analysis...</p>
+          <div id="pipeline-loading-progress" class="mt-5 h-1.5 overflow-hidden rounded-full bg-white/10">
+            <div class="h-full w-1/3 animate-pulse rounded-full bg-gradient-to-r from-blue-400 via-cyan-300 to-indigo-400"></div>
+          </div>
+          <p id="pipeline-loading-error" class="mt-6 hidden rounded-xl border border-red-300/20 bg-red-950/40 p-4 text-left text-sm leading-6 text-red-100" role="alert"></p>
+          <button id="pipeline-loading-back" class="mt-5 hidden rounded-lg border border-white/15 px-4 py-2 text-sm font-semibold text-slate-200 transition hover:bg-white/10" type="button">Back to Home</button>
+        </div>
+      </section>
+
+      <section
+        id="pipeline-results"
+        class="hidden min-h-[calc(100vh-72px)] bg-[#eef0f5] px-4 py-8 text-slate-800 sm:px-8 sm:py-12"
+        data-view-panel="results"
+        aria-labelledby="pipeline-results-title"
+        hidden
+      >
+        <div class="mx-auto max-w-5xl">
+          <header class="mb-8 flex flex-wrap items-center justify-between gap-4 border-b border-slate-300 pb-5">
+            <div>
+              <p class="text-xs font-semibold uppercase tracking-[.16em] text-violet-600">Test Execution and Evaluation</p>
+              <h1 id="pipeline-results-title" class="mt-2 text-3xl font-extrabold text-slate-900">Pipeline Results</h1>
+              <p id="pipeline-result-status" class="mt-2 text-sm text-slate-500"></p>
+            </div>
+            <span id="pipeline-result-run-status" class="inline-flex items-center gap-2 rounded-full border px-4 py-2 text-xs font-semibold">
+              <span class="h-2 w-2 rounded-full bg-current"></span>
+              <span id="pipeline-result-run-status-text">Completed</span>
+            </span>
+          </header>
+
+          <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            <article class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+              <p class="text-xs font-semibold uppercase tracking-wider text-slate-500">Total Tests</p>
+              <p id="pipeline-stat-total" class="mt-2 text-3xl font-bold text-slate-900">—</p>
+            </article>
+            <article class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+              <p class="text-xs font-semibold uppercase tracking-wider text-green-700">Passed</p>
+              <p id="pipeline-stat-passed" class="mt-2 text-3xl font-bold text-green-600">—</p>
+            </article>
+            <article class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+              <p class="text-xs font-semibold uppercase tracking-wider text-red-700">Failed</p>
+              <p id="pipeline-stat-failed" class="mt-2 text-3xl font-bold text-red-600">—</p>
+            </article>
+            <article class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+              <p class="text-xs font-semibold uppercase tracking-wider text-cyan-700">Code Coverage</p>
+              <p id="pipeline-stat-coverage" class="mt-2 text-3xl font-bold text-cyan-600">—</p>
+            </article>
+          </div>
+
+          <div class="mt-5 grid gap-5 lg:grid-cols-[minmax(0,1.2fr)_minmax(260px,.8fr)]">
+            <article class="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm sm:p-8">
+              <h2 class="text-xs font-semibold uppercase tracking-[.12em] text-slate-500">Code Coverage</h2>
+              <div class="mt-5 flex items-end justify-between gap-4">
+                <p id="pipeline-coverage-detail" class="text-sm text-slate-500">Statement coverage</p>
+                <p id="pipeline-coverage-value" class="text-4xl font-extrabold text-cyan-600">—</p>
+              </div>
+              <div class="mt-4 h-3 overflow-hidden rounded-full bg-slate-100">
+                <div id="pipeline-coverage-bar" class="h-full w-0 rounded-full bg-gradient-to-r from-cyan-500 to-blue-500 transition-all duration-700"></div>
+              </div>
+              <p id="pipeline-branch-coverage" class="mt-4 text-xs text-slate-500"></p>
+            </article>
+
+            <article class="flex flex-col items-center justify-center rounded-2xl border border-slate-200 bg-white p-6 text-center shadow-sm sm:p-8">
+              <h2 class="text-xs font-semibold uppercase tracking-[.12em] text-slate-500">Quality Evaluation</h2>
+              <div id="pipeline-grade-badge" class="mt-5 grid h-32 w-32 place-items-center rounded-full border-[10px] border-slate-100 text-6xl font-black text-slate-500 shadow-inner">—</div>
+              <p id="pipeline-grade-label" class="mt-4 text-lg font-bold text-slate-800">Quality grade</p>
+              <p id="pipeline-grade-score" class="mt-1 text-sm text-slate-500"></p>
+            </article>
+          </div>
+
+          <article class="mt-5 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+            <h2 class="text-xs font-semibold uppercase tracking-[.12em] text-slate-500">Test Results</h2>
+            <div id="pipeline-failed-tests" class="mt-4 text-sm text-slate-600">No failed tests reported.</div>
+          </article>
+
+          <div class="mt-7 flex flex-wrap justify-end gap-3">
+            <button class="rounded-xl border border-slate-300 bg-white px-5 py-3 text-sm font-semibold text-slate-700 shadow-sm transition hover:bg-slate-50" type="button" data-back-home>Back to Home</button>
+            <button id="pipeline-view-c4" class="rounded-xl bg-gradient-to-r from-violet-600 to-indigo-600 px-5 py-3 text-sm font-bold text-white shadow-lg shadow-indigo-900/20 transition hover:from-violet-500 hover:to-indigo-500" type="button">
+              View in C4 Dashboard <span aria-hidden="true">→</span>
+            </button>
+          </div>
+        </div>
+      </section>
+
+      <section
+        id="panel-about"
+        class="hidden min-h-[calc(100vh-72px)] overflow-hidden bg-[#080d18]"
+        aria-labelledby="nav-about"
+        data-view-panel="about"
+        hidden
+      >
+        <div class="relative isolate overflow-hidden border-b border-white/10 bg-gradient-to-br from-slate-900 via-[#101b31] to-[#11102a] px-5 py-16 sm:px-8 sm:py-20">
+          <div class="absolute -right-20 -top-32 -z-10 h-96 w-96 rounded-full bg-blue-500/20 blur-3xl"></div>
+          <div class="absolute -bottom-48 left-1/4 -z-10 h-96 w-96 rounded-full bg-indigo-500/15 blur-3xl"></div>
+          <div class="mx-auto max-w-5xl text-center">
+            <span class="inline-flex items-center gap-2 rounded-full border border-blue-300/20 bg-blue-400/10 px-4 py-2 text-xs font-semibold uppercase tracking-[.16em] text-blue-200">
+              Research Project · R26-SE-038
+            </span>
+            <h1 class="mt-6 text-4xl font-extrabold tracking-tight text-white sm:text-5xl">About the Project</h1>
+            <p class="mx-auto mt-5 max-w-3xl text-base leading-8 text-slate-300 sm:text-lg">
+              The LLM &amp; ML Enhanced Software Testing System connects static code analysis, machine-learning risk prediction,
+              large-language-model test generation, and isolated test evaluation in one automated quality workflow.
+            </p>
+          </div>
+        </div>
+
+        <div class="mx-auto max-w-7xl space-y-20 px-5 py-16 sm:px-8 sm:py-20">
+          <section aria-labelledby="architecture-heading">
+            <div class="mb-7 text-center">
+              <p class="text-xs font-bold uppercase tracking-[.2em] text-blue-300">How it works</p>
+              <h2 id="architecture-heading" class="mt-3 text-2xl font-bold text-white sm:text-3xl">System Architecture</h2>
+            </div>
+            <figure class="group relative mx-auto max-w-5xl rounded-2xl border border-blue-300/20 bg-slate-900/80 p-2 shadow-[0_0_55px_rgba(59,130,246,.16)] transition duration-300 hover:border-blue-300/40 hover:shadow-[0_0_75px_rgba(59,130,246,.24)] sm:p-4">
+              <div class="pointer-events-none absolute -inset-3 -z-10 rounded-3xl bg-gradient-to-r from-blue-600/10 via-cyan-400/10 to-indigo-600/10 blur-xl"></div>
+              <img
+                class="max-h-[620px] w-full rounded-xl bg-slate-950 object-contain"
+                src="./images/architecture-diagram.jfif"
+                alt="Architecture diagram showing the integrated software testing pipeline"
+                loading="lazy"
+              >
+              <figcaption class="px-3 py-3 text-center text-xs text-slate-400">
+                Integrated flow from static analysis and ML risk scoring to LLM-generated tests and Docker-isolated evaluation.
+              </figcaption>
+            </figure>
+          </section>
+
+          <section aria-label="Problem and solution">
+            <div class="grid gap-5 md:grid-cols-2">
+              <article class="rounded-2xl border border-rose-300/15 bg-gradient-to-br from-rose-500/[.09] to-slate-900/80 p-7 sm:p-9">
+                <span class="inline-flex rounded-full border border-rose-300/20 bg-rose-400/10 px-3 py-1 text-xs font-semibold text-rose-200">The challenge</span>
+                <h2 class="mt-5 text-2xl font-bold text-white">The Problem</h2>
+                <p class="mt-4 leading-7 text-slate-300">
+                  AI-generated tests can fail for many different reasons: a real defect, an incorrect expectation, invalid generated code,
+                  or a problem in the test environment. Without clear evidence, it is difficult to know what to fix or whether the tests are useful.
+                </p>
+              </article>
+              <article class="rounded-2xl border border-emerald-300/15 bg-gradient-to-br from-emerald-500/[.09] to-slate-900/80 p-7 sm:p-9">
+                <span class="inline-flex rounded-full border border-emerald-300/20 bg-emerald-400/10 px-3 py-1 text-xs font-semibold text-emerald-200">The approach</span>
+                <h2 class="mt-5 text-2xl font-bold text-white">Our Solution</h2>
+                <p class="mt-4 leading-7 text-slate-300">
+                  The pipeline prioritizes risky code, generates targeted tests, and executes them in an isolated Docker sandbox.
+                  It combines test outcomes, coverage, and mutation evidence to classify failures and produce a clear A/B/C/D quality grade.
+                </p>
+              </article>
+            </div>
+          </section>
+
+          <section aria-labelledby="team-heading">
+            <div class="mb-8 text-center">
+              <p class="text-xs font-bold uppercase tracking-[.2em] text-violet-300">The people behind the pipeline</p>
+              <h2 id="team-heading" class="mt-3 text-2xl font-bold text-white sm:text-3xl">Meet the Team</h2>
+            </div>
+            <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+              <article class="glass-card rounded-2xl border border-white/10 p-6 transition hover:-translate-y-1 hover:border-sky-300/40">
+                <div class="grid h-12 w-12 place-items-center rounded-xl bg-sky-400/15 text-lg font-bold text-sky-200">01</div>
+                <p class="mt-5 text-xs font-semibold uppercase tracking-wider text-sky-300">Component 01</p>
+                <h3 class="mt-2 text-lg font-bold text-white">Static Analysis</h3>
+                <p class="mt-2 text-sm leading-6 text-slate-400">AST extraction, code metrics, and initial risk signals.</p>
+                <p class="mt-4 border-t border-white/10 pt-4 text-sm font-medium text-slate-200">Senuri Dissanayake</p>
+              </article>
+              <article class="glass-card rounded-2xl border border-white/10 p-6 transition hover:-translate-y-1 hover:border-violet-300/40">
+                <div class="grid h-12 w-12 place-items-center rounded-xl bg-violet-400/15 text-lg font-bold text-violet-200">02</div>
+                <p class="mt-5 text-xs font-semibold uppercase tracking-wider text-violet-300">Component 02</p>
+                <h3 class="mt-2 text-lg font-bold text-white">ML Risk</h3>
+                <p class="mt-2 text-sm leading-6 text-slate-400">Machine-learning risk prediction and test prioritization.</p>
+                <p class="mt-4 border-t border-white/10 pt-4 text-sm font-medium text-slate-200">W.M.V.S.B Wahundeniya</p>
+              </article>
+              <article class="glass-card rounded-2xl border border-white/10 p-6 transition hover:-translate-y-1 hover:border-amber-300/40">
+                <div class="grid h-12 w-12 place-items-center rounded-xl bg-amber-400/15 text-lg font-bold text-amber-200">03</div>
+                <p class="mt-5 text-xs font-semibold uppercase tracking-wider text-amber-300">Component 03</p>
+                <h3 class="mt-2 text-lg font-bold text-white">LLM Tests</h3>
+                <p class="mt-2 text-sm leading-6 text-slate-400">LLM-powered unit tests, boundary cases, and code review.</p>
+                <p class="mt-4 border-t border-white/10 pt-4 text-sm font-medium text-slate-200">Harrish Shermon</p>
+              </article>
+              <article class="glass-card rounded-2xl border border-white/10 p-6 transition hover:-translate-y-1 hover:border-emerald-300/40">
+                <div class="grid h-12 w-12 place-items-center rounded-xl bg-emerald-400/15 text-lg font-bold text-emerald-200">04</div>
+                <p class="mt-5 text-xs font-semibold uppercase tracking-wider text-emerald-300">Component 04</p>
+                <h3 class="mt-2 text-lg font-bold text-white">Test Execution &amp; Evaluation</h3>
+                <p class="mt-2 text-sm leading-6 text-slate-400">Secure execution, failure evidence, coverage, and quality grading.</p>
+                <p class="mt-4 border-t border-white/10 pt-4 text-sm font-medium text-slate-200">Premaratne R.A.N.C</p>
+              </article>
+            </div>
+          </section>
+
+          <section aria-labelledby="tech-heading">
+            <div class="text-center">
+              <p class="text-xs font-bold uppercase tracking-[.2em] text-cyan-300">Built with</p>
+              <h2 id="tech-heading" class="mt-3 text-2xl font-bold text-white">Technology Stack</h2>
+            </div>
+            <div class="mt-7 flex flex-wrap justify-center gap-3">
+              <span class="rounded-full border border-blue-300/20 bg-blue-400/10 px-5 py-2.5 text-sm font-semibold text-blue-200">Python</span>
+              <span class="rounded-full border border-cyan-300/20 bg-cyan-400/10 px-5 py-2.5 text-sm font-semibold text-cyan-200">React</span>
+              <span class="rounded-full border border-sky-300/20 bg-sky-400/10 px-5 py-2.5 text-sm font-semibold text-sky-200">Docker</span>
+              <span class="rounded-full border border-teal-300/20 bg-teal-400/10 px-5 py-2.5 text-sm font-semibold text-teal-200">FastAPI</span>
+              <span class="rounded-full border border-violet-300/20 bg-violet-400/10 px-5 py-2.5 text-sm font-semibold text-violet-200">XGBoost</span>
+            </div>
+          </section>
+        </div>
+
+        <!-- <div class="border-t border-white/10 bg-slate-900/70 px-5 py-7 text-center">
+          <p class="text-xs font-semibold uppercase tracking-[.16em] text-slate-500">Project Supervisor</p>
+          <p class="mt-2 text-sm font-medium text-slate-200">Supervised by Mr. Vishan Jayasinghearachchi</p>
+        </div> -->
+      </section>
+
+      <section
+        id="pipeline-wizard"
+        class="hidden min-h-[calc(100vh-72px)] bg-gradient-to-br from-slate-950 via-[#0c1528] to-[#100d25] px-3 py-5 sm:px-6 sm:py-7"
+        data-view-panel="wizard"
+        aria-label="C1 to C4 pipeline wizard"
+        hidden
+      >
+        <div class="mx-auto max-w-[1600px]">
+          <div class="mb-6 flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <p class="text-xs font-bold uppercase tracking-[.18em] text-blue-300">Guided workflow</p>
+              <h1 class="mt-1 text-2xl font-extrabold text-white sm:text-3xl">Run the IntelliTest Pipeline</h1>
+            </div>
+            <button class="rounded-lg border border-white/15 bg-white/[.04] px-4 py-2 text-sm font-semibold text-slate-200 transition hover:border-blue-300/40 hover:bg-white/10 hover:text-white" type="button" data-back-home>
+              Back to Home
+            </button>
+          </div>
+
+          <nav class="mb-5 grid grid-cols-2 gap-2 sm:grid-cols-4" aria-label="Pipeline steps" role="tablist">
+            <button class="wizard-step wizard-step-active rounded-xl border px-3 py-3 text-left text-sm font-semibold transition" type="button" role="tab" aria-selected="true" data-wizard-step="0">
+              <span class="block text-[10px] uppercase tracking-wider opacity-70">Step 1</span>C1 · Static Analysis
+            </button>
+            <button class="wizard-step rounded-xl border px-3 py-3 text-left text-sm font-semibold transition" type="button" role="tab" aria-selected="false" data-wizard-step="1" disabled>
+              <span class="block text-[10px] uppercase tracking-wider opacity-70">Step 2</span>C2 · ML Risk
+            </button>
+            <button class="wizard-step rounded-xl border px-3 py-3 text-left text-sm font-semibold transition" type="button" role="tab" aria-selected="false" data-wizard-step="2" disabled>
+              <span class="block text-[10px] uppercase tracking-wider opacity-70">Step 3</span>C3 · LLM Tests
+            </button>
+            <button class="wizard-step rounded-xl border px-3 py-3 text-left text-sm font-semibold transition" type="button" role="tab" aria-selected="false" data-wizard-step="3" disabled>
+              <span class="block text-[10px] uppercase tracking-wider opacity-70">Step 4</span>C4 · Evaluation
+            </button>
+          </nav>
+
+          <div class="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-white/10 bg-white/[.04] px-4 py-3">
+            <div class="flex items-center gap-3">
+              <span id="wizard-status-dot" class="h-2.5 w-2.5 rounded-full bg-blue-300"></span>
+              <p id="wizard-status" class="text-sm text-slate-200" aria-live="polite">Analyze a GitHub repository in C1 to begin the handoff.</p>
+            </div>
+            <button id="wizard-retry" class="hidden rounded-lg border border-red-300/30 px-3 py-1.5 text-xs font-semibold text-red-100 transition hover:bg-red-400/10" type="button">Retry this step</button>
+          </div>
+          <div class="mb-4 flex flex-wrap items-center gap-x-5 gap-y-3 rounded-xl border border-white/10 bg-white/[.025] px-4 py-3 text-sm text-slate-300">
+            <span class="text-xs font-bold uppercase tracking-[.16em] text-green-300">C3 test generation</span>
+            <label class="flex items-center gap-2">
+              Minimum risk
+              <select id="wizard-min-risk" class="rounded-lg border border-white/15 bg-slate-900 px-2 py-1 text-sm text-white focus:outline-none focus-visible:ring-2 focus-visible:ring-green-300">
+                <option value="LOW" selected>LOW and above</option>
+                <option value="MEDIUM">MEDIUM and above</option>
+                <option value="HIGH">HIGH only</option>
+              </select>
+            </label>
+            <label class="flex items-center gap-2">
+              Max functions
+              <input id="wizard-max-functions" type="number" min="1" step="1" value="3" class="w-20 rounded-lg border border-white/15 bg-slate-900 px-2 py-1 text-sm text-white focus:outline-none focus-visible:ring-2 focus-visible:ring-green-300">
+            </label>
+            <span class="text-xs text-slate-500">Functions C2 ranks at or above this risk go to C3, highest first. Each costs several rate-limited LLM calls.</span>
+          </div>
+          <ol id="wizard-stage-log" class="mb-4 hidden space-y-1 rounded-xl border border-white/10 bg-white/[.025] px-4 py-3 text-xs leading-5 text-slate-400" aria-label="Completed pipeline stages"></ol>
+          <p id="wizard-error" class="mb-4 hidden rounded-xl border border-red-300/25 bg-red-950/40 px-4 py-3 text-sm leading-6 text-red-100" role="alert"></p>
+          <section id="c3-panel" class="hidden rounded-xl border border-green-300/20 bg-slate-900/70 p-4 shadow-2xl shadow-black/30 sm:p-6" aria-label="C3 LLM test generation results" hidden>
+            <div class="flex flex-wrap items-start justify-between gap-4 border-b border-white/10 pb-5">
+              <div>
+                <p class="text-xs font-bold uppercase tracking-[.18em] text-green-300">Component 03 · Three-agent LLM pipeline</p>
+                <h2 class="mt-1 text-xl font-extrabold text-white sm:text-2xl">LLM Test Generation &amp; Code Review</h2>
+                <p id="c3-run-meta" class="mt-1 text-xs text-slate-400"></p>
+              </div>
+              <ol class="flex flex-wrap items-center gap-2 text-xs font-semibold" aria-label="Agent flow">
+                <li class="rounded-lg border border-amber-300/25 bg-amber-400/10 px-3 py-2 text-amber-100">Agent 1 · Plan &amp; write tests</li>
+                <li class="text-slate-500" aria-hidden="true">→</li>
+                <li class="rounded-lg border border-sky-300/25 bg-sky-400/10 px-3 py-2 text-sky-100">Agent 2 · Validate &amp; repair</li>
+                <li class="text-slate-500" aria-hidden="true">→</li>
+                <li class="rounded-lg border border-violet-300/25 bg-violet-400/10 px-3 py-2 text-violet-100">Agent 3 · Code review</li>
+              </ol>
+            </div>
+            <div id="c3-loading" class="py-16 text-center">
+              <span class="mx-auto block h-10 w-10 animate-spin rounded-full border-[3px] border-green-200/20 border-t-green-300" aria-hidden="true"></span>
+              <p class="mt-5 text-sm font-semibold text-green-100">The agents are working on the functions selected from C2's ranking…</p>
+              <p class="mt-2 text-xs text-slate-400">Agent 1 plans test cases and writes pytest code, Agent 2 checks and repairs it, Agent 3 reviews the source.</p>
+            </div>
+            <div id="c3-content" class="hidden">
+              <div id="c3-stats" class="mt-5 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6"></div>
+              <div id="c3-errors" class="mt-4 hidden rounded-xl border border-red-300/25 bg-red-950/40 px-4 py-3 text-sm leading-6 text-red-100"></div>
+              <div class="mt-5 grid grid-cols-[minmax(0,1fr)] gap-4 lg:grid-cols-[260px_minmax(0,1fr)]">
+                <nav id="c3-function-list" class="flex min-w-0 gap-2 overflow-x-auto lg:flex-col lg:overflow-visible" aria-label="Tested functions"></nav>
+                <div id="c3-function-detail" class="min-w-0 space-y-4"></div>
+              </div>
+            </div>
+          </section>
+          <div id="wizard-frame-wrap" class="overflow-hidden rounded-xl border border-white/10 bg-white shadow-2xl shadow-black/30">
+            <iframe
+              id="wizard-frame"
+              class="component-frame"
+              title="Step 1: C1 Static Analysis"
+              src="http://localhost:5173/analysis?wizard=1"
+              loading="eager"
+            ></iframe>
+          </div>
+        </div>
+      </section>
+
+      <section
+        id="panel-components"
+        class="hidden min-h-[calc(100vh-72px)] bg-slate-100 px-3 py-4 text-slate-900 sm:px-6 sm:py-6"
+        aria-label="Pipeline component view"
+        data-view-panel="component"
+        hidden
+      >
+        <div class="mx-auto max-w-[1600px]">
+          <div class="mb-4 flex flex-wrap items-center justify-between gap-3">
+            <button
+              class="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-700 shadow-sm transition hover:border-blue-300 hover:text-blue-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+              type="button"
+              data-back-home
+            >
+              Back to Home 
+            </button>
+            <a
+              id="open-component"
+              class="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-700 shadow-sm transition hover:border-blue-300 hover:text-blue-700"
+              href="http://localhost:5173"
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              Open in new tab
+              <svg viewBox="0 0 24 24" class="h-4 w-4" fill="none" aria-hidden="true">
+                <path d="M14 4h6v6m0-6-9 9m5 1v5H5V7h5" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8"/>
+              </svg>
+            </a>
+          </div>
+          <div class="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-xl shadow-slate-900/10">
+            <iframe
+              id="component-frame"
+              class="component-frame"
+              title="1. Static Analysis frontend"
+              src="http://localhost:5173"
+              loading="eager"
+            ></iframe>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <footer class="border-t border-white/10 bg-[#080d18] px-5 py-5 text-center text-xs text-slate-400">
+      © 2026 IntelliTest
+    </footer>
+
+    <script>
+      const panels = [...document.querySelectorAll("[data-view-panel]")];
+      const navigationLinks = [...document.querySelectorAll("[data-view]")];
+      const wizardFrame = document.getElementById("wizard-frame");
+      const wizardSteps = [...document.querySelectorAll("[data-wizard-step]")];
+      const wizardStatus = document.getElementById("wizard-status");
+      const wizardStatusDot = document.getElementById("wizard-status-dot");
+      const wizardStageLog = document.getElementById("wizard-stage-log");
+      const wizardError = document.getElementById("wizard-error");
+      const wizardRetry = document.getElementById("wizard-retry");
+      const wizardStageInfo = [
+        { label: "C1 · Static Analysis", url: "http://localhost:5173/analysis?wizard=1" },
+        { label: "C2 · ML Risk", url: "http://localhost:3000/predict" },
+        { label: "C3 · LLM Tests", url: "http://localhost:5174" },
+        { label: "C4 · Evaluation", url: "http://localhost:5175" },
+      ];
+      const C3_STEP = 2;
+      const c3Panel = document.getElementById("c3-panel");
+      const wizardFrameWrap = document.getElementById("wizard-frame-wrap");
+      const c3Tones = {
+        green: "border-green-300/30 bg-green-400/10 text-green-200",
+        red: "border-red-300/30 bg-red-400/10 text-red-200",
+        amber: "border-amber-300/30 bg-amber-400/10 text-amber-200",
+        sky: "border-sky-300/30 bg-sky-400/10 text-sky-200",
+        violet: "border-violet-300/30 bg-violet-400/10 text-violet-200",
+        orange: "border-orange-300/30 bg-orange-400/10 text-orange-200",
+        slate: "border-white/15 bg-white/5 text-slate-300",
+      };
+      const c3CategoryTone = { normal: "sky", edge: "amber", negative: "orange", exception: "red" };
+      const c3SeverityTone = { critical: "red", high: "red", medium: "amber", low: "sky", info: "slate" };
+      const c3RepairLabel = {
+        not_attempted: ["No repair needed", "green"],
+        success: ["Repaired successfully", "green"],
+        failed: ["Repair failed", "red"],
+        max_iterations_reached: ["Repair limit reached", "red"],
+      };
+      let c3SelectedFunction = null;
+      const wizard = {
+        activeStep: 0,
+        busy: false,
+        completed: new Set(),
+        failedStep: null,
+        c1: null,
+        c2: null,
+        c3: null,
+        c4: null,
+        projectName: "",
+      };
+
+      function showView(view) {
+        for (const panel of panels) {
+          const visible = panel.dataset.viewPanel === view;
+          panel.hidden = !visible;
+          panel.classList.toggle("hidden", !visible);
+        }
+        for (const link of navigationLinks) {
+          const active = link.dataset.view === view;
+          link.classList.toggle("tab-active", active);
+          if (active) link.setAttribute("aria-current", "page");
+          else link.removeAttribute("aria-current");
+        }
+        window.scrollTo({ top: 0, behavior: "smooth" });
+      }
+
+      function setWizardStatus(message, state = "running") {
+        wizardStatus.textContent = message;
+        wizardStatusDot.className = state === "error"
+          ? "h-2.5 w-2.5 rounded-full bg-red-400"
+          : state === "done"
+            ? "h-2.5 w-2.5 rounded-full bg-green-400"
+            : "h-2.5 w-2.5 animate-pulse rounded-full bg-blue-300";
+      }
+
+      function recordWizardStage(label, message) {
+        const item = document.createElement("li");
+        item.textContent = `${label}: ${message}`;
+        wizardStageLog.append(item);
+        wizardStageLog.classList.remove("hidden");
+      }
+
+      function updateWizardSteps() {
+        for (const button of wizardSteps) {
+          const index = Number(button.dataset.wizardStep);
+          const current = index === wizard.activeStep;
+          const done = wizard.completed.has(index);
+          button.disabled = wizard.busy || (!current && !done && index > wizard.activeStep);
+          button.classList.toggle("wizard-step-active", current);
+          button.classList.toggle("wizard-step-done", done && !current);
+          button.setAttribute("aria-selected", String(current));
+        }
+      }
+
+      function openWizardStep(index) {
+        wizard.activeStep = index;
+        const stage = wizardStageInfo[index];
+        wizardFrame.title = `Step ${index + 1}: ${stage.label}`;
+        // C3 has no iframe of its own: its results are rendered natively here.
+        const showC3 = index === C3_STEP;
+        c3Panel.hidden = !showC3;
+        c3Panel.classList.toggle("hidden", !showC3);
+        wizardFrameWrap.classList.toggle("hidden", showC3);
+        if (showC3) {
+          renderC3Panel();
+          updateWizardSteps();
+          return;
+        }
+        if (index === 0) {
+          const exactUrl = "http://localhost:5173/analysis?wizard=1";
+          if (wizardFrame.src !== exactUrl) wizardFrame.src = exactUrl;
+        } else {
+          const url = new URL(stage.url);
+          url.searchParams.set("wizard", "1");
+          if (wizardFrame.src !== url.href) wizardFrame.src = url.href;
+        }
+        updateWizardSteps();
+      }
+
+      // ── C3 results panel ────────────────────────────────────────────────
+      // Built with textContent only: test code and review text come from an LLM.
+
+      function el(tag, className = "", text) {
+        const node = document.createElement(tag);
+        if (className) node.className = className;
+        if (text !== undefined && text !== null) node.textContent = String(text);
+        return node;
+      }
+
+      function c3Badge(text, tone = "slate") {
+        return el("span", `inline-flex items-center rounded-full border px-2.5 py-0.5 text-[11px] font-semibold ${c3Tones[tone]}`, text);
+      }
+
+      function c3Section(agent, tone, title, ...children) {
+        const card = el("article", "rounded-xl border border-white/10 bg-white/[.03] p-4 sm:p-5");
+        const head = el("header", "mb-3 flex flex-wrap items-center gap-2");
+        head.append(c3Badge(agent, tone), el("h3", "text-sm font-bold text-white", title));
+        card.append(head, ...children);
+        return card;
+      }
+
+      function c3Stat(label, value, tone = "text-white") {
+        const card = el("div", "rounded-xl border border-white/10 bg-white/[.04] px-4 py-3");
+        card.append(el("p", "text-[11px] font-semibold uppercase tracking-wider text-slate-400", label), el("p", `mt-1 text-2xl font-bold ${tone}`, value));
+        return card;
+      }
+
+      function c3Functions(result) {
+        const tests = Array.isArray(result.tests) ? result.tests : [];
+        const reviews = Array.isArray(result.reviews) ? result.reviews : [];
+        const ranked = Array.isArray(wizard.c2?.ranked_functions) ? wizard.c2.ranked_functions : [];
+        const names = [...new Set([...tests, ...reviews].map((item) => item.function_name))];
+        return names.map((name) => ({
+          name,
+          test: tests.find((item) => item.function_name === name) || null,
+          review: reviews.find((item) => item.function_name === name) || null,
+          risk: ranked.find((item) => item.function_name === name) || null,
+        }));
+      }
+
+      function renderC3Panel() {
+        const result = wizard.c3;
+        const loading = document.getElementById("c3-loading");
+        const content = document.getElementById("c3-content");
+        loading.classList.toggle("hidden", Boolean(result));
+        content.classList.toggle("hidden", !result);
+        if (!result) return;
+
+        const functions = c3Functions(result);
+        const tests = functions.map((fn) => fn.test).filter(Boolean);
+        const totalCases = tests.reduce((sum, test) => sum + (test.test_cases?.length || 0), 0);
+        const coveredCases = tests.reduce((sum, test) => sum + (test.traceability?.covered_count || 0), 0);
+        const tracedCases = tests.reduce((sum, test) => sum + (test.traceability?.total_test_cases || 0), 0);
+        const repairs = tests.reduce((sum, test) => sum + (test.repairs || 0), 0);
+        const findings = functions.reduce((sum, fn) => sum + (fn.review?.findings?.length || 0), 0);
+
+        document.getElementById("c3-run-meta").textContent = `Run ${result.run_id || "—"} · ${functions.length} high-risk function(s) from C2`;
+        document.getElementById("c3-stats").replaceChildren(
+          c3Stat("Functions", result.segments_processed ?? functions.length),
+          c3Stat("Valid tests", `${result.segments_with_valid_tests ?? 0}/${result.segments_processed ?? tests.length}`, "text-green-300"),
+          c3Stat("Success rate", `${Math.round((result.success_rate || 0) * 100)}%`, "text-green-300"),
+          c3Stat("Test cases planned", totalCases, "text-amber-200"),
+          c3Stat("Cases implemented", tracedCases ? `${coveredCases}/${tracedCases}` : "—", "text-sky-200"),
+          c3Stat("Review findings", findings, "text-violet-200"),
+        );
+
+        const errors = document.getElementById("c3-errors");
+        errors.replaceChildren(...(result.errors || []).map((message) => el("p", "", message)));
+        errors.classList.toggle("hidden", !(result.errors || []).length);
+
+        if (!functions.some((fn) => fn.name === c3SelectedFunction)) {
+          c3SelectedFunction = functions[0]?.name ?? null;
+        }
+        const list = document.getElementById("c3-function-list");
+        list.replaceChildren(...functions.map((fn) => {
+          const selected = fn.name === c3SelectedFunction;
+          const button = el("button", `shrink-0 rounded-xl border px-3 py-2.5 text-left transition ${selected ? "border-green-300/60 bg-green-400/10" : "border-white/10 bg-white/[.03] hover:border-white/25"}`);
+          button.type = "button";
+          button.setAttribute("aria-pressed", String(selected));
+          const top = el("span", "flex items-center gap-2");
+          top.append(
+            el("span", `h-2 w-2 shrink-0 rounded-full ${fn.test?.is_valid ? "bg-green-400" : "bg-red-400"}`),
+            el("span", "truncate font-mono text-sm font-semibold text-white", fn.name),
+          );
+          const meta = el("span", "mt-1 block text-[11px] text-slate-400",
+            [fn.risk && `${fn.risk.risk_level} risk`, fn.test && `${fn.test.test_cases?.length || 0} cases`, fn.review && `${fn.review.findings?.length || 0} findings`].filter(Boolean).join(" · "));
+          button.append(top, meta);
+          button.addEventListener("click", () => {
+            c3SelectedFunction = fn.name;
+            renderC3Panel();
+          });
+          return button;
+        }));
+
+        const selected = functions.find((fn) => fn.name === c3SelectedFunction);
+        document.getElementById("c3-function-detail").replaceChildren(
+          ...(selected ? c3FunctionDetail(selected) : [el("p", "text-sm text-slate-400", "C3 returned no functions.")])
+        );
+      }
+
+      function c3FunctionDetail({ name, test, review, risk }) {
+        const sections = [];
+
+        if (risk) {
+          const row = el("div", "flex flex-wrap items-center gap-2");
+          row.append(
+            c3Badge(`${risk.risk_level} risk`, risk.risk_level === "HIGH" ? "red" : risk.risk_level === "MEDIUM" ? "amber" : "sky"),
+            c3Badge(`score ${Number(risk.risk_score).toFixed(2)}`),
+            c3Badge(`priority #${risk.priority_rank}`),
+            c3Badge(`${risk.recommended_test_depth} testing`, "green"),
+            ...(risk.test_types || []).map((type) => c3Badge(type.replaceAll("_", " "), "sky")),
+          );
+          sections.push(c3Section("Input from C2", "orange", `Why ${name} was selected`, row,
+            el("p", "mt-3 text-sm leading-6 text-slate-300", risk.explanation_text)));
+        }
+
+        if (test) {
+          const coverage = new Map((test.traceability?.entries || []).map((entry) => [entry.test_case_id, entry]));
+          const cases = test.test_cases || [];
+          let plan;
+          if (cases.length) {
+            plan = el("div", "overflow-x-auto");
+            const table = el("table", "w-full min-w-[640px] text-left text-xs");
+            const headRow = el("tr", "border-b border-white/10 text-[11px] uppercase tracking-wider text-slate-400");
+            for (const heading of ["ID", "Type", "What it checks", "Input", "Expected", "Implemented by"]) {
+              headRow.append(el("th", "px-2 py-2 font-semibold", heading));
+            }
+            const body = el("tbody");
+            for (const tc of cases) {
+              const trace = coverage.get(tc.test_case_id);
+              const row = el("tr", "border-b border-white/5 align-top text-slate-200");
+              const typeCell = el("td", "px-2 py-2");
+              typeCell.append(c3Badge(tc.category, c3CategoryTone[tc.category] || "slate"));
+              const implCell = el("td", "px-2 py-2");
+              implCell.append(trace?.is_covered
+                ? el("span", "font-mono text-green-300", `✓ ${trace.implemented_by || "covered"}`)
+                : el("span", "text-red-300", trace ? "✗ not implemented" : "—"));
+              row.append(
+                el("td", "px-2 py-2 font-mono font-semibold text-amber-200", tc.test_case_id),
+                typeCell,
+                el("td", "px-2 py-2", tc.description),
+                el("td", "px-2 py-2 font-mono text-slate-300", tc.input_values),
+                el("td", "px-2 py-2 font-mono text-slate-300", tc.expected_output),
+                implCell,
+              );
+              body.append(row);
+            }
+            const head = el("thead");
+            head.append(headRow);
+            table.append(head, body);
+            plan.append(table);
+          } else {
+            plan = el("p", "text-sm text-slate-400", "Agent 1 fell back to direct generation, so no separate test-case plan was produced.");
+          }
+          sections.push(c3Section("Agent 1 · Phase A", "amber", `Test-case plan (${cases.length})`, plan));
+
+          const codeHead = el("div", "mb-2 flex justify-end");
+          const copy = el("button", "rounded-lg border border-white/15 px-3 py-1 text-xs font-semibold text-slate-200 transition hover:bg-white/10", "Copy code");
+          copy.type = "button";
+          copy.addEventListener("click", async () => {
+            try {
+              await navigator.clipboard.writeText(test.test_code || "");
+              copy.textContent = "Copied";
+            } catch {
+              copy.textContent = "Copy failed";
+            }
+            setTimeout(() => { copy.textContent = "Copy code"; }, 1500);
+          });
+          codeHead.append(copy);
+          const code = el("pre", "max-h-[420px] overflow-auto rounded-lg border border-white/10 bg-black/50 p-4 font-mono text-xs leading-5 text-slate-200");
+          code.append(el("code", "", test.test_code || "# No test code returned"));
+          sections.push(c3Section("Agent 1 · Phase B", "amber", "Generated pytest code", codeHead, code));
+
+          const [repairText, repairTone] = c3RepairLabel[test.repair_status] || [test.repair_status, "slate"];
+          const status = el("div", "flex flex-wrap items-center gap-2");
+          status.append(
+            c3Badge(test.is_valid ? "Valid: passes AST + pytest dry-run" : "Invalid after repair loop", test.is_valid ? "green" : "red"),
+            c3Badge(repairText, repairTone),
+            c3Badge(`${test.repairs || 0} repair(s)`),
+          );
+          const validation = [status];
+          if (test.traceability) {
+            const rate = Math.round((test.traceability.coverage_rate || 0) * 100);
+            const bar = el("div", "mt-4");
+            const label = el("div", "mb-1 flex justify-between text-xs text-slate-300");
+            label.append(el("span", "", "Traceability: planned cases implemented in code"), el("span", "font-semibold", `${test.traceability.covered_count}/${test.traceability.total_test_cases} · ${rate}%`));
+            const track = el("div", "h-2 overflow-hidden rounded-full bg-white/10");
+            const fill = el("div", "h-full rounded-full bg-gradient-to-r from-sky-400 to-green-400");
+            fill.style.width = `${rate}%`;
+            track.append(fill);
+            bar.append(label, track);
+            validation.push(bar);
+          }
+          const iterations = test.repair_iterations || [];
+          if (iterations.length) {
+            const log = el("ol", "mt-4 space-y-2");
+            for (const step of iterations) {
+              const item = el("li", "rounded-lg border border-white/10 bg-black/30 p-3");
+              const top = el("div", "flex flex-wrap items-center gap-2");
+              top.append(
+                el("span", "text-xs font-bold text-sky-200", `Iteration ${step.iteration}`),
+                c3Badge(step.error_type, "red"),
+                c3Badge(step.repair_applied ? "fix applied" : "no fix applied", step.repair_applied ? "green" : "slate"),
+              );
+              item.append(top, el("pre", "mt-2 max-h-32 overflow-auto whitespace-pre-wrap font-mono text-[11px] leading-5 text-slate-300", step.error_message));
+              log.append(item);
+            }
+            validation.push(log);
+          } else {
+            validation.push(el("p", "mt-3 text-xs text-slate-400", "The first draft passed every check, so the repair loop was not needed."));
+          }
+          sections.push(c3Section("Agent 2", "sky", "Validation & repair loop", ...validation));
+        }
+
+        if (review) {
+          const head = el("div", "flex flex-wrap items-center gap-2");
+          if (review.pylint_score !== null && review.pylint_score !== undefined) {
+            head.append(c3Badge(`pylint ${Number(review.pylint_score).toFixed(1)}/10`, review.pylint_score >= 7 ? "green" : review.pylint_score >= 4 ? "amber" : "red"));
+          }
+          head.append(c3Badge(`${review.findings?.length || 0} finding(s)`, "violet"));
+          const body = [head, el("p", "mt-3 text-sm leading-6 text-slate-300", review.summary)];
+          const list = el("ul", "mt-4 space-y-2");
+          for (const finding of review.findings || []) {
+            const item = el("li", "rounded-lg border border-white/10 bg-black/30 p-3");
+            const top = el("div", "flex flex-wrap items-center gap-2");
+            top.append(
+              c3Badge(finding.severity, c3SeverityTone[finding.severity] || "slate"),
+              c3Badge(finding.category.replaceAll("_", " "), "violet"),
+            );
+            if (finding.line_number) top.append(el("span", "font-mono text-[11px] text-slate-400", `line ${finding.line_number}`));
+            const fix = el("p", "mt-2 text-xs leading-5 text-green-200");
+            fix.append(el("span", "font-semibold", "Suggested fix: "), document.createTextNode(finding.suggested_fix));
+            item.append(top, el("p", "mt-2 text-sm leading-6 text-slate-200", finding.description), fix);
+            list.append(item);
+          }
+          if ((review.findings || []).length) body.push(list);
+          sections.push(c3Section("Agent 3", "violet", "Code quality review", ...body));
+        }
+
+        return sections;
+      }
+
+      function setWizardFailure(step, message) {
+        wizard.busy = false;
+        wizard.failedStep = step;
+        wizardError.textContent = message;
+        wizardError.classList.remove("hidden");
+        wizardRetry.classList.remove("hidden");
+        setWizardStatus(`Step ${step} failed. Fix the issue or retry this step.`, "error");
+        updateWizardSteps();
+      }
+
+      async function requestWizardStage(endpoint, payload) {
+        let response;
+        try {
+          response = await fetch(`http://localhost:8005/api/wizard/${endpoint}`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(payload),
+          });
+        } catch (error) {
+          console.error(`[requestWizardStage] Network error contacting ${endpoint}:`, error);
+          if (error && error.response) {
+            console.error("[requestWizardStage] error.response:", error.response);
+          }
+          throw new Error(`Could not reach the pipeline API at localhost:8005: ${error.message}`);
+        }
+
+        let result;
+        try {
+          result = await response.json();
+        } catch {
+          throw new Error(`The ${endpoint.toUpperCase()} service returned an invalid response.`);
+        }
+        if (!response.ok) {
+          console.error(`[requestWizardStage] Error ${response.status} from ${endpoint}:`, result);
+          if (response.status === 400 || !response.ok) {
+            console.error("[requestWizardStage] error.response details:", {
+              status: response.status,
+              statusText: response.statusText,
+              response: result,
+              endpoint,
+            });
+          }
+          const detail = typeof result.detail === "string"
+            ? result.detail
+            : (typeof result.detail === "object" ? JSON.stringify(result.detail) : (result.error || `The ${endpoint.toUpperCase()} step returned HTTP ${response.status}.`));
+          const err = new Error(detail);
+          err.response = result;
+          err.status = response.status;
+          throw err;
+        }
+        return result;
+      }
+
+      async function runWizardFrom(firstStage) {
+        wizard.busy = true;
+        wizard.failedStep = null;
+        wizardError.classList.add("hidden");
+        wizardRetry.classList.add("hidden");
+        updateWizardSteps();
+
+        try {
+          if (firstStage <= 2) {
+            openWizardStep(1);
+            setWizardStatus("Passing C1 function metrics to C2 for risk prediction...");
+            wizard.c2 = await requestWizardStage("c2", {
+              c1_response: wizard.c1.c1_response,
+              source_files: wizard.c1.source_files,
+              project_name: wizard.projectName,
+            });
+            wizard.completed.add(1);
+            recordWizardStage(
+              "C2",
+              `ranked ${wizard.c2.ranked_functions?.length ?? 0} function(s).`
+            );
+            sendWizardResult("c2", wizard.c2);
+          }
+
+          if (firstStage <= 3) {
+            wizard.c3 = null;
+            openWizardStep(C3_STEP);
+            const minRiskLevel = document.getElementById("wizard-min-risk").value;
+            const maxFunctions = Number.parseInt(document.getElementById("wizard-max-functions").value, 10);
+            setWizardStatus(`Passing ${minRiskLevel}-and-above functions from C2 to C3 for test generation...`);
+            wizard.c3 = await requestWizardStage("c3", {
+              c1_response: wizard.c1.c1_response,
+              source_files: wizard.c1.source_files,
+              project_name: wizard.projectName,
+              c2_response: wizard.c2,
+              min_risk_level: minRiskLevel,
+              max_functions: Number.isInteger(maxFunctions) && maxFunctions > 0 ? maxFunctions : null,
+            });
+            wizard.completed.add(2);
+            renderC3Panel();
+            const generatedTests = Array.isArray(wizard.c3.tests) ? wizard.c3.tests : [];
+            const testFunctions = generatedTests
+              .slice(0, 5)
+              .map((test) => test.function_name)
+              .filter(Boolean)
+              .join(", ");
+            const plannedCases = generatedTests.reduce((sum, test) => sum + (test.test_cases?.length || 0), 0);
+            recordWizardStage(
+              "C3",
+              `generated ${generatedTests.length} test group(s) from ${plannedCases} planned test case(s)${testFunctions ? ` for ${testFunctions}` : ""}.`
+            );
+            const viewC3 = el("button", "ml-2 rounded border border-green-300/30 px-2 py-0.5 text-[11px] font-semibold text-green-200 transition hover:bg-green-400/10", "View C3 details");
+            viewC3.type = "button";
+            viewC3.addEventListener("click", () => {
+              if (!wizard.busy) openWizardStep(C3_STEP);
+            });
+            wizardStageLog.lastElementChild.append(viewC3);
+            setWizardStatus(
+              `C3 generated ${generatedTests.length} test case group(s); handing them to C4...`
+            );
+          }
+
+          if (firstStage <= 4) {
+            openWizardStep(3);
+            setWizardStatus("Sending generated tests and source files to C4's Docker sandbox...");
+            wizard.c4 = await requestWizardStage("c4", {
+              source_files: wizard.c1.source_files,
+              c3_response: wizard.c3,
+            });
+            wizard.completed.add(3);
+            wizard.busy = false;
+            updateWizardSteps();
+            const grade = wizard.c4.grade || wizard.c4.quality_grade || "unavailable";
+            recordWizardStage("C4", `evaluation completed with grade ${grade}.`);
+            setWizardStatus(`Pipeline complete — C4 assigned grade ${grade}.`, "done");
+            sendC4ResultToFrame();
+            return;
+          }
+
+          wizard.busy = false;
+          updateWizardSteps();
+        } catch (error) {
+          if (error && error.response) {
+            console.error("[runWizardFrom] Caught error with error.response:", error.response);
+          }
+          const message = error instanceof Error ? error.message : "An unexpected pipeline error occurred.";
+          setWizardFailure(wizard.activeStep + 1, message);
+        }
+      }
+
+      function sendWizardResult(component, payload) {
+        if (!payload || !wizardFrame.contentWindow) return;
+        try {
+          const stageIndex = component === "c2" ? 1 : 3;
+          const targetOrigin = new URL(wizardStageInfo[stageIndex].url).origin;
+          wizardFrame.contentWindow.postMessage({
+            channel: "intellitest:wizard",
+            component,
+            status: "complete",
+            payload,
+          }, targetOrigin);
+        } catch (error) {
+          console.error(`Could not forward the ${component.toUpperCase()} result to its dashboard.`, error);
+        }
+      }
+
+      function sendC4ResultToFrame() {
+        sendWizardResult("c4", wizard.c4);
+      }
+
+      function projectNameFromC1(payload) {
+        const source = payload.repo_url || payload.local_path || "project";
+        return source.replace(/[\\/]+$/, "").split(/[\\/]/).pop().replace(/\.git$/i, "") || "project";
+      }
+
+      for (const button of document.querySelectorAll("[data-start-pipeline]")) {
+        button.addEventListener("click", () => {
+          wizard.activeStep = 0;
+          wizard.busy = false;
+          wizard.completed = new Set();
+          wizard.failedStep = null;
+          wizard.c1 = null;
+          wizard.c2 = null;
+          wizard.c3 = null;
+          wizard.c4 = null;
+          wizard.projectName = "";
+          c3SelectedFunction = null;
+          wizardStageLog.replaceChildren();
+          wizardStageLog.classList.add("hidden");
+          wizardFrame.src = "http://localhost:5173/analysis?wizard=1";
+          wizardError.classList.add("hidden");
+          wizardRetry.classList.add("hidden");
+          openWizardStep(0);
+          showView("wizard");
+          setWizardStatus("Analyze a GitHub repository in C1 to begin the handoff.", "running");
+        });
+      }
+
+      for (const link of navigationLinks) {
+        link.addEventListener("click", () => {
+          showView(link.dataset.view);
+          if (link.dataset.view === "wizard" && (!wizardFrame.src || wizardFrame.src === "about:blank")) {
+            openWizardStep(0);
+          }
+        });
+      }
+
+      for (const link of document.querySelectorAll("[data-home-link], [data-back-home]")) {
+        link.addEventListener("click", (event) => {
+          event.preventDefault();
+          showView("home");
+        });
+      }
+
+      for (const button of wizardSteps) {
+        button.addEventListener("click", () => {
+          const index = Number(button.dataset.wizardStep);
+          if (!button.disabled) openWizardStep(index);
+        });
+      }
+
+      wizardRetry.addEventListener("click", () => {
+        wizardError.classList.add("hidden");
+        wizardRetry.classList.add("hidden");
+        if (wizard.failedStep === 1) {
+          wizardFrame.src = "http://localhost:5173/analysis?wizard=1";
+          setWizardStatus("Run C1 analysis again to retry the first step.");
+          return;
+        }
+        runWizardFrom(wizard.failedStep);
+      });
+
+      window.addEventListener("message", (event) => {
+        console.log("Message received:", event.data);
+        const message = event.data;
+        if (
+          !message
+          || message.channel !== "intellitest:wizard"
+          || message.component !== "c1"
+          || event.source !== wizardFrame.contentWindow
+          || (event.origin !== new URL(wizardStageInfo[0].url).origin && event.origin !== "http://localhost:5173" && event.origin !== "http://127.0.0.1:5173")
+          || wizard.activeStep !== 0
+          || wizard.busy
+        ) {
+          return;
+        }
+
+        if (message.status === "failed") {
+          setWizardFailure(1, message.payload?.message || "C1 analysis failed.");
+          return;
+        }
+        if (message.status !== "complete" || !message.payload?.files?.length) {
+          setWizardFailure(1, "C1 did not return any file analysis results.");
+          return;
+        }
+
+        const sourceFiles = message.payload.source_files;
+        if (!sourceFiles || typeof sourceFiles !== "object" || !Object.keys(sourceFiles).length) {
+          setWizardFailure(1, "C1 returned no source code for downstream stages.");
+          return;
+        }
+        wizard.c1 = {
+          c1_response: {
+            files: message.payload.files.map(({ file, functions, dependencies }) => ({
+              file,
+              functions,
+              dependencies,
+            })),
+          },
+          source_files: sourceFiles,
+        };
+        wizard.projectName = projectNameFromC1(message.payload);
+        wizard.completed.add(0);
+        const functionCount = message.payload.files.reduce(
+          (count, file) => count + (file.functions?.function_names?.length || 0),
+          0
+        );
+        recordWizardStage(
+          "C1",
+          `analyzed ${message.payload.files.length} file(s) and ${functionCount} function(s).`
+        );
+        runWizardFrom(2);
+      });
+
+      wizardFrame.addEventListener("load", () => {
+        if (wizard.activeStep === 1 && wizard.c2) sendWizardResult("c2", wizard.c2);
+        if (wizard.activeStep === 3 && wizard.completed.has(3)) sendC4ResultToFrame();
+      });
+
+      showView("home");
+    </script>
+  </body>
+</html>

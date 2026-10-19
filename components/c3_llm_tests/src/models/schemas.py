@@ -154,6 +154,7 @@ class ValidatedTestOutput(BaseModel):
     total_repairs: int = 0
     output_file_path: Optional[str] = None
     traceability_report: Optional[TraceabilityReport] = None  # NEW
+    test_case_set: Optional[TestCaseSet] = None  # Agent 1 Phase A specs, kept for the report
 
 
 # ── Agent 3 Output ─────────────────────────────────────────────────────────────

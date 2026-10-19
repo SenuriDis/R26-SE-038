@@ -70,6 +70,7 @@ class TestingPipeline:
                     segment.source_code,
                     repo_path=pipeline_input.repository_path,
                 )
+                validated.test_case_set = raw_output.test_case_set
                 validated_tests.append(validated)
 
                 # Log test case summary
@@ -209,6 +210,7 @@ class TestingPipeline:
                     segment.source_code,
                     repo_path=repository_path,
                 )
+                validated.test_case_set = raw_output.test_case_set
                 validated_tests.append(validated)
 
                 if raw_output.test_case_set:

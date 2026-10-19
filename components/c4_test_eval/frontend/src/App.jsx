@@ -17,7 +17,7 @@ export default function App() {
   const fetchReport = useCallback(async () => {
     try {
       setLoading(true);
-      const res  = await fetch("/api/report");
+      const res  = await fetch(`/api/report?refresh=${Date.now()}`, { cache: "no-store" });
       if (res.status === 404) {
         setReport(null);
         setError(null);
@@ -35,6 +35,32 @@ export default function App() {
   }, []);
 
   useEffect(() => { fetchReport(); }, [fetchReport]);
+
+  useEffect(() => {
+    const allowedOrigins = new Set([
+      "http://localhost:5176",
+      "http://127.0.0.1:5176",
+      "http://localhost:5500",
+      "http://127.0.0.1:5500",
+    ]);
+    const handleWizardResult = (event) => {
+      if (
+        event.origin !== window.location.origin
+        && !allowedOrigins.has(event.origin)
+      ) {
+        return;
+      }
+      if (
+        event.data?.channel === "intellitest:wizard"
+        && event.data?.component === "c4"
+        && event.data?.status === "complete"
+      ) {
+        fetchReport();
+      }
+    };
+    window.addEventListener("message", handleWizardResult);
+    return () => window.removeEventListener("message", handleWizardResult);
+  }, [fetchReport]);
 
   return (
     <main className="page">
@@ -66,7 +92,7 @@ export default function App() {
           </div>
           <div style={{ fontSize: 12, color: "var(--clr-muted)" }}>
             Make sure <code style={{ fontFamily: "var(--font-mono)" }}>node server.js</code>
-            &nbsp;is running on port 3001.
+            &nbsp;is running on port 8004.
           </div>
         </div>
       )}

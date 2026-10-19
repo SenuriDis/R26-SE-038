@@ -484,11 +484,23 @@ def analyze_github_repository(repo_url, force_reclone=False):
     try:
         file_results = analyze_folder_with_auto_requirements(local_path)
 
+        # The wizard hands these files to C2, C3 and C4, so report paths
+        # relative to the repository root ("src/cart.py", not
+        # "cloned_repos/<repo>/src/cart.py") and include each file's source.
+        source_files = {}
+        for file_result in file_results:
+            absolute_path = file_result["file"]
+            relative_path = os.path.relpath(absolute_path, local_path).replace("\\", "/")
+            with open(absolute_path, "r", encoding="utf-8") as source:
+                source_files[relative_path] = source.read()
+            file_result["file"] = relative_path
+
         return {
             "repo_url": repo_url,
             "local_path": local_path,
             "repo_summary": _build_repo_summary(file_results),
-            "files": file_results
+            "files": file_results,
+            "source_files": source_files
         }
 
     except Exception as error:

@@ -104,6 +104,59 @@ class EnrichedSegment:
         return merged
 
 
+def enrich_segment(
+    segment: HighRiskSegment,
+    risk_level: str,
+    recommended_depth: str | None = None,
+    recommended_types: list[str] | None = None,
+    explanation_text: str = "",
+    top_risk_factors: list[dict] | None = None,
+    confidence: float = 1.0,
+) -> EnrichedSegment:
+    """
+    Attach Component 2's guidance to a segment. Shared by the ML report
+    reader (CLI / GitHub Action) and the /run API (integrated UI), so both
+    give Agent 1 the same depth, minimum test cases and test types.
+    """
+    tier = str(risk_level or "LOW").upper()
+    tier_config = TIER_CONFIG.get(tier, TIER_CONFIG["LOW"])
+
+    # Prefer Component 2's own per-function recommendation; fall back to
+    # the tier default only if it's missing or not a depth we recognise.
+    if recommended_depth in DEPTH_PROFILES:
+        test_depth = recommended_depth
+    else:
+        if recommended_depth is not None:
+            logger.warning(
+                f"Unrecognised recommended_test_depth "
+                f"'{recommended_depth}' for {segment.function_name}; "
+                f"falling back to {tier} tier default "
+                f"'{tier_config['default_test_depth']}'"
+            )
+        test_depth = tier_config["default_test_depth"]
+
+    depth_profile = DEPTH_PROFILES[test_depth]
+
+    logger.info(
+        f"Processed {tier} | {segment.function_name} | "
+        f"risk={segment.risk_score:.3f} | depth={test_depth}"
+    )
+
+    return EnrichedSegment(
+        segment=segment,
+        risk_level=tier,
+        test_depth=test_depth,
+        min_test_cases=depth_profile["min_test_cases"],
+        test_types=depth_profile["test_types"],
+        explanation_text=explanation_text or "",
+        top_risk_factors=top_risk_factors or [],
+        recommended_test_types=(
+            ["happy_path"] if recommended_types is None else recommended_types
+        ),
+        confidence=confidence,
+    )
+
+
 class MLReportReader:
     """
     Reads Component 2's JSON output and produces EnrichedSegments
@@ -242,37 +295,13 @@ class MLReportReader:
             cyclomatic_complexity=None,
         )
 
-        # Prefer Component 2's own per-function recommendation; fall back to
-        # the tier default only if it's missing or not a depth we recognise.
-        tier_config = TIER_CONFIG.get(tier, TIER_CONFIG["LOW"])
-        if recommended_depth in DEPTH_PROFILES:
-            test_depth = recommended_depth
-        else:
-            if recommended_depth is not None:
-                logger.warning(
-                    f"Unrecognised recommended_test_depth "
-                    f"'{recommended_depth}' for {function_name}; "
-                    f"falling back to {tier} tier default "
-                    f"'{tier_config['default_test_depth']}'"
-                )
-            test_depth = tier_config["default_test_depth"]
-
-        depth_profile = DEPTH_PROFILES[test_depth]
-
-        logger.info(
-            f"Processed {tier} | {function_name} | "
-            f"risk={risk_score:.3f} | depth={test_depth}"
-        )
-
-        return EnrichedSegment(
-            segment=segment,
+        return enrich_segment(
+            segment,
             risk_level=tier,
-            test_depth=test_depth,
-            min_test_cases=depth_profile["min_test_cases"],
-            test_types=depth_profile["test_types"],
+            recommended_depth=recommended_depth,
+            recommended_types=recommended_types,
             explanation_text=explanation,
             top_risk_factors=risk_factors,
-            recommended_test_types=recommended_types,
             confidence=confidence,
         )
 

@@ -106,6 +106,16 @@ class OutputWriter:
             segment_trace = {
                 "segment_id": test.segment_id,
                 "function_name": test.function_name,
+                "is_valid": test.is_syntactically_valid,
+                "repair_status": test.repair_status.value,
+                "repairs": test.total_repairs,
+                "repair_iterations": [
+                    it.model_dump() for it in test.repair_iterations
+                ],
+                "test_cases": [
+                    tc.model_dump(mode="json")
+                    for tc in test.test_case_set.test_cases
+                ] if test.test_case_set else [],
                 "traceability": None,
             }
 

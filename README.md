@@ -114,7 +114,8 @@ the same gap:
        `balance` but never performs this check, allowing negative balances.
 ```
 
-**Stage 4** runs the generated tests and catches the planted bug:
+**Stage 4** runs the generated tests in a restricted Docker container and
+catches the planted bug:
 
 ```
 Passed : 8      Line Coverage   : 77.78%
@@ -131,8 +132,69 @@ with the actual assertion visible in the report:
 assert -1900 == 80.0
 ```
 
-The system found a real bug in code it had never seen, wrote the test that
-proves it, and correctly called it a defect rather than a bad test.
+The generated tests found assertion mismatches in code it had never seen.
+C4 reports those mismatches as **Needs Review** rather than claiming they prove
+a defect: a test can encode an incorrect expectation. A maintainer should
+compare each mismatch with the documented requirements before confirming a bug.
+
+---
+
+## Wizard dashboard
+
+The root `frontend/index.html` provides a guided C1 → C2 → C3 → C4 workflow.
+Run Docker Desktop and configure `GROQ_API_KEY` in the root `.env` first.
+
+**Terminal 1 — component APIs and pipeline API (repository root):**
+
+```powershell
+docker compose -f pipeline\docker-compose.yml up --build
+```
+
+**Terminals 2–5 — component frontends** (install dependencies once in each
+directory, then run `npm run dev` there):
+
+```powershell
+Set-Location .\components\c1_static_analysis\frontend
+npm install
+npm run dev
+```
+
+```powershell
+Set-Location .\components\c2_ml_risk\ml_risk_detector\frontend
+npm install
+npm run dev
+```
+
+```powershell
+Set-Location .\components\c3_llm_tests\frontend
+npm install
+npm run dev
+```
+
+```powershell
+Set-Location .\components\c4_test_eval\frontend
+npm install
+npm run dev
+```
+
+**Terminal 6 — serve the unified dashboard (repository root):**
+
+```powershell
+python -m http.server 5176 --directory frontend
+```
+
+Open <http://localhost:5176>, choose **Start Pipeline**, then analyze a public
+GitHub repository in the C1 iframe. On completion, the wizard hands C1 metrics
+to C2, ranked functions to C3, and generated tests plus source files to C4's
+Docker-isolated evaluator. Stage errors appear in the wizard with a retry
+button. Use **Home** or **About** in the main navigation at any time.
+
+The dashboard run artifacts are saved under `artifacts/web_runs/`. The existing
+CLI command remains available:
+
+```powershell
+.\venv\Scripts\python.exe run_pipeline.py .\examples\demo_project --min-risk-level LOW --stage3 --stage4 --max-functions 3
+```
 
 ---
 
@@ -250,14 +312,18 @@ The pipeline is packaged as a composite action. It sets up Python, builds
 the component environments once, and caches them -- so the first run installs
 and later ones reuse.
 
-A composite action rather than a Docker one on purpose: `runs.image:
-Dockerfile` makes GitHub rebuild the image on every run, and these
-dependencies come to several gigabytes. The isolation a container adds is also
-largely redundant, since an Actions runner is already a disposable VM.
+A composite action rather than a Docker action on purpose: `runs.image:
+Dockerfile` would make GitHub rebuild the full analysis image on every run.
+Stage 4 separately runs generated tests in an isolated Docker container with
+network access disabled and only its report directory mounted from the host.
+The container is removed after each run, so test and mutation changes remain
+inside its disposable filesystem.
 
-Copy `examples/ai-test-review.yml` into `.github/workflows/`, add your Groq
-key as a repository secret, and open a pull request. The report appears in
-the job summary and as a comment on the PR.
+The repository workflow at `.github/workflows/ai-test-review.yml` runs for
+same-repository pull requests and can be started manually for a baseline.
+Add `GROQ_API_KEY` as a repository Actions secret. Fork pull requests are
+skipped because GitHub does not expose repository secrets to them. The report
+appears in the job summary and as a comment on the PR.
 
 ```yaml
 on:
