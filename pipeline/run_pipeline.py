@@ -351,6 +351,13 @@ def build_c3_payload(
             "source_code": _source_for_ranked_function(function, sources, definitions),
             "risk_score": function["risk_score"],
             "cyclomatic_complexity": function.get("cyclomatic_complexity"),
+            # C2's guidance, so C3 plans tests the same way as the Action path.
+            "risk_level": function.get("risk_level"),
+            "recommended_test_depth": function.get("recommended_test_depth"),
+            "test_types": function.get("test_types"),
+            "explanation_text": function.get("explanation_text") or "",
+            "top_risk_factors": function.get("top_risk_factors") or [],
+            "confidence": function.get("confidence", 1.0),
         })
     return {"repository_path": repository_path, "segments": segments}
 

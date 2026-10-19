@@ -95,6 +95,41 @@ def test_build_c3_and_c4_payloads_handoff_selected_functions_and_test_code():
     assert c4_payload["test_files"]["test_risky_1.py"].startswith("def test_risky")
 
 
+def test_build_c3_payload_forwards_c2_guidance():
+    source = "def risky(value):\n    if value:\n        return len(value)\n    return 0\n"
+    _, sources, definitions = run_pipeline.adapt_c1_payload(
+        [{"file": "sample.py", "functions": {"function_names": ["risky"]}}],
+        {"sample.py": source},
+        "sample",
+    )
+    factors = [{"feature": "nesting_depth", "direction": "increases"}]
+    c3_payload = run_pipeline.build_c3_payload(
+        {"ranked_functions": [{
+            "function_name": "risky",
+            "file_path": "sample.py",
+            "start_line": 1,
+            "risk_score": 0.9,
+            "risk_level": "HIGH",
+            "recommended_test_depth": "exhaustive",
+            "test_types": ["boundary_tests", "negative_tests"],
+            "explanation_text": "Deep nesting.",
+            "top_risk_factors": factors,
+            "confidence": 0.8,
+        }]},
+        sources,
+        definitions,
+        "sample",
+    )
+
+    segment = c3_payload["segments"][0]
+    assert segment["risk_level"] == "HIGH"
+    assert segment["recommended_test_depth"] == "exhaustive"
+    assert segment["test_types"] == ["boundary_tests", "negative_tests"]
+    assert segment["explanation_text"] == "Deep nesting."
+    assert segment["top_risk_factors"] == factors
+    assert segment["confidence"] == 0.8
+
+
 def test_run_hands_off_data_through_all_component_apis(tmp_path, monkeypatch):
     target = tmp_path / "project"
     target.mkdir()

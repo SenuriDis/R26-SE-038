@@ -9,6 +9,7 @@ from typing import Dict, Optional
 
 from src.models.schemas import HighRiskSegment, PipelineInput
 from src.pipeline.pipeline import TestingPipeline
+from src.utils.ml_report_reader import enrich_segment
 from src.utils.output_writer import OutputWriter
 from api.wizard_source import write_source_files
 
@@ -36,7 +37,15 @@ class SegmentRequest(BaseModel):
     file_path: str
     source_code: str
     risk_score: float = 0.85
-    cyclomatic_complexity: int = 3
+    cyclomatic_complexity: Optional[int] = None  # C2's ranked output does not carry it
+    # Component 2's guidance for this function. When risk_level is sent,
+    # Agent 1 is driven exactly as in the CLI / GitHub Action path.
+    risk_level: Optional[str] = None
+    recommended_test_depth: Optional[str] = None
+    test_types: Optional[list[str]] = None
+    explanation_text: str = ""
+    top_risk_factors: list[dict] = []
+    confidence: float = 1.0
 
 
 class PipelineRequest(BaseModel):
@@ -70,10 +79,19 @@ class TraceabilityResponse(BaseModel):
     entries: list[TraceabilityEntryResponse]
 
 
+class RepairIterationResponse(BaseModel):
+    iteration: int
+    error_type: str
+    error_message: str
+    repair_applied: bool
+
+
 class TestResult(BaseModel):
     function_name: str
     is_valid: bool
     repairs: int
+    repair_status: str = "not_attempted"
+    repair_iterations: list[RepairIterationResponse] = []
     test_code: str
     test_cases: list[TestCaseResponse] = []
     traceability: Optional[TraceabilityResponse] = None
@@ -150,14 +168,27 @@ def _execute_pipeline(request: PipelineRequest, repository_path: str) -> Pipelin
         for i, seg in enumerate(request.segments)
     ]
 
-    pipeline_input = PipelineInput(
-        repository_path=repository_path,
-        segments=segments,
-        run_id=run_id,
-    )
-
     pipeline = TestingPipeline()
-    output = pipeline.run(pipeline_input)
+    if all(seg.risk_level for seg in request.segments):
+        enriched = [
+            enrich_segment(
+                segment,
+                risk_level=seg.risk_level,
+                recommended_depth=seg.recommended_test_depth,
+                recommended_types=seg.test_types,
+                explanation_text=seg.explanation_text,
+                top_risk_factors=seg.top_risk_factors,
+                confidence=seg.confidence,
+            )
+            for segment, seg in zip(segments, request.segments)
+        ]
+        output = pipeline.run_from_ml_report(repository_path, enriched, run_id)
+    else:
+        output = pipeline.run(PipelineInput(
+            repository_path=repository_path,
+            segments=segments,
+            run_id=run_id,
+        ))
 
     writer = OutputWriter()
     writer.save(output)
@@ -186,8 +217,22 @@ def _execute_pipeline(request: PipelineRequest, repository_path: str) -> Pipelin
             function_name=test.function_name,
             is_valid=test.is_syntactically_valid,
             repairs=test.total_repairs,
+            repair_status=test.repair_status.value,
+            repair_iterations=[
+                RepairIterationResponse(**iteration.model_dump())
+                for iteration in test.repair_iterations
+            ],
             test_code=test.validated_test_code,
-            test_cases=[],
+            test_cases=[
+                TestCaseResponse(
+                    test_case_id=case.test_case_id,
+                    description=case.description,
+                    input_values=case.input_values,
+                    expected_output=case.expected_output,
+                    category=case.category.value,
+                )
+                for case in test.test_case_set.test_cases
+            ] if test.test_case_set else [],
             traceability=traceability,
         ))
 
