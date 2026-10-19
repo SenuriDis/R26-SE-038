@@ -2,8 +2,10 @@
 
 **IT4010 Research Project — 2026**
 
-An automated testing system built from four components. This branch
-(`integration/pipeline`) wires all four into a single end-to-end flow.
+An automated testing system built from four components, wired into a single
+end-to-end flow. Use it in your own repository as a GitHub Action — see
+[Using it as a GitHub Action](#using-it-as-a-github-action) — or run it locally
+from the command line or the wizard dashboard.
 
 | # | Component | Author | What it does |
 |---|---|---|---|
@@ -58,9 +60,8 @@ You need **Python 3.12** installed ([download][py312]). Components 2 and 4
 require it — component 2 pins numpy 1.26.4, which has no Python 3.13 build.
 
 ```bash
-git clone <repo-url>
-cd Intelligent-software-testing-system
-git checkout integration/pipeline
+git clone https://github.com/SenuriDis/R26-SE-038.git
+cd R26-SE-038
 
 python setup_pipeline.py
 ```
@@ -147,8 +148,11 @@ Run Docker Desktop and configure `GROQ_API_KEY` in the root `.env` first.
 **Terminal 1 — component APIs and pipeline API (repository root):**
 
 ```powershell
-docker compose -f pipeline\docker-compose.yml up --build
+docker compose --env-file .env -f pipeline\docker-compose.yml up --build
 ```
+
+`--env-file .env` matters: without it Compose looks for `.env` next to the
+compose file in `pipeline/`, and C3 starts with a placeholder Groq key.
 
 **Terminals 2–5 — component frontends** (install dependencies once in each
 directory, then run `npm run dev` there):
@@ -319,13 +323,22 @@ network access disabled and only its report directory mounted from the host.
 The container is removed after each run, so test and mutation changes remain
 inside its disposable filesystem.
 
-The repository workflow at `.github/workflows/ai-test-review.yml` runs for
-same-repository pull requests and can be started manually for a baseline.
-Add `GROQ_API_KEY` as a repository Actions secret. Fork pull requests are
-skipped because GitHub does not expose repository secrets to them. The report
-appears in the job summary and as a comment on the PR.
+### Add it to your repository
+
+1. Get a Groq API key from [console.groq.com](https://console.groq.com).
+2. In your repository, add it under **Settings → Secrets and variables →
+   Actions** as a secret named `GROQ_API_KEY`.
+3. Create `.github/workflows/ai-test-review.yml` with the workflow below.
+4. Open a pull request. The report appears in the job summary and as a
+   comment on the PR.
+
+Fork pull requests get no secrets from GitHub, so the action cannot run on
+them. A fuller example with a separate manual baseline job is in
+[`examples/ai-test-review.yml`](examples/ai-test-review.yml).
 
 ```yaml
+name: AI Test Review
+
 on:
   pull_request:        # analyses only what changed
   workflow_dispatch:   # run manually for a whole-repository baseline
@@ -342,11 +355,10 @@ jobs:
           fetch-depth: 0          # required -- see below
           ref: ${{ github.head_ref }}
 
-      - uses: your-org/your-repo@v1
+      - uses: SenuriDis/R26-SE-038@v1
         with:
           groq-api-key: ${{ secrets.GROQ_API_KEY }}
-          min-risk-level: "LOW"
-          commit-tests: "true"
+          commit-tests: "true"   # optional: write the tests back to the branch
 ```
 
 `changed-only` defaults to `auto`, so the same workflow covers both cases:
@@ -361,12 +373,14 @@ function.
 | `path` | `.` | Directory to analyse |
 | `changed-only` | `auto` | Diff on a PR, whole repo on a manual run |
 | `max-functions` | `10` | Budget cap, highest risk first |
-| `min-risk-level` | `MEDIUM` | Set to `LOW` on small repositories |
+| `min-risk-level` | `LOW` | Raise to `MEDIUM`/`HIGH` only on large, mature repositories |
 | `comment-on-pr` | `true` | Needs `pull-requests: write` |
 | `upload-artifact` | `true` | Attach generated tests to the run so they survive |
 | `commit-tests` | `false` | Commit generated tests back to the branch |
 | `tests-dir` | `tests/ai_generated` | Where committed tests go |
 | `fail-on-defect` | `false` | Whether a likely defect fails the check |
+| `groq-model` | `openai/gpt-oss-120b` | Groq model used by all three C3 agents |
+| `python-version` | `3.12` | Python used to build the component environments |
 
 ### Where the generated tests end up
 
@@ -398,9 +412,10 @@ Two things that will silently produce an empty run:
 - **`fetch-depth: 0` is not optional.** The risk model's strongest features
   are `bug_history` and `commit_frequency`. With the default shallow clone
   there is no history, so every function looks brand new and scores LOW.
-- **`min-risk-level: LOW` on small repositories.** Only 1 function in 266
-  reached MEDIUM on a mature library. Leaving the default on a small project
-  selects nothing, and the run succeeds having done no work.
+- **Raising `min-risk-level` on small repositories.** Only 1 function in 266
+  reached MEDIUM on a mature library. Setting `MEDIUM` on a small project
+  selects nothing, and the run succeeds having done no work. The default is
+  `LOW` for this reason.
 
 ---
 

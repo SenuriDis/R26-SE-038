@@ -44,11 +44,12 @@ inputs:
 
   min-risk-level:
     description: >-
-      Lowest risk tier to generate tests for: HIGH, MEDIUM or LOW. Small or
-      young repositories tend to score everything LOW, so MEDIUM can
-      legitimately select nothing.
+      Lowest risk tier to generate tests for: HIGH, MEDIUM or LOW. Defaults
+      to LOW because small or young repositories tend to score everything
+      LOW, so MEDIUM would often select nothing. Functions are still taken
+      highest risk first, and max-functions caps how many.
     required: false
-    default: "MEDIUM"
+    default: "LOW"
 
   comment-on-pr:
     description: "Post the report as a pull request comment."
@@ -153,7 +154,7 @@ runs:
         restore-keys: |
           r26-venvs-v1-${{ runner.os }}-
 
-        - name: Build component environments
+    - name: Build component environments
       if: steps.cache.outputs.cache-hit != 'true'
       shell: bash
       run: |

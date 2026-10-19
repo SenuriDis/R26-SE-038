@@ -40,7 +40,7 @@ jobs:
           fetch-depth: 0
 
       - name: Analyse changed functions
-        uses: ./                       # or: your-org/your-repo@v1
+        uses: SenuriDis/R26-SE-038@v1
         with:
           groq-api-key: ${{ secrets.GROQ_API_KEY }}
           changed-only: "true"
@@ -61,7 +61,7 @@ jobs:
           fetch-depth: 0
 
       - name: Rank the whole repository
-        uses: ./
+        uses: SenuriDis/R26-SE-038@v1
         with:
           groq-api-key: ${{ secrets.GROQ_API_KEY }}
           changed-only: "false"
@@ -79,10 +79,10 @@ jobs:
 
 # Notes
 # -----
-# min-risk-level: LOW is deliberate. Small or young repositories score almost
-# everything LOW -- on a mature library only 1 function in 266 reached MEDIUM.
-# Leaving the default of MEDIUM on a small repository selects nothing, and the
-# run succeeds having done no work at all.
+# min-risk-level: LOW is the default, and is spelled out here so it is not
+# raised by accident. Small or young repositories score almost everything LOW
+# -- on a mature library only 1 function in 266 reached MEDIUM -- so MEDIUM on
+# a small repository selects nothing, and the run succeeds having done no work.
 #
 # GROQ_API_KEY goes in Settings -> Secrets and variables -> Actions.
 #
