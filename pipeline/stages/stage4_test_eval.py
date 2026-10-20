@@ -218,13 +218,20 @@ def stage_workdir(
     destination = workdir / "src" / relative
     destination.parent.mkdir(parents=True, exist_ok=True)
 
-    shutil.copytree(
-        source_dir,
-        destination,
-        ignore=shutil.ignore_patterns(
-            "__pycache__", "*.pyc", ".git", "venv", ".venv", "node_modules",
-        ),
+    base_ignore = shutil.ignore_patterns(
+        "__pycache__", "*.pyc", ".git", "venv", ".venv", "node_modules",
     )
+    skip_dir = artifact_dir.resolve()
+
+    def ignore(directory: str, names: List[str]) -> set:
+        # When the target is the repository root, the artifact directory (and
+        # this workdir inside it) lives in the tree being copied; copying it
+        # would recurse into itself until the path is too long.
+        skipped = set(base_ignore(directory, names))
+        skipped.update(name for name in names if (Path(directory) / name).resolve() == skip_dir)
+        return skipped
+
+    shutil.copytree(source_dir, destination, ignore=ignore)
 
     for test_file in tests:
         shutil.copy2(test_file, workdir / "tests" / test_file.name)

@@ -311,4 +311,7 @@ runs:
         name: ai-test-results
         path: ${{ github.workspace }}/.ai-test-artifacts
         if-no-files-found: warn
+        # The artifact directory's name starts with a dot, so everything in it
+        # counts as hidden and upload-artifact@v4 would skip it all.
+        include-hidden-files: true
         retention-days: 30
