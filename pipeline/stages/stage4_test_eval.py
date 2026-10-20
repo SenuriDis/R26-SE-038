@@ -422,8 +422,8 @@ with tarfile.open(fileobj=sys.stdin.buffer, mode="r|") as archive:
                 config = workdir / config_name
                 if config.exists():
                     archive.add(config, arcname=config_name)
-        if process.stdin and not process.stdin.closed:
-            process.stdin.close()
+        # communicate() flushes and closes stdin itself. Closing it first makes
+        # that flush raise "ValueError: flush of closed file" on Linux.
         stdout, stderr = process.communicate(timeout=120)
     except subprocess.TimeoutExpired as error:
         process.kill()

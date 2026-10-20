@@ -241,8 +241,10 @@ runs:
         fi
 
         echo "::group::Pipeline"
-        python "${ACTION}/run_pipeline.py" "${ARGS[@]}"
-        STATUS=$?
+        # Actions runs this with `bash -e`, so a bare failing command would end
+        # the step here and skip the report below. `|| STATUS=$?` keeps going.
+        STATUS=0
+        python "${ACTION}/run_pipeline.py" "${ARGS[@]}" || STATUS=$?
         echo "::endgroup::"
 
         if [ "${STATUS}" -ne 0 ]; then
