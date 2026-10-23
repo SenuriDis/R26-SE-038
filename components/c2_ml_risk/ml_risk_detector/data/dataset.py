@@ -22,7 +22,7 @@ import os
 import glob
 import numpy as np
 import pandas as pd
-from typing import Optional, Tuple, List
+from typing import Optional, Tuple, List, Union
 from utils.feature_engineering import CodeMetrics
 import logging
 
@@ -414,7 +414,10 @@ def load_cpdp_nasa_arff(path: str) -> Tuple[pd.DataFrame, pd.Series, List[CodeMe
 def load_all_real_datasets(
     data_dir: str = "data",
     with_family: bool = False,
-) -> Tuple[Optional[pd.DataFrame], Optional[pd.Series], List[CodeMetrics]]:
+) -> Union[
+    Tuple[Optional[pd.DataFrame], Optional[pd.Series], List[CodeMetrics]],
+    Tuple[Optional[pd.DataFrame], Optional[pd.Series], List[CodeMetrics], List[str]],
+]:
     """
     Auto-discover and load every real dataset found under `data_dir`.
 
