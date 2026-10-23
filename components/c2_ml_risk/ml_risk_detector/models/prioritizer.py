@@ -64,12 +64,10 @@ class TestPrioritizer:
         that Component 3 (LLM) will consume.
         """
         total = len(predictions)
-        high_cutoff = max(1, int(total * 0.20))
-        medium_cutoff = max(1, int(total * 0.50))
- 
+
         prioritized: List[PrioritizedFunction] = []
- 
-        for i, pred in enumerate(predictions):   # Already sorted by rank
+
+        for pred in predictions:   # Already sorted by rank
             test_types = self.TEST_TYPE_MAP.get(pred.recommended_test_depth, ["happy_path"])
  
             pf = PrioritizedFunction(
