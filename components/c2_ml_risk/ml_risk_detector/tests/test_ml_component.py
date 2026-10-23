@@ -394,6 +394,16 @@ class TestDataset:
         X, y, _ = generate_synthetic_dataset(n_samples=200)
         assert not X.isnull().any().any()
 
+    def test_real_datasets_report_family_per_row(self):
+        pytest.importorskip("scipy")
+        data_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), "data")
+        if not os.path.isdir(os.path.join(data_dir, "NASA-promise-dataset")):
+            pytest.skip("real datasets not present")
+        from data.dataset import load_all_real_datasets
+        X, y, metrics, families = load_all_real_datasets(data_dir, with_family=True)
+        assert len(families) == len(X) == len(y) == len(metrics)
+        assert set(families) <= {"NASA MDP", "PSOWE", "SoftwareDefectDataset", "SOFTLAB", "CPDP NASA"}
+
     def test_cpdp_buggy_labels_are_positive(self):
         pytest.importorskip("scipy")
         path = os.path.join(os.path.dirname(os.path.dirname(__file__)),

@@ -413,6 +413,7 @@ def load_cpdp_nasa_arff(path: str) -> Tuple[pd.DataFrame, pd.Series, List[CodeMe
 
 def load_all_real_datasets(
     data_dir: str = "data",
+    with_family: bool = False,
 ) -> Tuple[Optional[pd.DataFrame], Optional[pd.Series], List[CodeMetrics]]:
     """
     Auto-discover and load every real dataset found under `data_dir`.
@@ -423,10 +424,15 @@ def load_all_real_datasets(
 
     Returns (None, None, []) if no files are found (caller should fall back
     to generate_synthetic_dataset).
+
+    With with_family=True a fourth element is returned: a list naming the
+    dataset family of each row (NASA MDP, PSOWE, SoftwareDefectDataset,
+    SOFTLAB, CPDP NASA), for cross-project evaluation.
     """
     all_X: List[pd.DataFrame] = []
     all_y: List[pd.Series] = []
     all_metrics: List[CodeMetrics] = []
+    all_families: List[str] = []
 
     # ── Schema A: NASA-promise-dataset CSVs ──────────────────────────────────
     nasa_promise_dir = os.path.join(data_dir, "NASA-promise-dataset")
@@ -435,7 +441,7 @@ def load_all_real_datasets(
             try:
                 X, y, m = load_nasa_promise_csv(path)
                 if len(X) > 0:
-                    all_X.append(X); all_y.append(y); all_metrics.extend(m)
+                    all_X.append(X); all_y.append(y); all_metrics.extend(m); all_families.extend(["NASA MDP"] * len(X))
             except Exception as e:
                 logger.warning(f"Skipping {path}: {e}")
 
@@ -452,7 +458,7 @@ def load_all_real_datasets(
             try:
                 X, y, m = load_nasa_promise_csv(path)
                 if len(X) > 0:
-                    all_X.append(X); all_y.append(y); all_metrics.extend(m)
+                    all_X.append(X); all_y.append(y); all_metrics.extend(m); all_families.extend(["NASA MDP"] * len(X))
             except Exception as e:
                 logger.warning(f"Skipping {path}: {e}")
 
@@ -463,7 +469,7 @@ def load_all_real_datasets(
             try:
                 X, y, m = load_psowe_csv(path)
                 if len(X) > 0:
-                    all_X.append(X); all_y.append(y); all_metrics.extend(m)
+                    all_X.append(X); all_y.append(y); all_metrics.extend(m); all_families.extend(["PSOWE"] * len(X))
             except Exception as e:
                 logger.warning(f"Skipping {path}: {e}")
 
@@ -473,7 +479,7 @@ def load_all_real_datasets(
         try:
             X, y, m = load_software_defect_csv(sdd_path)
             if len(X) > 0:
-                all_X.append(X); all_y.append(y); all_metrics.extend(m)
+                all_X.append(X); all_y.append(y); all_metrics.extend(m); all_families.extend(["SoftwareDefectDataset"] * len(X))
         except Exception as e:
             logger.warning(f"Skipping SoftwareDefectDataset.csv: {e}")
 
@@ -484,7 +490,7 @@ def load_all_real_datasets(
             try:
                 X, y, m = load_softlab_arff(path)
                 if len(X) > 0:
-                    all_X.append(X); all_y.append(y); all_metrics.extend(m)
+                    all_X.append(X); all_y.append(y); all_metrics.extend(m); all_families.extend(["SOFTLAB"] * len(X))
             except Exception as e:
                 logger.warning(f"Skipping {path}: {e}")
 
@@ -495,7 +501,7 @@ def load_all_real_datasets(
             try:
                 X, y, m = load_cpdp_nasa_arff(path)
                 if len(X) > 0:
-                    all_X.append(X); all_y.append(y); all_metrics.extend(m)
+                    all_X.append(X); all_y.append(y); all_metrics.extend(m); all_families.extend(["CPDP NASA"] * len(X))
             except Exception as e:
                 logger.warning(f"Skipping {path}: {e}")
 
@@ -511,7 +517,7 @@ def load_all_real_datasets(
     # ── Combine ───────────────────────────────────────────────────────────────
     if not all_X:
         logger.warning("load_all_real_datasets: no datasets found — returning empty result")
-        return None, None, []
+        return (None, None, [], []) if with_family else (None, None, [])
 
     X_combined = pd.concat(all_X, ignore_index=True)
     y_combined = pd.concat(all_y, ignore_index=True)
@@ -526,6 +532,7 @@ def load_all_real_datasets(
         X_combined = X_combined[keep].reset_index(drop=True)
         y_combined = y_combined[keep].reset_index(drop=True)
         all_metrics = [m for m, k in zip(all_metrics, keep) if k]
+        all_families = [f for f, k in zip(all_families, keep) if k]
 
     # Shuffle (reproducible)
     rng = np.random.RandomState(42)
@@ -533,6 +540,7 @@ def load_all_real_datasets(
     X_combined = X_combined.iloc[idx].reset_index(drop=True)
     y_combined = y_combined.iloc[idx].reset_index(drop=True)
     all_metrics = [all_metrics[i] for i in idx]
+    all_families = [all_families[i] for i in idx]
 
     total = len(X_combined)
     n_def = int(y_combined.sum())
@@ -542,6 +550,8 @@ def load_all_real_datasets(
         f"{n_def} defective ({n_def/total*100:.1f}%) / "
         f"{total - n_def} clean ({(total-n_def)/total*100:.1f}%)"
     )
+    if with_family:
+        return X_combined, y_combined, all_metrics, all_families
     return X_combined, y_combined, all_metrics
 
 
