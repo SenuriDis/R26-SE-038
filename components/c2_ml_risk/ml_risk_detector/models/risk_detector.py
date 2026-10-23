@@ -225,16 +225,22 @@ class MLRiskDetector:
         ensemble, rf_prob, gb_prob = self.predict_proba_batch(x.reshape(1, -1))
         return float(ensemble[0]), float(rf_prob[0]), float(gb_prob[0])
 
+    def shap_values_batch(self, X: np.ndarray) -> np.ndarray:
+        """Blended SHAP values for every row, shape (rows, features)."""
+        sv_rf = self._rf_explainer.explain_batch(X)
+        sv_gb = self._gb_explainer.explain_batch(X)
+        # SHAP is additive across models, so blend with the ensemble's own weights
+        # (renormalised over the two tree models, which carry 90% of the score).
+        return (self.W_RF * sv_rf + self.W_XGB * sv_gb) / (self.W_RF + self.W_XGB)
+
     def get_shap_top_factors(self, x: np.ndarray, top_k: int = 3,
                              raw: Optional[np.ndarray] = None) -> Tuple[List[Dict], str]:
         """Top-k SHAP factors for one function. `x` is the model input; `raw`, when
         given, is the same row unnormalised and is what gets reported as the value."""
-        sv_rf = self._rf_explainer.explain(x.astype(np.float32))
-        sv_gb = self._gb_explainer.explain(x.astype(np.float32))
-        # SHAP is additive across models, so blend with the ensemble's own weights
-        # (renormalised over the two tree models, which carry 90% of the score).
-        sv = (self.W_RF * sv_rf + self.W_XGB * sv_gb) / (self.W_RF + self.W_XGB)
-        shown = x if raw is None else raw
+        sv = self.shap_values_batch(x.reshape(1, -1))[0]
+        return self._top_factors(sv, x if raw is None else raw, top_k)
+
+    def _top_factors(self, sv: np.ndarray, shown: np.ndarray, top_k: int) -> Tuple[List[Dict], str]:
         sorted_idx = np.argsort(np.abs(sv))[::-1][:top_k]
         factors = []
         for idx in sorted_idx:
@@ -264,12 +270,13 @@ class MLRiskDetector:
             raise RuntimeError("Model not fitted.")
         results = []
         ensemble_scores, rf_scores, xgb_scores = self.predict_proba_batch(feature_matrix)
-        for i, x in enumerate(feature_matrix):
+        shap_values = self.shap_values_batch(feature_matrix)
+        shown_matrix = feature_matrix if raw_matrix is None else raw_matrix
+        for i in range(len(feature_matrix)):
             ensemble_score = float(ensemble_scores[i])
             rf_score, xgb_score = float(rf_scores[i]), float(xgb_scores[i])
             confidence = self.get_confidence(ensemble_score, rf_score, xgb_score)
-            raw = raw_matrix[i] if raw_matrix is not None else None
-            top_factors, explanation = self.get_shap_top_factors(x, top_k=3, raw=raw)
+            top_factors, explanation = self._top_factors(shap_values[i], shown_matrix[i], top_k=3)
             risk_level = RiskThresholds.classify(ensemble_score)
             meta = metadata[i] if i < len(metadata) else {}
             results.append(RiskPrediction(
