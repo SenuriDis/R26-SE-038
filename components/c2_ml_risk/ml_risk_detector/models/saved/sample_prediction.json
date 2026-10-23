@@ -10,11 +10,11 @@
   },
   "tier_breakdown": {
     "HIGH": {
-      "description": "Top 20% \u2014 exhaustive tests recommended",
+      "description": "Risk score \u2265 0.65 \u2014 exhaustive tests recommended",
       "functions": []
     },
     "MEDIUM": {
-      "description": "Next 30% \u2014 boundary tests recommended",
+      "description": "Risk score 0.35\u20130.65 \u2014 boundary tests recommended",
       "functions": [
         {
           "function_name": "validate_payment",
@@ -29,23 +29,23 @@
             {
               "feature": "complexity_nesting_product",
               "contribution": 0.024504538506305445,
-              "value": -0.03745110705494881,
+              "value": 27.0,
               "direction": "increases"
             },
             {
               "feature": "structural_complexity",
               "contribution": -0.011659211846221564,
-              "value": -0.2689158022403717,
+              "value": 8.0,
               "direction": "decreases"
             },
             {
               "feature": "lines_of_code",
               "contribution": 0.009229237319399263,
-              "value": -0.20239530503749847,
+              "value": 45.0,
               "direction": "increases"
             }
           ],
-          "explanation_text": "Risk driven by: Complexity Nesting Product (high: -0.0), Structural Complexity (low: -0.3), Lines Of Code (high: -0.2)",
+          "explanation_text": "Risk driven by: Complexity Nesting Product = 27 (raises risk), Structural Complexity = 8 (lowers risk), Lines Of Code = 45 (raises risk)",
           "recommended_test_depth": "boundary",
           "test_types": [
             "boundary_tests",
@@ -68,23 +68,23 @@
             {
               "feature": "coupling_ratio",
               "contribution": -0.018227118158335595,
-              "value": 0.7192650437355042,
+              "value": 3.0,
               "direction": "decreases"
             },
             {
               "feature": "num_conditionals",
               "contribution": 0.017893512512732426,
-              "value": 0.05659336596727371,
+              "value": 12.0,
               "direction": "increases"
             },
             {
               "feature": "cyclomatic_complexity",
               "contribution": 0.016058961219823063,
-              "value": 0.9773291349411011,
+              "value": 18.0,
               "direction": "increases"
             }
           ],
-          "explanation_text": "Risk driven by: Coupling Ratio (low: 0.7), Num Conditionals (high: 0.1), Cyclomatic Complexity (high: 1.0)",
+          "explanation_text": "Risk driven by: Coupling Ratio = 3 (lowers risk), Num Conditionals = 12 (raises risk), Cyclomatic Complexity = 18 (raises risk)",
           "recommended_test_depth": "boundary",
           "test_types": [
             "boundary_tests",
@@ -97,7 +97,7 @@
       ]
     },
     "LOW": {
-      "description": "Bottom 50% \u2014 basic happy-path tests",
+      "description": "Risk score < 0.35 \u2014 basic happy-path tests",
       "functions": [
         {
           "function_name": "format_receipt",
@@ -112,23 +112,23 @@
             {
               "feature": "lines_of_code",
               "contribution": -0.04543615675375311,
-              "value": -0.2762458324432373,
+              "value": 18.0,
               "direction": "decreases"
             },
             {
               "feature": "num_conditionals",
               "contribution": -0.04236742224173183,
-              "value": -0.5182471871376038,
+              "value": 1.0,
               "direction": "decreases"
             },
             {
               "feature": "complexity_nesting_product",
               "contribution": -0.026151917204730184,
-              "value": -0.0529743991792202,
+              "value": 2.0,
               "direction": "decreases"
             }
           ],
-          "explanation_text": "Risk driven by: Lines Of Code (low: -0.3), Num Conditionals (low: -0.5), Complexity Nesting Product (low: -0.1)",
+          "explanation_text": "Risk driven by: Lines Of Code = 18 (lowers risk), Num Conditionals = 1 (lowers risk), Complexity Nesting Product = 2 (lowers risk)",
           "recommended_test_depth": "basic",
           "test_types": [
             "happy_path"
@@ -154,23 +154,23 @@
         {
           "feature": "complexity_nesting_product",
           "contribution": 0.024504538506305445,
-          "value": -0.03745110705494881,
+          "value": 27.0,
           "direction": "increases"
         },
         {
           "feature": "structural_complexity",
           "contribution": -0.011659211846221564,
-          "value": -0.2689158022403717,
+          "value": 8.0,
           "direction": "decreases"
         },
         {
           "feature": "lines_of_code",
           "contribution": 0.009229237319399263,
-          "value": -0.20239530503749847,
+          "value": 45.0,
           "direction": "increases"
         }
       ],
-      "explanation_text": "Risk driven by: Complexity Nesting Product (high: -0.0), Structural Complexity (low: -0.3), Lines Of Code (high: -0.2)",
+      "explanation_text": "Risk driven by: Complexity Nesting Product = 27 (raises risk), Structural Complexity = 8 (lowers risk), Lines Of Code = 45 (raises risk)",
       "recommended_test_depth": "boundary",
       "test_types": [
         "boundary_tests",
@@ -193,23 +193,23 @@
         {
           "feature": "coupling_ratio",
           "contribution": -0.018227118158335595,
-          "value": 0.7192650437355042,
+          "value": 3.0,
           "direction": "decreases"
         },
         {
           "feature": "num_conditionals",
           "contribution": 0.017893512512732426,
-          "value": 0.05659336596727371,
+          "value": 12.0,
           "direction": "increases"
         },
         {
           "feature": "cyclomatic_complexity",
           "contribution": 0.016058961219823063,
-          "value": 0.9773291349411011,
+          "value": 18.0,
           "direction": "increases"
         }
       ],
-      "explanation_text": "Risk driven by: Coupling Ratio (low: 0.7), Num Conditionals (high: 0.1), Cyclomatic Complexity (high: 1.0)",
+      "explanation_text": "Risk driven by: Coupling Ratio = 3 (lowers risk), Num Conditionals = 12 (raises risk), Cyclomatic Complexity = 18 (raises risk)",
       "recommended_test_depth": "boundary",
       "test_types": [
         "boundary_tests",
@@ -232,23 +232,23 @@
         {
           "feature": "lines_of_code",
           "contribution": -0.04543615675375311,
-          "value": -0.2762458324432373,
+          "value": 18.0,
           "direction": "decreases"
         },
         {
           "feature": "num_conditionals",
           "contribution": -0.04236742224173183,
-          "value": -0.5182471871376038,
+          "value": 1.0,
           "direction": "decreases"
         },
         {
           "feature": "complexity_nesting_product",
           "contribution": -0.026151917204730184,
-          "value": -0.0529743991792202,
+          "value": 2.0,
           "direction": "decreases"
         }
       ],
-      "explanation_text": "Risk driven by: Lines Of Code (low: -0.3), Num Conditionals (low: -0.5), Complexity Nesting Product (low: -0.1)",
+      "explanation_text": "Risk driven by: Lines Of Code = 18 (lowers risk), Num Conditionals = 1 (lowers risk), Complexity Nesting Product = 2 (lowers risk)",
       "recommended_test_depth": "basic",
       "test_types": [
         "happy_path"
