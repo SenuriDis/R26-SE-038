@@ -294,6 +294,14 @@ class TestMLRiskDetector:
         required = {"precision", "recall", "f1_score", "roc_auc", "pr_auc", "mcc"}
         assert required.issubset(set(metrics.keys()))
 
+    def test_cross_validate_covers_whole_ensemble(self, feature_engineer):
+        X, y, _ = generate_synthetic_dataset(n_samples=200, random_state=3)
+        detector = MLRiskDetector(n_estimators_rf=20, n_estimators_xgb=20, random_state=42)
+        result = detector.cross_validate(feature_engineer.normalise_frame(X), y, cv=3)
+        for key in ("cv_auc_mean", "cv_auc_std", "cv_f1_mean", "cv_pr_auc_mean"):
+            assert key in result
+        assert 0.0 <= result["cv_auc_mean"] <= 1.0
+
     def test_confidence_between_0_and_1(self, trained_detector):
         for score, rf, xgb in [(0.8, 0.75, 0.85), (0.3, 0.25, 0.35), (0.5, 0.5, 0.5)]:
             c = trained_detector.get_confidence(score, rf, xgb)

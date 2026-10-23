@@ -9,7 +9,7 @@ from dataclasses import dataclass, field
 import shap
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.linear_model import LogisticRegression
-from sklearn.model_selection import StratifiedKFold, cross_val_score
+from sklearn.model_selection import StratifiedKFold
 from sklearn.metrics import (
     f1_score, precision_score, recall_score, roc_auc_score, classification_report,
     average_precision_score, matthews_corrcoef,
@@ -308,13 +308,25 @@ class MLRiskDetector:
         return metrics
  
     def cross_validate(self, X: pd.DataFrame, y: pd.Series, cv: int = 5) -> Dict[str, float]:
-        X_arr = X.values.astype(np.float32)
+        """Stratified k-fold CV of the whole ensemble: each fold refits SMOTE and
+        all three learners with this detector's settings and scores the soft vote."""
         skf = StratifiedKFold(n_splits=cv, shuffle=True, random_state=self.random_state)
-        f1_scores = cross_val_score(self.rf, X_arr, y.values, cv=skf, scoring="f1", n_jobs=-1)
-        auc_scores = cross_val_score(self.rf, X_arr, y.values, cv=skf, scoring="roc_auc", n_jobs=-1)
+        f1_scores, auc_scores, pr_scores = [], [], []
+        for train_idx, val_idx in skf.split(X, y):
+            fold = MLRiskDetector(
+                n_estimators_rf=self.rf.n_estimators, n_estimators_xgb=self.xgb_model.n_estimators,
+                random_state=self.random_state, use_smote=self.use_smote,
+            ).fit(X.iloc[train_idx], y.iloc[train_idx])
+            probs = fold.predict_proba_batch(X.iloc[val_idx].values)[0]
+            y_val = y.iloc[val_idx]
+            f1_scores.append(f1_score(y_val, (probs >= 0.5).astype(int), zero_division=0))
+            auc_scores.append(roc_auc_score(y_val, probs))
+            pr_scores.append(average_precision_score(y_val, probs))
+        f1_scores, auc_scores, pr_scores = map(np.array, (f1_scores, auc_scores, pr_scores))
         result = {
             "cv_f1_mean": float(f1_scores.mean()), "cv_f1_std": float(f1_scores.std()),
             "cv_auc_mean": float(auc_scores.mean()), "cv_auc_std": float(auc_scores.std()),
+            "cv_pr_auc_mean": float(pr_scores.mean()), "cv_pr_auc_std": float(pr_scores.std()),
         }
         logger.info(f"CV F1: {result['cv_f1_mean']:.3f}±{result['cv_f1_std']:.3f}  "
                     f"AUC: {result['cv_auc_mean']:.3f}±{result['cv_auc_std']:.3f}")

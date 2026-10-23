@@ -95,6 +95,7 @@ def train():
     cv_metrics = detector.cross_validate(X_train, y_train, cv=5)
     print(f"\n  CV F1:  {cv_metrics['cv_f1_mean']:.3f} ± {cv_metrics['cv_f1_std']:.3f}")
     print(f"  CV AUC: {cv_metrics['cv_auc_mean']:.3f} ± {cv_metrics['cv_auc_std']:.3f}")
+    print(f"  CV PR-AUC: {cv_metrics['cv_pr_auc_mean']:.3f} ± {cv_metrics['cv_pr_auc_std']:.3f}")
  
     # ── 6. Save model ───────────────────────────────────────────────
     logger.info("Step 6: Saving model...")
