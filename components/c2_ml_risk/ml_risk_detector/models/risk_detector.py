@@ -6,12 +6,13 @@ import logging
 from typing import Dict, List, Tuple, Optional, Any
 from dataclasses import dataclass, field
  
-from sklearn.ensemble import RandomForestClassifier, GradientBoostingClassifier
+from sklearn.ensemble import RandomForestClassifier
 from sklearn.linear_model import LogisticRegression
 from sklearn.model_selection import StratifiedKFold, cross_val_score
 from sklearn.metrics import f1_score, precision_score, recall_score, roc_auc_score, classification_report
 from sklearn.preprocessing import StandardScaler
 from sklearn.neighbors import NearestNeighbors
+from xgboost import XGBClassifier
  
 logger = logging.getLogger(__name__)
  
@@ -128,7 +129,9 @@ class RiskThresholds:
 # ──────────────────────────────────────────────────────────────────────
  
 class MLRiskDetector:
-    MODEL_VERSION = "1.0.0"
+    MODEL_VERSION = "1.1.0"
+    # Soft-voting weights: Random Forest, XGBoost, Logistic Regression
+    W_RF, W_XGB, W_LR = 0.40, 0.50, 0.10
  
     def __init__(self, n_estimators_rf=200, n_estimators_xgb=200, random_state=42, use_smote=True):
         self.random_state = random_state
@@ -143,9 +146,10 @@ class MLRiskDetector:
             n_estimators=n_estimators_rf, max_depth=15, min_samples_leaf=3,
             class_weight="balanced", random_state=random_state, n_jobs=-1,
         )
-        self.xgb_model = GradientBoostingClassifier(
+        self.xgb_model = XGBClassifier(
             n_estimators=n_estimators_xgb, max_depth=5, learning_rate=0.05,
-            subsample=0.8, random_state=random_state,
+            subsample=0.8, random_state=random_state, n_jobs=-1,
+            eval_metric="logloss",
         )
         self.lr = LogisticRegression(
             C=1.0, class_weight="balanced", random_state=random_state, max_iter=1000
@@ -166,7 +170,7 @@ class MLRiskDetector:
         X_scaled = self.scaler.fit_transform(X_arr)
         logger.info("Fitting Random Forest...")
         self.rf.fit(X_arr, y_arr)
-        logger.info("Fitting Gradient Boosting...")
+        logger.info("Fitting XGBoost...")
         self.xgb_model.fit(X_arr, y_arr)
         logger.info("Fitting Logistic Regression...")
         self.lr.fit(X_scaled, y_arr)
@@ -182,7 +186,7 @@ class MLRiskDetector:
         rf_prob = float(self.rf.predict_proba(x2d)[0][1])
         gb_prob = float(self.xgb_model.predict_proba(x2d)[0][1])
         lr_prob = float(self.lr.predict_proba(self.scaler.transform(x2d))[0][1])
-        ensemble = 0.40 * rf_prob + 0.50 * gb_prob + 0.10 * lr_prob
+        ensemble = self.W_RF * rf_prob + self.W_XGB * gb_prob + self.W_LR * lr_prob
         return ensemble, rf_prob, gb_prob
  
     def get_shap_top_factors(self, x: np.ndarray, top_k: int = 3) -> Tuple[List[Dict], str]:
