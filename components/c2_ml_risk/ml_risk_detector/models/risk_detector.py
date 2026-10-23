@@ -4,7 +4,7 @@ import pickle
 import os
 import logging
 from typing import Dict, List, Tuple, Optional, Any
-from dataclasses import dataclass, field
+from dataclasses import dataclass
  
 import shap
 from sklearn.ensemble import RandomForestClassifier
@@ -34,7 +34,6 @@ class SimpleSMOTE:
  
     def fit_resample(self, X: np.ndarray, y: np.ndarray) -> Tuple[np.ndarray, np.ndarray]:
         classes, counts = np.unique(y, return_counts=True)
-        majority_class = classes[np.argmax(counts)]
         minority_class = classes[np.argmin(counts)]
         n_majority = counts.max()
         n_minority = counts.min()
