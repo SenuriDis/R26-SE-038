@@ -1,0 +1,297 @@
+{
+  "data": {
+    "modules": 20030,
+    "defective": 4472,
+    "defect_rate": 0.2233,
+    "train": 16024,
+    "test": 4006,
+    "test_defective": 894
+  },
+  "models": {
+    "ensemble": {
+      "roc_auc": 0.6868,
+      "pr_auc": 0.4001,
+      "at_0.5": {
+        "precision": 0.4408,
+        "recall": 0.3121,
+        "f1": 0.3654,
+        "mcc": 0.2264
+      }
+    },
+    "random_forest": {
+      "roc_auc": 0.6882,
+      "pr_auc": 0.4027,
+      "at_0.5": {
+        "precision": 0.3531,
+        "recall": 0.5649,
+        "f1": 0.4346,
+        "mcc": 0.2326
+      }
+    },
+    "xgboost": {
+      "roc_auc": 0.6806,
+      "pr_auc": 0.3926,
+      "at_0.5": {
+        "precision": 0.497,
+        "recall": 0.1868,
+        "f1": 0.2715,
+        "mcc": 0.199
+      }
+    },
+    "logistic_regression": {
+      "roc_auc": 0.6516,
+      "pr_auc": 0.3568,
+      "at_0.5": {
+        "precision": 0.3483,
+        "recall": 0.5022,
+        "f1": 0.4114,
+        "mcc": 0.2071
+      }
+    }
+  },
+  "proposal_targets": {
+    "precision_at_high": 0.5482,
+    "recall_at_medium": 0.689,
+    "f1_at_high": 0.198,
+    "roc_auc": 0.6868
+  },
+  "tiers": {
+    "HIGH": {
+      "functions": 197,
+      "share": 0.0492,
+      "defect_rate": 0.5482,
+      "lift": 2.46,
+      "defects": 108
+    },
+    "MEDIUM": {
+      "functions": 1751,
+      "share": 0.4371,
+      "defect_rate": 0.2901,
+      "lift": 1.3,
+      "defects": 508
+    },
+    "LOW": {
+      "functions": 2058,
+      "share": 0.5137,
+      "defect_rate": 0.1351,
+      "lift": 0.61,
+      "defects": 278
+    }
+  },
+  "gains_curve": [
+    {
+      "inspected_pct": 0,
+      "defects_found_pct": 0.0
+    },
+    {
+      "inspected_pct": 5,
+      "defects_found_pct": 12.1
+    },
+    {
+      "inspected_pct": 10,
+      "defects_found_pct": 22.5
+    },
+    {
+      "inspected_pct": 15,
+      "defects_found_pct": 29.9
+    },
+    {
+      "inspected_pct": 20,
+      "defects_found_pct": 36.8
+    },
+    {
+      "inspected_pct": 25,
+      "defects_found_pct": 44.2
+    },
+    {
+      "inspected_pct": 30,
+      "defects_found_pct": 50.0
+    },
+    {
+      "inspected_pct": 35,
+      "defects_found_pct": 55.5
+    },
+    {
+      "inspected_pct": 40,
+      "defects_found_pct": 61.1
+    },
+    {
+      "inspected_pct": 45,
+      "defects_found_pct": 65.8
+    },
+    {
+      "inspected_pct": 50,
+      "defects_found_pct": 70.0
+    },
+    {
+      "inspected_pct": 55,
+      "defects_found_pct": 74.7
+    },
+    {
+      "inspected_pct": 60,
+      "defects_found_pct": 78.4
+    },
+    {
+      "inspected_pct": 65,
+      "defects_found_pct": 81.7
+    },
+    {
+      "inspected_pct": 70,
+      "defects_found_pct": 86.1
+    },
+    {
+      "inspected_pct": 75,
+      "defects_found_pct": 89.3
+    },
+    {
+      "inspected_pct": 80,
+      "defects_found_pct": 91.6
+    },
+    {
+      "inspected_pct": 85,
+      "defects_found_pct": 94.2
+    },
+    {
+      "inspected_pct": 90,
+      "defects_found_pct": 96.8
+    },
+    {
+      "inspected_pct": 95,
+      "defects_found_pct": 98.5
+    },
+    {
+      "inspected_pct": 100,
+      "defects_found_pct": 100.0
+    }
+  ],
+  "cross_validation": {
+    "cv_f1_mean": 0.3671,
+    "cv_f1_std": 0.0134,
+    "cv_auc_mean": 0.6865,
+    "cv_auc_std": 0.0049,
+    "cv_pr_auc_mean": 0.4023,
+    "cv_pr_auc_std": 0.0116
+  },
+  "shap_importance": [
+    {
+      "feature": "lines_of_code",
+      "mean_abs_shap": 0.04916
+    },
+    {
+      "feature": "complexity_density",
+      "mean_abs_shap": 0.02462
+    },
+    {
+      "feature": "num_conditionals",
+      "mean_abs_shap": 0.02319
+    },
+    {
+      "feature": "total_coupling",
+      "mean_abs_shap": 0.01492
+    },
+    {
+      "feature": "complexity_nesting_product",
+      "mean_abs_shap": 0.01152
+    },
+    {
+      "feature": "coupling_ratio",
+      "mean_abs_shap": 0.01016
+    },
+    {
+      "feature": "num_loops",
+      "mean_abs_shap": 0.00964
+    },
+    {
+      "feature": "cyclomatic_complexity",
+      "mean_abs_shap": 0.00896
+    },
+    {
+      "feature": "fan_in",
+      "mean_abs_shap": 0.00888
+    },
+    {
+      "feature": "num_parameters",
+      "mean_abs_shap": 0.00873
+    },
+    {
+      "feature": "fan_out",
+      "mean_abs_shap": 0.00847
+    },
+    {
+      "feature": "structural_complexity",
+      "mean_abs_shap": 0.00811
+    },
+    {
+      "feature": "nesting_depth",
+      "mean_abs_shap": 0.00713
+    },
+    {
+      "feature": "dependency_count",
+      "mean_abs_shap": 0.00308
+    },
+    {
+      "feature": "commit_frequency",
+      "mean_abs_shap": 0.0
+    },
+    {
+      "feature": "author_count",
+      "mean_abs_shap": 0.0
+    },
+    {
+      "feature": "bug_history",
+      "mean_abs_shap": 0.0
+    },
+    {
+      "feature": "days_since_last_change",
+      "mean_abs_shap": 0.0
+    },
+    {
+      "feature": "change_risk",
+      "mean_abs_shap": 0.0
+    },
+    {
+      "feature": "num_return_statements",
+      "mean_abs_shap": 0.0
+    },
+    {
+      "feature": "num_exception_handlers",
+      "mean_abs_shap": 0.0
+    },
+    {
+      "feature": "has_recursion",
+      "mean_abs_shap": 0.0
+    }
+  ],
+  "cross_project": {
+    "CPDP NASA": {
+      "modules": 2369,
+      "defect_rate": 0.1575,
+      "roc_auc": 0.6564,
+      "pr_auc": 0.2351
+    },
+    "NASA MDP": {
+      "modules": 10547,
+      "defect_rate": 0.2362,
+      "roc_auc": 0.6178,
+      "pr_auc": 0.3198
+    },
+    "PSOWE": {
+      "modules": 5765,
+      "defect_rate": 0.212,
+      "roc_auc": 0.5889,
+      "pr_auc": 0.2441
+    },
+    "SOFTLAB": {
+      "modules": 349,
+      "defect_rate": 0.1719,
+      "roc_auc": 0.7263,
+      "pr_auc": 0.351
+    },
+    "SoftwareDefectDataset": {
+      "modules": 1000,
+      "defect_rate": 0.326,
+      "roc_auc": 0.4959,
+      "pr_auc": 0.3262
+    }
+  }
+}

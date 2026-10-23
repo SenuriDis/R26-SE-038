@@ -4,15 +4,20 @@ import pickle
 import os
 import logging
 from typing import Dict, List, Tuple, Optional, Any
-from dataclasses import dataclass, field
+from dataclasses import dataclass
  
-from sklearn.ensemble import RandomForestClassifier, GradientBoostingClassifier
+import shap
+from sklearn.ensemble import RandomForestClassifier
 from sklearn.linear_model import LogisticRegression
-from sklearn.model_selection import StratifiedKFold, cross_val_score
-from sklearn.metrics import f1_score, precision_score, recall_score, roc_auc_score, classification_report
+from sklearn.model_selection import StratifiedKFold
+from sklearn.metrics import (
+    f1_score, precision_score, recall_score, roc_auc_score, classification_report,
+    average_precision_score, matthews_corrcoef,
+)
 from sklearn.preprocessing import StandardScaler
 from sklearn.neighbors import NearestNeighbors
- 
+from xgboost import XGBClassifier
+
 logger = logging.getLogger(__name__)
  
  
@@ -29,7 +34,6 @@ class SimpleSMOTE:
  
     def fit_resample(self, X: np.ndarray, y: np.ndarray) -> Tuple[np.ndarray, np.ndarray]:
         classes, counts = np.unique(y, return_counts=True)
-        majority_class = classes[np.argmax(counts)]
         minority_class = classes[np.argmin(counts)]
         n_majority = counts.max()
         n_minority = counts.min()
@@ -60,35 +64,53 @@ class SimpleSMOTE:
  
  
 # ──────────────────────────────────────────────────────────────────────
-# Permutation Explainer (SHAP-compatible schema, model-agnostic)
+# SHAP Explainer (shap.TreeExplainer, probability space)
 # ──────────────────────────────────────────────────────────────────────
- 
-class PermutationExplainer:
+
+class ShapExplainer:
     """
-    Local feature importance via leave-one-out permutation.
-    Approximates SHAP values. Output schema is identical to shap.TreeExplainer
-    so the swap is a one-line change when shap becomes available.
+    Exact TreeSHAP values for the defective class, in probability units.
+
+    Random Forest: path-dependent TreeSHAP. A forest's raw output is already
+    the averaged class probability, so no background data is needed.
+    XGBoost: interventional TreeSHAP against a background sample, which lets
+    shap explain the probability rather than the log-odds margin.
+    Both therefore share one unit and can be blended with the ensemble weights.
     """
-    def __init__(self, model, feature_names: List[str]):
+    def __init__(self, model, feature_names: List[str], background: Optional[np.ndarray] = None):
         self.model = model
         self.feature_names = feature_names
- 
+        if background is None:
+            self._explainer = shap.TreeExplainer(model)
+        else:
+            self._explainer = shap.TreeExplainer(
+                model, data=background,
+                feature_perturbation="interventional", model_output="probability",
+            )
+
+    def explain_batch(self, X: np.ndarray) -> np.ndarray:
+        """SHAP values for every row, shape (rows, features), in one shap call."""
+        values = self._explainer.shap_values(np.atleast_2d(X).astype(np.float32))
+        if isinstance(values, list):    # one array per class
+            values = values[1]
+        values = np.asarray(values)
+        if values.ndim == 3:            # (samples, features, classes)
+            values = values[..., 1]
+        return values
+
     def explain(self, x: np.ndarray) -> np.ndarray:
-        x2d = x.reshape(1, -1)
-        base_prob = float(self.model.predict_proba(x2d)[0][1])
-        contributions = np.zeros(len(self.feature_names))
-        for i in range(len(self.feature_names)):
-            x_perturbed = x2d.copy()
-            x_perturbed[0, i] = 0.0
-            perturbed_prob = float(self.model.predict_proba(x_perturbed)[0][1])
-            contributions[i] = base_prob - perturbed_prob
-        return contributions
+        return self.explain_batch(x.reshape(1, -1))[0]
  
  
 # ──────────────────────────────────────────────────────────────────────
 # Data classes
 # ──────────────────────────────────────────────────────────────────────
  
+def _fmt_value(v: float) -> str:
+    """Whole numbers without decimals (CC = 18), ratios to two places (0.21)."""
+    return str(int(round(v))) if abs(v - round(v)) < 1e-6 else f"{v:.2f}"
+
+
 @dataclass
 class RiskPrediction:
     function_name: str
@@ -128,24 +150,29 @@ class RiskThresholds:
 # ──────────────────────────────────────────────────────────────────────
  
 class MLRiskDetector:
-    MODEL_VERSION = "1.0.0"
- 
+    MODEL_VERSION = "2.0.0"
+    # Soft-voting weights: Random Forest, XGBoost, Logistic Regression
+    W_RF, W_XGB, W_LR = 0.40, 0.50, 0.10
+    SHAP_BACKGROUND_SIZE = 100
+
     def __init__(self, n_estimators_rf=200, n_estimators_xgb=200, random_state=42, use_smote=True):
         self.random_state = random_state
         self.use_smote = use_smote
         self.scaler = StandardScaler()
         self.feature_names: List[str] = []
         self.is_fitted = False
-        self._rf_explainer: Optional[PermutationExplainer] = None
-        self._gb_explainer: Optional[PermutationExplainer] = None
- 
+        self.background: Optional[np.ndarray] = None
+        self._rf_explainer: Optional[ShapExplainer] = None
+        self._gb_explainer: Optional[ShapExplainer] = None
+
         self.rf = RandomForestClassifier(
-            n_estimators=n_estimators_rf, max_depth=15, min_samples_leaf=3,
+            n_estimators=n_estimators_rf, max_depth=15, min_samples_leaf=50,
             class_weight="balanced", random_state=random_state, n_jobs=-1,
         )
-        self.xgb_model = GradientBoostingClassifier(
+        self.xgb_model = XGBClassifier(
             n_estimators=n_estimators_xgb, max_depth=5, learning_rate=0.05,
-            subsample=0.8, random_state=random_state,
+            subsample=0.8, random_state=random_state, n_jobs=-1,
+            eval_metric="logloss",
         )
         self.lr = LogisticRegression(
             C=1.0, class_weight="balanced", random_state=random_state, max_iter=1000
@@ -156,7 +183,12 @@ class MLRiskDetector:
         self.feature_names = list(X.columns)
         X_arr = X.values.astype(np.float32)
         logger.info(f"Training: {len(X)} samples, {int(y.sum())} defective ({y.mean()*100:.1f}%)")
- 
+
+        # SHAP background: real (pre-SMOTE) training rows only
+        rng = np.random.RandomState(self.random_state)
+        bg_idx = rng.choice(len(X_arr), size=min(self.SHAP_BACKGROUND_SIZE, len(X_arr)), replace=False)
+        self.background = X_arr[bg_idx]
+
         if self.use_smote:
             X_arr, y_arr = self.smote.fit_resample(X_arr, y.values)
             logger.info(f"After SMOTE: {len(X_arr)} samples")
@@ -166,41 +198,61 @@ class MLRiskDetector:
         X_scaled = self.scaler.fit_transform(X_arr)
         logger.info("Fitting Random Forest...")
         self.rf.fit(X_arr, y_arr)
-        logger.info("Fitting Gradient Boosting...")
+        logger.info("Fitting XGBoost...")
         self.xgb_model.fit(X_arr, y_arr)
         logger.info("Fitting Logistic Regression...")
         self.lr.fit(X_scaled, y_arr)
- 
-        self._rf_explainer = PermutationExplainer(self.rf, self.feature_names)
-        self._gb_explainer = PermutationExplainer(self.xgb_model, self.feature_names)
+
+        self._build_explainers()
         self.is_fitted = True
         logger.info("Training complete.")
         return self
- 
-    def predict_proba_single(self, x: np.ndarray) -> Tuple[float, float, float]:
-        x2d = x.reshape(1, -1).astype(np.float32)
-        rf_prob = float(self.rf.predict_proba(x2d)[0][1])
-        gb_prob = float(self.xgb_model.predict_proba(x2d)[0][1])
-        lr_prob = float(self.lr.predict_proba(self.scaler.transform(x2d))[0][1])
-        ensemble = 0.40 * rf_prob + 0.50 * gb_prob + 0.10 * lr_prob
+
+    def _build_explainers(self) -> None:
+        self._rf_explainer = ShapExplainer(self.rf, self.feature_names)
+        self._gb_explainer = ShapExplainer(self.xgb_model, self.feature_names, background=self.background)
+
+    def predict_proba_batch(self, X: np.ndarray) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
+        """Ensemble, RF and XGBoost probabilities for every row, one call per model."""
+        X2d = np.atleast_2d(np.asarray(X, dtype=np.float32))
+        rf_prob = self.rf.predict_proba(X2d)[:, 1]
+        gb_prob = self.xgb_model.predict_proba(X2d)[:, 1]
+        lr_prob = self.lr.predict_proba(self.scaler.transform(X2d))[:, 1]
+        ensemble = self.W_RF * rf_prob + self.W_XGB * gb_prob + self.W_LR * lr_prob
         return ensemble, rf_prob, gb_prob
- 
-    def get_shap_top_factors(self, x: np.ndarray, top_k: int = 3) -> Tuple[List[Dict], str]:
-        sv_rf = self._rf_explainer.explain(x.astype(np.float32))
-        sv_gb = self._gb_explainer.explain(x.astype(np.float32))
-        sv = 0.5 * sv_rf + 0.5 * sv_gb
+
+    def predict_proba_single(self, x: np.ndarray) -> Tuple[float, float, float]:
+        ensemble, rf_prob, gb_prob = self.predict_proba_batch(x.reshape(1, -1))
+        return float(ensemble[0]), float(rf_prob[0]), float(gb_prob[0])
+
+    def shap_values_batch(self, X: np.ndarray) -> np.ndarray:
+        """Blended SHAP values for every row, shape (rows, features)."""
+        sv_rf = self._rf_explainer.explain_batch(X)
+        sv_gb = self._gb_explainer.explain_batch(X)
+        # SHAP is additive across models, so blend with the ensemble's own weights
+        # (renormalised over the two tree models, which carry 90% of the score).
+        return (self.W_RF * sv_rf + self.W_XGB * sv_gb) / (self.W_RF + self.W_XGB)
+
+    def get_shap_top_factors(self, x: np.ndarray, top_k: int = 3,
+                             raw: Optional[np.ndarray] = None) -> Tuple[List[Dict], str]:
+        """Top-k SHAP factors for one function. `x` is the model input; `raw`, when
+        given, is the same row unnormalised and is what gets reported as the value."""
+        sv = self.shap_values_batch(x.reshape(1, -1))[0]
+        return self._top_factors(sv, x if raw is None else raw, top_k)
+
+    def _top_factors(self, sv: np.ndarray, shown: np.ndarray, top_k: int) -> Tuple[List[Dict], str]:
         sorted_idx = np.argsort(np.abs(sv))[::-1][:top_k]
         factors = []
         for idx in sorted_idx:
             factors.append({
                 "feature": self.feature_names[idx],
                 "contribution": float(sv[idx]),
-                "value": float(x[idx]),
+                "value": float(shown[idx]),
                 "direction": "increases" if sv[idx] > 0 else "decreases",
             })
         parts = [
-            f"{f['feature'].replace('_', ' ').title()} "
-            f"({'high' if f['contribution'] > 0 else 'low'}: {f['value']:.1f})"
+            f"{f['feature'].replace('_', ' ').title()} = {_fmt_value(f['value'])} "
+            f"({'raises' if f['direction'] == 'increases' else 'lowers'} risk)"
             for f in factors
         ]
         return factors, "Risk driven by: " + ", ".join(parts)
@@ -210,14 +262,21 @@ class MLRiskDetector:
         decisiveness = abs(score - 0.5) * 2
         return float(min(0.5 * agreement + 0.5 * decisiveness + 0.1, 1.0))
  
-    def predict_batch(self, feature_matrix: np.ndarray, metadata: List[Dict]) -> List[RiskPrediction]:
+    def predict_batch(self, feature_matrix: np.ndarray, metadata: List[Dict],
+                      raw_matrix: Optional[np.ndarray] = None) -> List[RiskPrediction]:
+        """Score, explain and rank a batch. `raw_matrix` (optional, same shape as
+        `feature_matrix` but unnormalised) supplies the values shown in explanations."""
         if not self.is_fitted:
             raise RuntimeError("Model not fitted.")
         results = []
-        for i, x in enumerate(feature_matrix):
-            ensemble_score, rf_score, xgb_score = self.predict_proba_single(x)
+        ensemble_scores, rf_scores, xgb_scores = self.predict_proba_batch(feature_matrix)
+        shap_values = self.shap_values_batch(feature_matrix)
+        shown_matrix = feature_matrix if raw_matrix is None else raw_matrix
+        for i in range(len(feature_matrix)):
+            ensemble_score = float(ensemble_scores[i])
+            rf_score, xgb_score = float(rf_scores[i]), float(xgb_scores[i])
             confidence = self.get_confidence(ensemble_score, rf_score, xgb_score)
-            top_factors, explanation = self.get_shap_top_factors(x, top_k=3)
+            top_factors, explanation = self._top_factors(shap_values[i], shown_matrix[i], top_k=3)
             risk_level = RiskThresholds.classify(ensemble_score)
             meta = metadata[i] if i < len(metadata) else {}
             results.append(RiskPrediction(
@@ -241,8 +300,7 @@ class MLRiskDetector:
         return results
  
     def evaluate(self, X: pd.DataFrame, y: pd.Series) -> Dict[str, float]:
-        X_arr = X.values.astype(np.float32)
-        probs = np.array([self.predict_proba_single(x)[0] for x in X_arr])
+        probs = self.predict_proba_batch(X.values)[0]
         preds = (probs >= RiskThresholds.HIGH).astype(int)
         preds_recall = (probs >= RiskThresholds.MEDIUM).astype(int)
         metrics = {
@@ -250,6 +308,9 @@ class MLRiskDetector:
             "recall": recall_score(y, preds_recall, zero_division=0),
             "f1_score": f1_score(y, preds, zero_division=0),
             "roc_auc": roc_auc_score(y, probs),
+            # Threshold-free and imbalance-aware: a random ranker scores the base rate
+            "pr_auc": average_precision_score(y, probs),
+            "mcc": matthews_corrcoef(y, (probs >= 0.5).astype(int)),
         }
         for k, v in metrics.items():
             logger.info(f"  {k}: {v:.4f}")
@@ -257,13 +318,25 @@ class MLRiskDetector:
         return metrics
  
     def cross_validate(self, X: pd.DataFrame, y: pd.Series, cv: int = 5) -> Dict[str, float]:
-        X_arr = X.values.astype(np.float32)
+        """Stratified k-fold CV of the whole ensemble: each fold refits SMOTE and
+        all three learners with this detector's settings and scores the soft vote."""
         skf = StratifiedKFold(n_splits=cv, shuffle=True, random_state=self.random_state)
-        f1_scores = cross_val_score(self.rf, X_arr, y.values, cv=skf, scoring="f1", n_jobs=-1)
-        auc_scores = cross_val_score(self.rf, X_arr, y.values, cv=skf, scoring="roc_auc", n_jobs=-1)
+        f1_scores, auc_scores, pr_scores = [], [], []
+        for train_idx, val_idx in skf.split(X, y):
+            fold = MLRiskDetector(
+                n_estimators_rf=self.rf.n_estimators, n_estimators_xgb=self.xgb_model.n_estimators,
+                random_state=self.random_state, use_smote=self.use_smote,
+            ).fit(X.iloc[train_idx], y.iloc[train_idx])
+            probs = fold.predict_proba_batch(X.iloc[val_idx].values)[0]
+            y_val = y.iloc[val_idx]
+            f1_scores.append(f1_score(y_val, (probs >= 0.5).astype(int), zero_division=0))
+            auc_scores.append(roc_auc_score(y_val, probs))
+            pr_scores.append(average_precision_score(y_val, probs))
+        f1_scores, auc_scores, pr_scores = map(np.array, (f1_scores, auc_scores, pr_scores))
         result = {
             "cv_f1_mean": float(f1_scores.mean()), "cv_f1_std": float(f1_scores.std()),
             "cv_auc_mean": float(auc_scores.mean()), "cv_auc_std": float(auc_scores.std()),
+            "cv_pr_auc_mean": float(pr_scores.mean()), "cv_pr_auc_std": float(pr_scores.std()),
         }
         logger.info(f"CV F1: {result['cv_f1_mean']:.3f}±{result['cv_f1_std']:.3f}  "
                     f"AUC: {result['cv_auc_mean']:.3f}±{result['cv_auc_std']:.3f}")
@@ -276,6 +349,7 @@ class MLRiskDetector:
                 "rf": self.rf, "xgb_model": self.xgb_model, "lr": self.lr,
                 "scaler": self.scaler, "feature_names": self.feature_names,
                 "is_fitted": self.is_fitted, "version": self.MODEL_VERSION,
+                "background": self.background,
             }, f)
         logger.info(f"Model saved → {path}")
  
@@ -287,8 +361,8 @@ class MLRiskDetector:
         d.rf = state["rf"]; d.xgb_model = state["xgb_model"]; d.lr = state["lr"]
         d.scaler = state["scaler"]; d.feature_names = state["feature_names"]
         d.is_fitted = state["is_fitted"]
-        d._rf_explainer = PermutationExplainer(d.rf, d.feature_names)
-        d._gb_explainer = PermutationExplainer(d.xgb_model, d.feature_names)
+        d.background = state.get("background")
+        d._build_explainers()
         logger.info(f"Model loaded ← {path}")
         return d
  

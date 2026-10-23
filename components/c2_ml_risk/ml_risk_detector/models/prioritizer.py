@@ -42,10 +42,10 @@ class PrioritizedFunction:
 class TestPrioritizer:
     """
     Converts ML predictions into a ranked list ready for Component 3.
-    Implements the priority tiers described in the proposal:
-      HIGH   → Top 20%  → exhaustive tests (boundary + negative + edge + exception)
-      MEDIUM → Next 30% → boundary tests (parameter limits + common inputs)
-      LOW    → Bottom 50% → basic tests (happy path only)
+    Tiers follow the risk-score thresholds in RiskThresholds (not batch percentiles):
+      HIGH   → score ≥ 0.65        → exhaustive tests (boundary + negative + edge + exception)
+      MEDIUM → 0.35 ≤ score < 0.65 → boundary tests (parameter limits + common inputs)
+      LOW    → score < 0.35        → basic tests (happy path only)
     """
  
     TEST_TYPE_MAP = {
@@ -64,12 +64,10 @@ class TestPrioritizer:
         that Component 3 (LLM) will consume.
         """
         total = len(predictions)
-        high_cutoff = max(1, int(total * 0.20))
-        medium_cutoff = max(1, int(total * 0.50))
- 
+
         prioritized: List[PrioritizedFunction] = []
- 
-        for i, pred in enumerate(predictions):   # Already sorted by rank
+
+        for pred in predictions:   # Already sorted by rank
             test_types = self.TEST_TYPE_MAP.get(pred.recommended_test_depth, ["happy_path"])
  
             pf = PrioritizedFunction(
@@ -110,15 +108,16 @@ class TestPrioritizer:
             },
             "tier_breakdown": {
                 "HIGH": {
-                    "description": "Top 20% — exhaustive tests recommended",
+                    "description": f"Risk score ≥ {RiskThresholds.HIGH} — exhaustive tests recommended",
                     "functions": [asdict(p) for p in high_risk],
                 },
                 "MEDIUM": {
-                    "description": "Next 30% — boundary tests recommended",
+                    "description": (f"Risk score {RiskThresholds.MEDIUM}–{RiskThresholds.HIGH} "
+                                    "— boundary tests recommended"),
                     "functions": [asdict(p) for p in medium_risk],
                 },
                 "LOW": {
-                    "description": "Bottom 50% — basic happy-path tests",
+                    "description": f"Risk score < {RiskThresholds.MEDIUM} — basic happy-path tests",
                     "functions": [asdict(p) for p in low_risk],
                 },
             },

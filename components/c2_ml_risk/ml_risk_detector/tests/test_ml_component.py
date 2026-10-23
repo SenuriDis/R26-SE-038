@@ -8,13 +8,13 @@ import sys, os
 sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
 
 import numpy as np
-import pandas as pd
 import pytest
 import json
 
 from utils.feature_engineering import FeatureEngineer, CodeMetrics
-from models.risk_detector import MLRiskDetector, RiskThresholds, RiskPrediction
-from models.prioritizer import TestPrioritizer
+from models.risk_detector import MLRiskDetector, RiskThresholds
+# Aliased: the TestPrioritizer test class below would otherwise shadow it
+from models.prioritizer import TestPrioritizer as Prioritizer
 from data.dataset import generate_synthetic_dataset
 
 
@@ -72,20 +72,20 @@ def low_risk_metrics():
 
 
 @pytest.fixture(scope="module")
-def trained_detector():
-    """Train a small model for testing."""
+def feature_engineer():
     X, y, metrics_list = generate_synthetic_dataset(n_samples=500, random_state=42)
-    detector = MLRiskDetector(n_estimators_rf=50, n_estimators_xgb=50, random_state=42)
-    detector.fit(X, y)
-    return detector
+    fe = FeatureEngineer()
+    fe.fit_frame(X)
+    return fe
 
 
 @pytest.fixture(scope="module")
-def feature_engineer(trained_detector):
+def trained_detector(feature_engineer):
+    """Train a small model for testing, on the same z-scored features transform() produces."""
     X, y, metrics_list = generate_synthetic_dataset(n_samples=500, random_state=42)
-    fe = FeatureEngineer()
-    fe.fit(metrics_list)
-    return fe
+    detector = MLRiskDetector(n_estimators_rf=50, n_estimators_xgb=50, random_state=42)
+    detector.fit(feature_engineer.normalise_frame(X), y)
+    return detector
 
 
 # ──────────────────────────────────────────────────────────────────────
@@ -114,6 +114,13 @@ class TestFeatureEngineering:
         fe = FeatureEngineer()
         matrix = fe.transform_batch([sample_metrics, low_risk_metrics])
         assert matrix.shape == (2, len(FeatureEngineer.FEATURE_NAMES))
+
+    def test_raw_batch_keeps_real_values(self, feature_engineer, sample_metrics):
+        raw = feature_engineer.raw_batch([sample_metrics])
+        names = FeatureEngineer.FEATURE_NAMES
+        assert raw.shape == (1, len(names))
+        assert raw[0][names.index("cyclomatic_complexity")] == 18
+        assert raw[0][names.index("bug_history")] == 3
 
     def test_from_json_roundtrip(self, sample_metrics):
         data = {
@@ -187,6 +194,14 @@ class TestMLRiskDetector:
         assert 0.0 <= rf_score <= 1.0
         assert 0.0 <= xgb_score <= 1.0
 
+    def test_batch_scores_match_single(self, trained_detector, feature_engineer):
+        X, y, _ = generate_synthetic_dataset(n_samples=20, random_state=7)
+        Xn = feature_engineer.normalise_frame(X).values.astype(np.float32)
+        ensemble, rf, xgb = trained_detector.predict_proba_batch(Xn)
+        for i, x in enumerate(Xn):
+            single = trained_detector.predict_proba_single(x)
+            assert np.allclose(single, (ensemble[i], rf[i], xgb[i]), atol=1e-6)
+
     def test_high_risk_function_scores_high(self, trained_detector, feature_engineer, sample_metrics):
         x = feature_engineer.transform(sample_metrics)
         score, _, _ = trained_detector.predict_proba_single(x)
@@ -208,11 +223,38 @@ class TestMLRiskDetector:
             assert "value" in factor
             assert "direction" in factor
 
+    def test_shap_values_are_additive(self, trained_detector, feature_engineer, sample_metrics):
+        # TreeSHAP is exact: base value + contributions = the model's probability
+        x = feature_engineer.transform(sample_metrics)
+        explainer = trained_detector._gb_explainer
+        phi = explainer.explain(x)
+        base = float(np.ravel(explainer._explainer.expected_value)[-1])
+        prob = float(trained_detector.xgb_model.predict_proba(x.reshape(1, -1))[0][1])
+        assert abs(base + phi.sum() - prob) < 1e-3
+
+    def test_shap_batch_matches_single_rows(self, trained_detector, feature_engineer):
+        X, y, _ = generate_synthetic_dataset(n_samples=10, random_state=11)
+        Xn = feature_engineer.normalise_frame(X).values.astype(np.float32)
+        for explainer in (trained_detector._rf_explainer, trained_detector._gb_explainer):
+            batch = explainer.explain_batch(Xn)
+            assert batch.shape == Xn.shape
+            for i, x in enumerate(Xn):
+                assert np.allclose(batch[i], explainer.explain(x), atol=1e-6)
+
     def test_shap_explanation_text(self, trained_detector, feature_engineer, sample_metrics):
         x = feature_engineer.transform(sample_metrics)
         _, explanation = trained_detector.get_shap_top_factors(x)
         assert isinstance(explanation, str)
         assert len(explanation) > 10
+
+    def test_explanation_reports_raw_values(self, trained_detector, feature_engineer, sample_metrics):
+        x = feature_engineer.transform(sample_metrics)
+        raw = feature_engineer.raw_batch([sample_metrics])[0]
+        factors, explanation = trained_detector.get_shap_top_factors(x, raw=raw)
+        names = FeatureEngineer.FEATURE_NAMES
+        for f in factors:
+            assert f["value"] == pytest.approx(raw[names.index(f["feature"])])
+        assert "raises risk" in explanation or "lowers risk" in explanation
 
     def test_batch_predict_length(self, trained_detector, feature_engineer, sample_metrics, low_risk_metrics):
         metrics_list = [sample_metrics, low_risk_metrics]
@@ -257,8 +299,16 @@ class TestMLRiskDetector:
     def test_evaluate_returns_metrics(self, trained_detector):
         X, y, _ = generate_synthetic_dataset(n_samples=100, random_state=77)
         metrics = trained_detector.evaluate(X, y)
-        required = {"precision", "recall", "f1_score", "roc_auc"}
+        required = {"precision", "recall", "f1_score", "roc_auc", "pr_auc", "mcc"}
         assert required.issubset(set(metrics.keys()))
+
+    def test_cross_validate_covers_whole_ensemble(self, feature_engineer):
+        X, y, _ = generate_synthetic_dataset(n_samples=200, random_state=3)
+        detector = MLRiskDetector(n_estimators_rf=20, n_estimators_xgb=20, random_state=42)
+        result = detector.cross_validate(feature_engineer.normalise_frame(X), y, cv=3)
+        for key in ("cv_auc_mean", "cv_auc_std", "cv_f1_mean", "cv_pr_auc_mean"):
+            assert key in result
+        assert 0.0 <= result["cv_auc_mean"] <= 1.0
 
     def test_confidence_between_0_and_1(self, trained_detector):
         for score, rf, xgb in [(0.8, 0.75, 0.85), (0.3, 0.25, 0.35), (0.5, 0.5, 0.5)]:
@@ -281,7 +331,7 @@ class TestPrioritizer:
             for m in metrics_list[:20]
         ]
         predictions = trained_detector.predict_batch(feature_matrix, metadata)
-        prioritizer = TestPrioritizer()
+        prioritizer = Prioritizer()
         payload = prioritizer.prioritize(predictions, project_name="test_project")
 
         assert "summary" in payload
@@ -300,7 +350,7 @@ class TestPrioritizer:
             for m in metrics_list[:20]
         ]
         predictions = trained_detector.predict_batch(feature_matrix, metadata)
-        prioritizer = TestPrioritizer()
+        prioritizer = Prioritizer()
         payload = prioritizer.prioritize(predictions)
 
         s = payload["summary"]
@@ -316,7 +366,7 @@ class TestPrioritizer:
             for m in metrics_list[:10]
         ]
         predictions = trained_detector.predict_batch(feature_matrix, metadata)
-        prioritizer = TestPrioritizer()
+        prioritizer = Prioritizer()
         payload = prioritizer.prioritize(predictions)
 
         out = str(tmp_path / "output.json")
@@ -352,6 +402,26 @@ class TestDataset:
     def test_no_nan_values(self):
         X, y, _ = generate_synthetic_dataset(n_samples=200)
         assert not X.isnull().any().any()
+
+    def test_real_datasets_report_family_per_row(self):
+        pytest.importorskip("scipy")
+        data_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), "data")
+        if not os.path.isdir(os.path.join(data_dir, "NASA-promise-dataset")):
+            pytest.skip("real datasets not present")
+        from data.dataset import load_all_real_datasets
+        X, y, metrics, families = load_all_real_datasets(data_dir, with_family=True)
+        assert len(families) == len(X) == len(y) == len(metrics)
+        assert set(families) <= {"NASA MDP", "PSOWE", "SoftwareDefectDataset", "SOFTLAB", "CPDP NASA"}
+
+    def test_cpdp_buggy_labels_are_positive(self):
+        pytest.importorskip("scipy")
+        path = os.path.join(os.path.dirname(os.path.dirname(__file__)),
+                            "data", "2022_TSE_CPDP_DATA", "NASA", "PC1.arff")
+        if not os.path.exists(path):
+            pytest.skip("CPDP data not present")
+        from data.dataset import load_cpdp_nasa_arff
+        X, y, _ = load_cpdp_nasa_arff(path)
+        assert y.sum() > 0
 
 
 if __name__ == "__main__":

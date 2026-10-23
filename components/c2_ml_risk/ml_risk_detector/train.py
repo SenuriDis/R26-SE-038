@@ -51,8 +51,12 @@ def train():
     # ── 2. Feature engineering ──────────────────────────────────────
     logger.info("Step 2: Fitting FeatureEngineer (z-score normalisation)...")
     fe = FeatureEngineer()
-    fe.fit(m_train)
- 
+    fe.fit_frame(X_train)
+    # The model trains on the same z-scored representation that
+    # fe.transform() produces at inference time.
+    X_train = fe.normalise_frame(X_train)
+    X_test = fe.normalise_frame(X_test)
+
     # ── 3. Train model ──────────────────────────────────────────────
     logger.info("Step 3: Training RF + XGBoost ensemble with SMOTE...")
     detector = MLRiskDetector(
@@ -62,7 +66,7 @@ def train():
         random_state=42,
     )
     detector.fit(X_train, y_train)
- 
+
     # ── 4. Evaluate ─────────────────────────────────────────────────
     logger.info("Step 4: Evaluating on hold-out test set...")
     metrics = detector.evaluate(X_test, y_test)
@@ -91,6 +95,7 @@ def train():
     cv_metrics = detector.cross_validate(X_train, y_train, cv=5)
     print(f"\n  CV F1:  {cv_metrics['cv_f1_mean']:.3f} ± {cv_metrics['cv_f1_std']:.3f}")
     print(f"  CV AUC: {cv_metrics['cv_auc_mean']:.3f} ± {cv_metrics['cv_auc_std']:.3f}")
+    print(f"  CV PR-AUC: {cv_metrics['cv_pr_auc_mean']:.3f} ± {cv_metrics['cv_pr_auc_std']:.3f}")
  
     # ── 6. Save model ───────────────────────────────────────────────
     logger.info("Step 6: Saving model...")
@@ -100,8 +105,22 @@ def train():
     import pickle
     with open("models/saved/feature_engineer.pkl", "wb") as f:
         pickle.dump(fe, f)
+    # The API looks for the scaler next to the model under this name
+    with open("models/saved/risk_detector_fe.pkl", "wb") as f:
+        pickle.dump(fe, f)
  
     # ── 7. Demo prediction ──────────────────────────────────────────
+    run_demo(detector, fe)
+ 
+    print("\n  Training complete. Model ready for API deployment.")
+    print("  Run: uvicorn api.predict_api:app --host 0.0.0.0 --port 8002\n")
+ 
+    return detector, fe, metrics
+ 
+ 
+def run_demo(detector: MLRiskDetector, fe: FeatureEngineer) -> dict:
+    """Score three hand-written payment-service functions, print the summary
+    and save models/saved/sample_prediction.json."""
     logger.info("Step 7: Running demo prediction on known high-risk function...")
  
     # This mirrors the process_transaction() function from the UI mockup in the proposal
@@ -187,7 +206,9 @@ def train():
         for m in test_functions
     ]
  
-    predictions = detector.predict_batch(feature_vectors, metadata)
+    predictions = detector.predict_batch(
+        feature_vectors, metadata, raw_matrix=fe.raw_batch(test_functions)
+    )
  
     prioritizer = TestPrioritizer()
     payload = prioritizer.prioritize(predictions, project_name="payment-service-demo")
@@ -206,20 +227,24 @@ def train():
     print("\n  Top SHAP factors:")
     for factor in top.top_risk_factors:
         bar = "█" * int(abs(factor["contribution"]) * 80)
-        print(f"    {factor['feature']:<35} +{factor['contribution']:+.3f}  {bar}")
+        print(f"    {factor['feature']:<35} {factor['contribution']:+.3f}  {bar}")
  
     # JSON file save
     out_path = "models/saved/sample_prediction.json"
     with open(out_path, "w") as f:
         json.dump(payload, f, indent=2)
     logger.info(f"Sample prediction saved to {out_path}")
- 
-    print("\n  Training complete. Model ready for API deployment.")
-    print("  Run: uvicorn api.predict_api:app --host 0.0.0.0 --port 8002\n")
- 
-    return detector, fe, metrics
- 
- 
+    return payload
+
+
 if __name__ == "__main__":
-    train()
+    if "--demo-only" in sys.argv:
+        # Regenerate the sample prediction from the saved model, without retraining
+        import pickle
+        with open("models/saved/feature_engineer.pkl", "rb") as f:
+            saved_fe = pickle.load(f)
+        run_demo(MLRiskDetector.load("models/saved/risk_detector.pkl"), saved_fe)
+    else:
+        train()
  
+

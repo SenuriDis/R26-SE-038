@@ -22,7 +22,7 @@ import os
 import glob
 import numpy as np
 import pandas as pd
-from typing import Optional, Tuple, List
+from typing import Optional, Tuple, List, Union, Literal, overload
 from utils.feature_engineering import CodeMetrics
 import logging
 
@@ -377,21 +377,23 @@ def load_cpdp_nasa_arff(path: str) -> Tuple[pd.DataFrame, pd.Series, List[CodeMe
 
     df.columns = [c.strip().lower() for c in df.columns]
 
-    # Label is always the last column
+    # Label is always the last column. PC1/PC3/PC4/cm1 spell it buggy/clean.
     label_col = df.columns[-1]
     raw_labels = df[label_col].astype(str).str.strip().str.lower()
-    labels = raw_labels.map(lambda v: 1 if v in ("y", "yes", "true", "1", "1.0") else 0)
+    labels = raw_labels.map(lambda v: 1 if v in ("y", "yes", "true", "1", "1.0", "buggy", "defective") else 0)
 
     rows = []
     for i, row in df.iterrows():
-        # McCabe columns — same as PROMISE CSV Schema A
-        cc      = max(float(row.get("v(g)", row.get("sumcyclomatic", row.get("maxcyclomatic", 1)))), 1.0)
-        nesting = max(float(row.get("iv(g)", row.get("maxcyclomaticmodified", 1))), 0.0)
-        loc     = max(float(row.get("loc", row.get("linecnt", row.get("locdecl", 10)))), 1.0)
-        params  = max(float(row.get("uniq_opnd", row.get("total_opnd", 2))), 0.0)
-        conds   = max(float(row.get("branchcount", row.get("countbranch", 0))), 0.0)
-        fan_out = max(float(row.get("uniq_op", 5)) / 5.0, 0.0)
-        fan_in  = max(float(row.get("uniq_opnd", 3)) / 3.0, 0.0)
+        # McCabe columns — same as PROMISE CSV Schema A. cm1/PC3/PC4 use the
+        # long upper-case NASA names (lower-cased above), so each lookup falls
+        # through to those.
+        cc      = max(float(row.get("v(g)", row.get("cyclomatic_complexity", row.get("sumcyclomatic", 1)))), 1.0)
+        nesting = max(float(row.get("iv(g)", row.get("essential_complexity", 1))), 0.0)
+        loc     = max(float(row.get("loc", row.get("loc_total", row.get("linecnt", 10)))), 1.0)
+        params  = max(float(row.get("uniq_opnd", row.get("num_unique_operands", 2))), 0.0)
+        conds   = max(float(row.get("branchcount", row.get("branch_count", 0))), 0.0)
+        fan_out = max(float(row.get("uniq_op", row.get("num_unique_operators", 5))) / 5.0, 0.0)
+        fan_in  = max(float(row.get("uniq_opnd", row.get("num_unique_operands", 3))) / 3.0, 0.0)
 
         feat = _build_feature_row(
             cc=cc, nesting=nesting, loc=loc, num_params=params,
@@ -409,9 +411,21 @@ def load_cpdp_nasa_arff(path: str) -> Tuple[pd.DataFrame, pd.Series, List[CodeMe
 # Master aggregator — discovers and loads all real datasets
 # ─────────────────────────────────────────────────────────────────────────────
 
+@overload
+def load_all_real_datasets(
+    data_dir: str = ..., with_family: Literal[False] = ...,
+) -> Tuple[Optional[pd.DataFrame], Optional[pd.Series], List[CodeMetrics]]: ...
+@overload
+def load_all_real_datasets(
+    data_dir: str, with_family: Literal[True],
+) -> Tuple[Optional[pd.DataFrame], Optional[pd.Series], List[CodeMetrics], List[str]]: ...
 def load_all_real_datasets(
     data_dir: str = "data",
-) -> Tuple[Optional[pd.DataFrame], Optional[pd.Series], List[CodeMetrics]]:
+    with_family: bool = False,
+) -> Union[
+    Tuple[Optional[pd.DataFrame], Optional[pd.Series], List[CodeMetrics]],
+    Tuple[Optional[pd.DataFrame], Optional[pd.Series], List[CodeMetrics], List[str]],
+]:
     """
     Auto-discover and load every real dataset found under `data_dir`.
 
@@ -421,10 +435,15 @@ def load_all_real_datasets(
 
     Returns (None, None, []) if no files are found (caller should fall back
     to generate_synthetic_dataset).
+
+    With with_family=True a fourth element is returned: a list naming the
+    dataset family of each row (NASA MDP, PSOWE, SoftwareDefectDataset,
+    SOFTLAB, CPDP NASA), for cross-project evaluation.
     """
     all_X: List[pd.DataFrame] = []
     all_y: List[pd.Series] = []
     all_metrics: List[CodeMetrics] = []
+    all_families: List[str] = []
 
     # ── Schema A: NASA-promise-dataset CSVs ──────────────────────────────────
     nasa_promise_dir = os.path.join(data_dir, "NASA-promise-dataset")
@@ -433,7 +452,7 @@ def load_all_real_datasets(
             try:
                 X, y, m = load_nasa_promise_csv(path)
                 if len(X) > 0:
-                    all_X.append(X); all_y.append(y); all_metrics.extend(m)
+                    all_X.append(X); all_y.append(y); all_metrics.extend(m); all_families.extend(["NASA MDP"] * len(X))
             except Exception as e:
                 logger.warning(f"Skipping {path}: {e}")
 
@@ -450,7 +469,7 @@ def load_all_real_datasets(
             try:
                 X, y, m = load_nasa_promise_csv(path)
                 if len(X) > 0:
-                    all_X.append(X); all_y.append(y); all_metrics.extend(m)
+                    all_X.append(X); all_y.append(y); all_metrics.extend(m); all_families.extend(["NASA MDP"] * len(X))
             except Exception as e:
                 logger.warning(f"Skipping {path}: {e}")
 
@@ -461,7 +480,7 @@ def load_all_real_datasets(
             try:
                 X, y, m = load_psowe_csv(path)
                 if len(X) > 0:
-                    all_X.append(X); all_y.append(y); all_metrics.extend(m)
+                    all_X.append(X); all_y.append(y); all_metrics.extend(m); all_families.extend(["PSOWE"] * len(X))
             except Exception as e:
                 logger.warning(f"Skipping {path}: {e}")
 
@@ -471,7 +490,7 @@ def load_all_real_datasets(
         try:
             X, y, m = load_software_defect_csv(sdd_path)
             if len(X) > 0:
-                all_X.append(X); all_y.append(y); all_metrics.extend(m)
+                all_X.append(X); all_y.append(y); all_metrics.extend(m); all_families.extend(["SoftwareDefectDataset"] * len(X))
         except Exception as e:
             logger.warning(f"Skipping SoftwareDefectDataset.csv: {e}")
 
@@ -482,7 +501,7 @@ def load_all_real_datasets(
             try:
                 X, y, m = load_softlab_arff(path)
                 if len(X) > 0:
-                    all_X.append(X); all_y.append(y); all_metrics.extend(m)
+                    all_X.append(X); all_y.append(y); all_metrics.extend(m); all_families.extend(["SOFTLAB"] * len(X))
             except Exception as e:
                 logger.warning(f"Skipping {path}: {e}")
 
@@ -493,7 +512,7 @@ def load_all_real_datasets(
             try:
                 X, y, m = load_cpdp_nasa_arff(path)
                 if len(X) > 0:
-                    all_X.append(X); all_y.append(y); all_metrics.extend(m)
+                    all_X.append(X); all_y.append(y); all_metrics.extend(m); all_families.extend(["CPDP NASA"] * len(X))
             except Exception as e:
                 logger.warning(f"Skipping {path}: {e}")
 
@@ -509,10 +528,22 @@ def load_all_real_datasets(
     # ── Combine ───────────────────────────────────────────────────────────────
     if not all_X:
         logger.warning("load_all_real_datasets: no datasets found — returning empty result")
-        return None, None, []
+        return (None, None, [], []) if with_family else (None, None, [])
 
     X_combined = pd.concat(all_X, ignore_index=True)
     y_combined = pd.concat(all_y, ignore_index=True)
+
+    # Remove exact duplicates (same features and label). Several files overlap
+    # (e.g. cm1 and PC1 appear in both PROMISE and the CPDP benchmark), and a
+    # row on both sides of the train/test split inflates hold-out scores.
+    dup = X_combined.assign(_label=y_combined.values).duplicated()
+    if dup.any():
+        keep = (~dup).values
+        logger.info(f"load_all_real_datasets: removed {int(dup.sum())} duplicate rows")
+        X_combined = X_combined[keep].reset_index(drop=True)
+        y_combined = y_combined[keep].reset_index(drop=True)
+        all_metrics = [m for m, k in zip(all_metrics, keep) if k]
+        all_families = [f for f, k in zip(all_families, keep) if k]
 
     # Shuffle (reproducible)
     rng = np.random.RandomState(42)
@@ -520,6 +551,7 @@ def load_all_real_datasets(
     X_combined = X_combined.iloc[idx].reset_index(drop=True)
     y_combined = y_combined.iloc[idx].reset_index(drop=True)
     all_metrics = [all_metrics[i] for i in idx]
+    all_families = [all_families[i] for i in idx]
 
     total = len(X_combined)
     n_def = int(y_combined.sum())
@@ -529,6 +561,8 @@ def load_all_real_datasets(
         f"{n_def} defective ({n_def/total*100:.1f}%) / "
         f"{total - n_def} clean ({(total-n_def)/total*100:.1f}%)"
     )
+    if with_family:
+        return X_combined, y_combined, all_metrics, all_families
     return X_combined, y_combined, all_metrics
 
 

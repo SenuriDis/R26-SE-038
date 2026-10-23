@@ -7,11 +7,9 @@ ml_risk_detector/ directory as both cwd and sys.path[0].
 Reads the BatchPredictRequest-shaped artifact from stage 1, writes the
 tier_breakdown payload that C3's ml_report_reader.py consumes.
 
-This mirrors the chain in C2's own /predict endpoint, with one deliberate
-difference: it loads the *fitted* FeatureEngineer that train.py saves to
-models/saved/feature_engineer.pkl. The API builds a bare FeatureEngineer()
-instead, which leaves it unfitted -- so it feeds raw, unnormalised features to
-a model trained on z-scored ones. See PIPELINE_NOTES.md.
+This mirrors the chain in C2's own /predict endpoint: it loads the *fitted*
+FeatureEngineer that train.py saves to models/saved/feature_engineer.pkl,
+because the model is trained on the z-scored features that it produces.
 """
 
 import json
@@ -105,7 +103,9 @@ def main() -> int:
         for m in metrics_list
     ]
 
-    predictions = detector.predict_batch(feature_matrix, metadata)
+    predictions = detector.predict_batch(
+        feature_matrix, metadata, raw_matrix=fe.raw_batch(metrics_list)
+    )
     payload_out = TestPrioritizer().prioritize(predictions, project_name=project_name)
 
     output_path.parent.mkdir(parents=True, exist_ok=True)
