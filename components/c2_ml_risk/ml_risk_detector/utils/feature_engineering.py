@@ -177,6 +177,14 @@ class FeatureEngineer:
     def transform_batch(self, metrics_list: List[CodeMetrics]) -> np.ndarray:
         """Transform a list of CodeMetrics into a 2D feature matrix."""
         return np.stack([self.transform(m) for m in metrics_list])
+
+    def raw_batch(self, metrics_list: List[CodeMetrics]) -> np.ndarray:
+        """Unnormalised feature matrix, in FEATURE_NAMES order. The model scores
+        the z-scored matrix; this one is for reporting real metric values."""
+        return np.array(
+            [[self.extract_features(m)[f] for f in self.FEATURE_NAMES] for m in metrics_list],
+            dtype=np.float32,
+        )
  
     @staticmethod
     def from_json(json_obj: Dict[str, Any]) -> CodeMetrics:

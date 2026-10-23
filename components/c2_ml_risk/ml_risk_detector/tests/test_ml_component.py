@@ -116,6 +116,13 @@ class TestFeatureEngineering:
         matrix = fe.transform_batch([sample_metrics, low_risk_metrics])
         assert matrix.shape == (2, len(FeatureEngineer.FEATURE_NAMES))
 
+    def test_raw_batch_keeps_real_values(self, feature_engineer, sample_metrics):
+        raw = feature_engineer.raw_batch([sample_metrics])
+        names = FeatureEngineer.FEATURE_NAMES
+        assert raw.shape == (1, len(names))
+        assert raw[0][names.index("cyclomatic_complexity")] == 18
+        assert raw[0][names.index("bug_history")] == 3
+
     def test_from_json_roundtrip(self, sample_metrics):
         data = {
             "function_name": sample_metrics.function_name,
