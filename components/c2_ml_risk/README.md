@@ -33,7 +33,7 @@ TestPrioritizer      HIGH ≥ 0.65 → exhaustive · MEDIUM ≥ 0.35 → boundar
 | --- | --- |
 | Training data | 20,030 unique modules (22.3% defective) from NASA MDP / PROMISE, PSOWE, the 2022 TSE CPDP benchmark (NASA, SOFTLAB) and SoftwareDefectDataset, mapped onto one 22-feature schema |
 | Imbalance | SMOTE on the training split only (k = 5, minority grown to 40% of the majority) |
-| Ensemble | Random Forest (200 trees, depth 15) · XGBoost (200 estimators, depth 5, lr 0.05) · Logistic Regression |
+| Ensemble | Random Forest (200 trees, depth 15, min 50 samples per leaf) · XGBoost (200 estimators, depth 5, lr 0.05) · Logistic Regression |
 | Explanations | Exact TreeSHAP in probability units, blended with the ensemble weights; reported with real metric values, e.g. `Lines Of Code = 87 (raises risk)` |
 | Confidence | Agreement between the two tree models plus distance from 0.5 |
 
@@ -67,12 +67,12 @@ From `models/saved/evaluation_report.json` (seed 42, stratified 80/20 split):
 
 | Metric | Value |
 | --- | --- |
-| ROC-AUC (hold-out) | 0.686 |
-| PR-AUC (hold-out, base rate 0.223) | 0.397 |
-| ROC-AUC, 5-fold CV of the full ensemble | 0.684 ± 0.005 |
-| Defects in the riskiest 30% of functions | 50.1% |
-| Defect rate in the HIGH tier | 56.1% (2.5× base rate) |
-| Cross-project ROC-AUC (train on 4 families, test on the 5th) | 0.494 – 0.727 |
+| ROC-AUC (hold-out) | 0.687 |
+| PR-AUC (hold-out, base rate 0.223) | 0.400 |
+| ROC-AUC, 5-fold CV of the full ensemble | 0.687 ± 0.005 |
+| Defects in the riskiest 30% of functions | 50.0% |
+| Defect rate in the HIGH tier | 54.8% (2.5× base rate) |
+| Cross-project ROC-AUC (train on 4 families, test on the 5th) | 0.496 – 0.726 |
 
 The public datasets carry no version-control history, so the four git process metrics are
 constant in training and do not yet influence predictions.
