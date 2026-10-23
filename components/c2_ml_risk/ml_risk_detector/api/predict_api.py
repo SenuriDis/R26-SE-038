@@ -163,7 +163,7 @@ def _request_to_metrics(req: FunctionMetricsRequest) -> CodeMetrics:
 
 # Endpoints
 
-app.get("/health")
+@app.get("/health")
 async def health():
     return {
         "status": "healthy",
@@ -265,38 +265,41 @@ async def predict(request: BatchPredictRequest):
 @app.post("/train")
 async def train_model():
     """
-    Train (or retrain) the model on synthetic data.
-    In production, replace with real dataset loading from repository mining.
+    Train (or retrain) the model on the real defect datasets under data/,
+    falling back to synthetic data when none are present (same as train.py).
     """
     global _detector, _feature_engineer
- 
+
     logger.info("Starting model training...")
- 
+
     # Import here to avoid circular deps at module load
     import sys, os
     sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
-    from data.dataset import generate_synthetic_dataset
+    from data.dataset import load_all_real_datasets, generate_synthetic_dataset
     from sklearn.model_selection import train_test_split
- 
-    X, y, metrics_list = generate_synthetic_dataset(n_samples=2000, random_state=42)
- 
+
+    X, y, metrics_list = load_all_real_datasets("data")
+    if X is None or len(X) == 0:
+        X, y, metrics_list = generate_synthetic_dataset(n_samples=3000, random_state=42)
+
     X_train, X_test, y_train, y_test = train_test_split(
         X, y, test_size=0.2, stratify=y, random_state=42
     )
- 
+
     fe = FeatureEngineer()
-    fe.fit(metrics_list[:len(X_train)])
- 
+    fe.fit_frame(X_train)
+    X_train = fe.normalise_frame(X_train)
+    X_test = fe.normalise_frame(X_test)
+
     detector = MLRiskDetector()
     detector.fit(X_train, y_train)
     metrics = detector.evaluate(X_test, y_test)
- 
+
     # Save
     os.makedirs("models/saved", exist_ok=True)
     detector.save(MODEL_PATH)
-    fe_path = MODEL_PATH.replace(".pkl", "_fe.pkl")
     import pickle
-    with open(fe_path, "wb") as f:
+    with open(FE_PATH, "wb") as f:
         pickle.dump(fe, f)
  
     _detector = detector
