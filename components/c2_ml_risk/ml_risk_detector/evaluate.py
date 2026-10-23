@@ -8,6 +8,7 @@ on the training part) and writes models/saved/evaluation_report.json with:
   - size and defect rate of each risk tier
   - stratified 5-fold cross-validation of the whole ensemble
   - global SHAP importance (mean |SHAP| over a sample of test functions)
+  - cross-project results: train on four dataset families, test on the fifth
 
 The saved model is left untouched.
 
@@ -89,8 +90,28 @@ def shap_importance(detector, X, n, seed):
     return [{"feature": f, "mean_abs_shap": round(float(v), 5)} for f, v in ranked]
 
 
+def cross_project(X, y, families, seed):
+    """Leave-one-family-out: train on four dataset families, test on the fifth.
+    Measures how well the model transfers to projects it has never seen."""
+    families = np.asarray(families)
+    results = {}
+    for held_out in sorted(set(families)):
+        test = families == held_out
+        fe = FeatureEngineer().fit_frame(X[~test])
+        detector = MLRiskDetector(random_state=seed).fit(fe.normalise_frame(X[~test]), y[~test])
+        probs = detector.predict_proba_batch(fe.normalise_frame(X[test]).values)[0]
+        yt = y[test].values
+        results[held_out] = {
+            "modules": int(test.sum()),
+            "defect_rate": round(float(yt.mean()), 4),
+            "roc_auc": round(roc_auc_score(yt, probs), 4),
+            "pr_auc": round(average_precision_score(yt, probs), 4),
+        }
+    return results
+
+
 def evaluate():
-    X, y, _ = load_all_real_datasets("data")
+    X, y, _, families = load_all_real_datasets("data", with_family=True)
     if X is None:
         sys.exit("No real datasets found under data/ -- nothing to evaluate.")
 
@@ -129,6 +150,7 @@ def evaluate():
         "gains_curve": gains_curve(yt, ensemble),
         "cross_validation": {k: round(v, 4) for k, v in detector.cross_validate(X_train, y_train, cv=5).items()},
         "shap_importance": shap_importance(detector, X_test.values.astype(np.float32), SHAP_SAMPLE, SEED),
+        "cross_project": cross_project(X, y, families, SEED),
     }
 
     os.makedirs(os.path.dirname(REPORT_PATH), exist_ok=True)
