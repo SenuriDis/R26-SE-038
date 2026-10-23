@@ -201,13 +201,18 @@ class MLRiskDetector:
         self._rf_explainer = ShapExplainer(self.rf, self.feature_names)
         self._gb_explainer = ShapExplainer(self.xgb_model, self.feature_names, background=self.background)
 
-    def predict_proba_single(self, x: np.ndarray) -> Tuple[float, float, float]:
-        x2d = x.reshape(1, -1).astype(np.float32)
-        rf_prob = float(self.rf.predict_proba(x2d)[0][1])
-        gb_prob = float(self.xgb_model.predict_proba(x2d)[0][1])
-        lr_prob = float(self.lr.predict_proba(self.scaler.transform(x2d))[0][1])
+    def predict_proba_batch(self, X: np.ndarray) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
+        """Ensemble, RF and XGBoost probabilities for every row, one call per model."""
+        X2d = np.atleast_2d(np.asarray(X, dtype=np.float32))
+        rf_prob = self.rf.predict_proba(X2d)[:, 1]
+        gb_prob = self.xgb_model.predict_proba(X2d)[:, 1]
+        lr_prob = self.lr.predict_proba(self.scaler.transform(X2d))[:, 1]
         ensemble = self.W_RF * rf_prob + self.W_XGB * gb_prob + self.W_LR * lr_prob
         return ensemble, rf_prob, gb_prob
+
+    def predict_proba_single(self, x: np.ndarray) -> Tuple[float, float, float]:
+        ensemble, rf_prob, gb_prob = self.predict_proba_batch(x.reshape(1, -1))
+        return float(ensemble[0]), float(rf_prob[0]), float(gb_prob[0])
 
     def get_shap_top_factors(self, x: np.ndarray, top_k: int = 3) -> Tuple[List[Dict], str]:
         sv_rf = self._rf_explainer.explain(x.astype(np.float32))
@@ -240,8 +245,10 @@ class MLRiskDetector:
         if not self.is_fitted:
             raise RuntimeError("Model not fitted.")
         results = []
+        ensemble_scores, rf_scores, xgb_scores = self.predict_proba_batch(feature_matrix)
         for i, x in enumerate(feature_matrix):
-            ensemble_score, rf_score, xgb_score = self.predict_proba_single(x)
+            ensemble_score = float(ensemble_scores[i])
+            rf_score, xgb_score = float(rf_scores[i]), float(xgb_scores[i])
             confidence = self.get_confidence(ensemble_score, rf_score, xgb_score)
             top_factors, explanation = self.get_shap_top_factors(x, top_k=3)
             risk_level = RiskThresholds.classify(ensemble_score)
@@ -267,8 +274,7 @@ class MLRiskDetector:
         return results
  
     def evaluate(self, X: pd.DataFrame, y: pd.Series) -> Dict[str, float]:
-        X_arr = X.values.astype(np.float32)
-        probs = np.array([self.predict_proba_single(x)[0] for x in X_arr])
+        probs = self.predict_proba_batch(X.values)[0]
         preds = (probs >= RiskThresholds.HIGH).astype(int)
         preds_recall = (probs >= RiskThresholds.MEDIUM).astype(int)
         metrics = {

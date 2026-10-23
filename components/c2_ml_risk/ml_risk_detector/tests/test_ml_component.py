@@ -188,6 +188,14 @@ class TestMLRiskDetector:
         assert 0.0 <= rf_score <= 1.0
         assert 0.0 <= xgb_score <= 1.0
 
+    def test_batch_scores_match_single(self, trained_detector, feature_engineer):
+        X, y, _ = generate_synthetic_dataset(n_samples=20, random_state=7)
+        Xn = feature_engineer.normalise_frame(X).values.astype(np.float32)
+        ensemble, rf, xgb = trained_detector.predict_proba_batch(Xn)
+        for i, x in enumerate(Xn):
+            single = trained_detector.predict_proba_single(x)
+            assert np.allclose(single, (ensemble[i], rf[i], xgb[i]), atol=1e-6)
+
     def test_high_risk_function_scores_high(self, trained_detector, feature_engineer, sample_metrics):
         x = feature_engineer.transform(sample_metrics)
         score, _, _ = trained_detector.predict_proba_single(x)
