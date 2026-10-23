@@ -103,7 +103,9 @@ def main() -> int:
         for m in metrics_list
     ]
 
-    predictions = detector.predict_batch(feature_matrix, metadata)
+    predictions = detector.predict_batch(
+        feature_matrix, metadata, raw_matrix=fe.raw_batch(metrics_list)
+    )
     payload_out = TestPrioritizer().prioritize(predictions, project_name=project_name)
 
     output_path.parent.mkdir(parents=True, exist_ok=True)

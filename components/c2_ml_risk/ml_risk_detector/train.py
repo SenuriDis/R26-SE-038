@@ -194,7 +194,9 @@ def train():
         for m in test_functions
     ]
  
-    predictions = detector.predict_batch(feature_vectors, metadata)
+    predictions = detector.predict_batch(
+        feature_vectors, metadata, raw_matrix=fe.raw_batch(test_functions)
+    )
  
     prioritizer = TestPrioritizer()
     payload = prioritizer.prioritize(predictions, project_name="payment-service-demo")

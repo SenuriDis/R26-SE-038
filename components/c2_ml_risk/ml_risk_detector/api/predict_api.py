@@ -221,7 +221,9 @@ async def predict(request: BatchPredictRequest):
     ]
  
     # Predict
-    predictions: List[RiskPrediction] = _detector.predict_batch(feature_matrix, metadata)
+    predictions: List[RiskPrediction] = _detector.predict_batch(
+        feature_matrix, metadata, raw_matrix=fe.raw_batch(metrics_list)
+    )
  
     # Prioritize
     payload = _prioritizer.prioritize(predictions, project_name=request.project_name)
