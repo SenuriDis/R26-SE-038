@@ -38,15 +38,27 @@ _feature_engineer: Optional[FeatureEngineer] = None
 _prioritizer = TestPrioritizer()
  
 MODEL_PATH = os.environ.get("MODEL_PATH", "models/saved/risk_detector.pkl")
- 
- 
+FE_PATH = MODEL_PATH.replace(".pkl", "_fe.pkl")
+
+
+def _load_feature_engineer() -> FeatureEngineer:
+    """The fitted z-score scaler saved with the model. The model is trained on
+    z-scored features, so an unfitted FeatureEngineer would feed it raw values."""
+    import pickle
+    if os.path.exists(FE_PATH):
+        with open(FE_PATH, "rb") as f:
+            return pickle.load(f)
+    logger.warning(f"No fitted FeatureEngineer at {FE_PATH}; scores will be unreliable.")
+    return FeatureEngineer()
+
+
 @app.on_event("startup")
 async def startup():
     global _detector, _feature_engineer
     if os.path.exists(MODEL_PATH):
         logger.info(f"Loading model from {MODEL_PATH}")
         _detector = MLRiskDetector.load(MODEL_PATH)
-        _feature_engineer = FeatureEngineer()
+        _feature_engineer = _load_feature_engineer()
         logger.info("Model loaded successfully.")
     else:
         logger.warning(

@@ -51,8 +51,12 @@ def train():
     # ── 2. Feature engineering ──────────────────────────────────────
     logger.info("Step 2: Fitting FeatureEngineer (z-score normalisation)...")
     fe = FeatureEngineer()
-    fe.fit(m_train)
- 
+    fe.fit_frame(X_train)
+    # The model trains on the same z-scored representation that
+    # fe.transform() produces at inference time.
+    X_train = fe.normalise_frame(X_train)
+    X_test = fe.normalise_frame(X_test)
+
     # ── 3. Train model ──────────────────────────────────────────────
     logger.info("Step 3: Training RF + XGBoost ensemble with SMOTE...")
     detector = MLRiskDetector(
@@ -62,7 +66,7 @@ def train():
         random_state=42,
     )
     detector.fit(X_train, y_train)
- 
+
     # ── 4. Evaluate ─────────────────────────────────────────────────
     logger.info("Step 4: Evaluating on hold-out test set...")
     metrics = detector.evaluate(X_test, y_test)
@@ -99,6 +103,9 @@ def train():
  
     import pickle
     with open("models/saved/feature_engineer.pkl", "wb") as f:
+        pickle.dump(fe, f)
+    # The API looks for the scaler next to the model under this name
+    with open("models/saved/risk_detector_fe.pkl", "wb") as f:
         pickle.dump(fe, f)
  
     # ── 7. Demo prediction ──────────────────────────────────────────
@@ -215,7 +222,7 @@ def train():
     logger.info(f"Sample prediction saved to {out_path}")
  
     print("\n  Training complete. Model ready for API deployment.")
-    print("  Run: uvicorn api.predict_api:app --host 0.0.0.0 --port 8002\n")
+    print("  Run: uvicorn api.predict_api:app --host 0.0.0.0 --port 8000\n")
  
     return detector, fe, metrics
  
@@ -223,3 +230,4 @@ def train():
 if __name__ == "__main__":
     train()
  
+

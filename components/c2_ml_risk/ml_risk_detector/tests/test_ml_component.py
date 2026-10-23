@@ -73,20 +73,20 @@ def low_risk_metrics():
 
 
 @pytest.fixture(scope="module")
-def trained_detector():
-    """Train a small model for testing."""
+def feature_engineer():
     X, y, metrics_list = generate_synthetic_dataset(n_samples=500, random_state=42)
-    detector = MLRiskDetector(n_estimators_rf=50, n_estimators_xgb=50, random_state=42)
-    detector.fit(X, y)
-    return detector
+    fe = FeatureEngineer()
+    fe.fit_frame(X)
+    return fe
 
 
 @pytest.fixture(scope="module")
-def feature_engineer(trained_detector):
+def trained_detector(feature_engineer):
+    """Train a small model for testing, on the same z-scored features transform() produces."""
     X, y, metrics_list = generate_synthetic_dataset(n_samples=500, random_state=42)
-    fe = FeatureEngineer()
-    fe.fit(metrics_list)
-    return fe
+    detector = MLRiskDetector(n_estimators_rf=50, n_estimators_xgb=50, random_state=42)
+    detector.fit(feature_engineer.normalise_frame(X), y)
+    return detector
 
 
 # ──────────────────────────────────────────────────────────────────────
