@@ -9,23 +9,23 @@
   },
   "models": {
     "ensemble": {
-      "roc_auc": 0.6857,
-      "pr_auc": 0.3966,
+      "roc_auc": 0.6868,
+      "pr_auc": 0.4001,
       "at_0.5": {
-        "precision": 0.4479,
-        "recall": 0.255,
-        "f1": 0.325,
-        "mcc": 0.206
+        "precision": 0.4408,
+        "recall": 0.3121,
+        "f1": 0.3654,
+        "mcc": 0.2264
       }
     },
     "random_forest": {
-      "roc_auc": 0.6792,
-      "pr_auc": 0.3854,
+      "roc_auc": 0.6882,
+      "pr_auc": 0.4027,
       "at_0.5": {
-        "precision": 0.3837,
-        "recall": 0.3893,
-        "f1": 0.3865,
-        "mcc": 0.2086
+        "precision": 0.3531,
+        "recall": 0.5649,
+        "f1": 0.4346,
+        "mcc": 0.2326
       }
     },
     "xgboost": {
@@ -50,32 +50,32 @@
     }
   },
   "proposal_targets": {
-    "precision_at_high": 0.5608,
-    "recall_at_medium": 0.6152,
-    "f1_at_high": 0.1593,
-    "roc_auc": 0.6857
+    "precision_at_high": 0.5482,
+    "recall_at_medium": 0.689,
+    "f1_at_high": 0.198,
+    "roc_auc": 0.6868
   },
   "tiers": {
     "HIGH": {
-      "functions": 148,
-      "share": 0.0369,
-      "defect_rate": 0.5608,
-      "lift": 2.51,
-      "defects": 83
+      "functions": 197,
+      "share": 0.0492,
+      "defect_rate": 0.5482,
+      "lift": 2.46,
+      "defects": 108
     },
     "MEDIUM": {
-      "functions": 1472,
-      "share": 0.3674,
-      "defect_rate": 0.3173,
-      "lift": 1.42,
-      "defects": 467
+      "functions": 1751,
+      "share": 0.4371,
+      "defect_rate": 0.2901,
+      "lift": 1.3,
+      "defects": 508
     },
     "LOW": {
-      "functions": 2386,
-      "share": 0.5956,
-      "defect_rate": 0.1442,
-      "lift": 0.65,
-      "defects": 344
+      "functions": 2058,
+      "share": 0.5137,
+      "defect_rate": 0.1351,
+      "lift": 0.61,
+      "defects": 278
     }
   },
   "gains_curve": [
@@ -85,47 +85,47 @@
     },
     {
       "inspected_pct": 5,
-      "defects_found_pct": 11.7
+      "defects_found_pct": 12.1
     },
     {
       "inspected_pct": 10,
-      "defects_found_pct": 21.6
+      "defects_found_pct": 22.5
     },
     {
       "inspected_pct": 15,
-      "defects_found_pct": 28.9
+      "defects_found_pct": 29.9
     },
     {
       "inspected_pct": 20,
-      "defects_found_pct": 36.9
+      "defects_found_pct": 36.8
     },
     {
       "inspected_pct": 25,
-      "defects_found_pct": 43.7
+      "defects_found_pct": 44.2
     },
     {
       "inspected_pct": 30,
-      "defects_found_pct": 50.1
+      "defects_found_pct": 50.0
     },
     {
       "inspected_pct": 35,
-      "defects_found_pct": 55.7
+      "defects_found_pct": 55.5
     },
     {
       "inspected_pct": 40,
-      "defects_found_pct": 61.2
+      "defects_found_pct": 61.1
     },
     {
       "inspected_pct": 45,
-      "defects_found_pct": 65.2
+      "defects_found_pct": 65.8
     },
     {
       "inspected_pct": 50,
-      "defects_found_pct": 69.8
+      "defects_found_pct": 70.0
     },
     {
       "inspected_pct": 55,
-      "defects_found_pct": 74.4
+      "defects_found_pct": 74.7
     },
     {
       "inspected_pct": 60,
@@ -133,31 +133,31 @@
     },
     {
       "inspected_pct": 65,
-      "defects_found_pct": 82.1
+      "defects_found_pct": 81.7
     },
     {
       "inspected_pct": 70,
-      "defects_found_pct": 85.7
+      "defects_found_pct": 86.1
     },
     {
       "inspected_pct": 75,
-      "defects_found_pct": 89.0
+      "defects_found_pct": 89.3
     },
     {
       "inspected_pct": 80,
-      "defects_found_pct": 92.1
+      "defects_found_pct": 91.6
     },
     {
       "inspected_pct": 85,
-      "defects_found_pct": 94.7
+      "defects_found_pct": 94.2
     },
     {
       "inspected_pct": 90,
-      "defects_found_pct": 97.0
+      "defects_found_pct": 96.8
     },
     {
       "inspected_pct": 95,
-      "defects_found_pct": 98.9
+      "defects_found_pct": 98.5
     },
     {
       "inspected_pct": 100,
@@ -165,69 +165,69 @@
     }
   ],
   "cross_validation": {
-    "cv_f1_mean": 0.3423,
-    "cv_f1_std": 0.0111,
-    "cv_auc_mean": 0.6844,
-    "cv_auc_std": 0.0046,
-    "cv_pr_auc_mean": 0.399,
-    "cv_pr_auc_std": 0.0128
+    "cv_f1_mean": 0.3671,
+    "cv_f1_std": 0.0134,
+    "cv_auc_mean": 0.6865,
+    "cv_auc_std": 0.0049,
+    "cv_pr_auc_mean": 0.4023,
+    "cv_pr_auc_std": 0.0116
   },
   "shap_importance": [
     {
       "feature": "lines_of_code",
-      "mean_abs_shap": 0.0469
+      "mean_abs_shap": 0.04916
     },
     {
       "feature": "complexity_density",
-      "mean_abs_shap": 0.02486
+      "mean_abs_shap": 0.02462
     },
     {
       "feature": "num_conditionals",
-      "mean_abs_shap": 0.0241
+      "mean_abs_shap": 0.02319
     },
     {
       "feature": "total_coupling",
-      "mean_abs_shap": 0.01536
+      "mean_abs_shap": 0.01492
     },
     {
       "feature": "complexity_nesting_product",
-      "mean_abs_shap": 0.01161
+      "mean_abs_shap": 0.01152
     },
     {
       "feature": "coupling_ratio",
-      "mean_abs_shap": 0.01112
-    },
-    {
-      "feature": "num_parameters",
-      "mean_abs_shap": 0.01042
+      "mean_abs_shap": 0.01016
     },
     {
       "feature": "num_loops",
-      "mean_abs_shap": 0.01027
-    },
-    {
-      "feature": "fan_out",
-      "mean_abs_shap": 0.00984
-    },
-    {
-      "feature": "fan_in",
-      "mean_abs_shap": 0.00936
+      "mean_abs_shap": 0.00964
     },
     {
       "feature": "cyclomatic_complexity",
-      "mean_abs_shap": 0.00867
+      "mean_abs_shap": 0.00896
     },
     {
-      "feature": "nesting_depth",
-      "mean_abs_shap": 0.0086
+      "feature": "fan_in",
+      "mean_abs_shap": 0.00888
+    },
+    {
+      "feature": "num_parameters",
+      "mean_abs_shap": 0.00873
+    },
+    {
+      "feature": "fan_out",
+      "mean_abs_shap": 0.00847
     },
     {
       "feature": "structural_complexity",
-      "mean_abs_shap": 0.00824
+      "mean_abs_shap": 0.00811
+    },
+    {
+      "feature": "nesting_depth",
+      "mean_abs_shap": 0.00713
     },
     {
       "feature": "dependency_count",
-      "mean_abs_shap": 0.0049
+      "mean_abs_shap": 0.00308
     },
     {
       "feature": "commit_frequency",
@@ -266,32 +266,32 @@
     "CPDP NASA": {
       "modules": 2369,
       "defect_rate": 0.1575,
-      "roc_auc": 0.657,
-      "pr_auc": 0.2367
+      "roc_auc": 0.6564,
+      "pr_auc": 0.2351
     },
     "NASA MDP": {
       "modules": 10547,
       "defect_rate": 0.2362,
-      "roc_auc": 0.5891,
-      "pr_auc": 0.2958
+      "roc_auc": 0.6178,
+      "pr_auc": 0.3198
     },
     "PSOWE": {
       "modules": 5765,
       "defect_rate": 0.212,
-      "roc_auc": 0.5617,
-      "pr_auc": 0.2297
+      "roc_auc": 0.5889,
+      "pr_auc": 0.2441
     },
     "SOFTLAB": {
       "modules": 349,
       "defect_rate": 0.1719,
-      "roc_auc": 0.727,
-      "pr_auc": 0.3458
+      "roc_auc": 0.7263,
+      "pr_auc": 0.351
     },
     "SoftwareDefectDataset": {
       "modules": 1000,
       "defect_rate": 0.326,
-      "roc_auc": 0.4938,
-      "pr_auc": 0.3254
+      "roc_auc": 0.4959,
+      "pr_auc": 0.3262
     }
   }
 }
