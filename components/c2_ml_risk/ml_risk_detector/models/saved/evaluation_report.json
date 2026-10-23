@@ -261,5 +261,37 @@
       "feature": "has_recursion",
       "mean_abs_shap": 0.0
     }
-  ]
+  ],
+  "cross_project": {
+    "CPDP NASA": {
+      "modules": 2369,
+      "defect_rate": 0.1575,
+      "roc_auc": 0.657,
+      "pr_auc": 0.2367
+    },
+    "NASA MDP": {
+      "modules": 10547,
+      "defect_rate": 0.2362,
+      "roc_auc": 0.5891,
+      "pr_auc": 0.2958
+    },
+    "PSOWE": {
+      "modules": 5765,
+      "defect_rate": 0.212,
+      "roc_auc": 0.5617,
+      "pr_auc": 0.2297
+    },
+    "SOFTLAB": {
+      "modules": 349,
+      "defect_rate": 0.1719,
+      "roc_auc": 0.727,
+      "pr_auc": 0.3458
+    },
+    "SoftwareDefectDataset": {
+      "modules": 1000,
+      "defect_rate": 0.326,
+      "roc_auc": 0.4938,
+      "pr_auc": 0.3254
+    }
+  }
 }
