@@ -166,7 +166,7 @@ class MLRiskDetector:
         self._gb_explainer: Optional[ShapExplainer] = None
 
         self.rf = RandomForestClassifier(
-            n_estimators=n_estimators_rf, max_depth=15, min_samples_leaf=3,
+            n_estimators=n_estimators_rf, max_depth=15, min_samples_leaf=50,
             class_weight="balanced", random_state=random_state, n_jobs=-1,
         )
         self.xgb_model = XGBClassifier(
