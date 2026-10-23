@@ -353,6 +353,16 @@ class TestDataset:
         X, y, _ = generate_synthetic_dataset(n_samples=200)
         assert not X.isnull().any().any()
 
+    def test_cpdp_buggy_labels_are_positive(self):
+        pytest.importorskip("scipy")
+        path = os.path.join(os.path.dirname(os.path.dirname(__file__)),
+                            "data", "2022_TSE_CPDP_DATA", "NASA", "PC1.arff")
+        if not os.path.exists(path):
+            pytest.skip("CPDP data not present")
+        from data.dataset import load_cpdp_nasa_arff
+        X, y, _ = load_cpdp_nasa_arff(path)
+        assert y.sum() > 0
+
 
 if __name__ == "__main__":
     pytest.main([__file__, "-v"])

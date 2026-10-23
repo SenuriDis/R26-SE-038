@@ -377,21 +377,23 @@ def load_cpdp_nasa_arff(path: str) -> Tuple[pd.DataFrame, pd.Series, List[CodeMe
 
     df.columns = [c.strip().lower() for c in df.columns]
 
-    # Label is always the last column
+    # Label is always the last column. PC1/PC3/PC4/cm1 spell it buggy/clean.
     label_col = df.columns[-1]
     raw_labels = df[label_col].astype(str).str.strip().str.lower()
-    labels = raw_labels.map(lambda v: 1 if v in ("y", "yes", "true", "1", "1.0") else 0)
+    labels = raw_labels.map(lambda v: 1 if v in ("y", "yes", "true", "1", "1.0", "buggy", "defective") else 0)
 
     rows = []
     for i, row in df.iterrows():
-        # McCabe columns — same as PROMISE CSV Schema A
-        cc      = max(float(row.get("v(g)", row.get("sumcyclomatic", row.get("maxcyclomatic", 1)))), 1.0)
-        nesting = max(float(row.get("iv(g)", row.get("maxcyclomaticmodified", 1))), 0.0)
-        loc     = max(float(row.get("loc", row.get("linecnt", row.get("locdecl", 10)))), 1.0)
-        params  = max(float(row.get("uniq_opnd", row.get("total_opnd", 2))), 0.0)
-        conds   = max(float(row.get("branchcount", row.get("countbranch", 0))), 0.0)
-        fan_out = max(float(row.get("uniq_op", 5)) / 5.0, 0.0)
-        fan_in  = max(float(row.get("uniq_opnd", 3)) / 3.0, 0.0)
+        # McCabe columns — same as PROMISE CSV Schema A. cm1/PC3/PC4 use the
+        # long upper-case NASA names (lower-cased above), so each lookup falls
+        # through to those.
+        cc      = max(float(row.get("v(g)", row.get("cyclomatic_complexity", row.get("sumcyclomatic", 1)))), 1.0)
+        nesting = max(float(row.get("iv(g)", row.get("essential_complexity", 1))), 0.0)
+        loc     = max(float(row.get("loc", row.get("loc_total", row.get("linecnt", 10)))), 1.0)
+        params  = max(float(row.get("uniq_opnd", row.get("num_unique_operands", 2))), 0.0)
+        conds   = max(float(row.get("branchcount", row.get("branch_count", 0))), 0.0)
+        fan_out = max(float(row.get("uniq_op", row.get("num_unique_operators", 5))) / 5.0, 0.0)
+        fan_in  = max(float(row.get("uniq_opnd", row.get("num_unique_operands", 3))) / 3.0, 0.0)
 
         feat = _build_feature_row(
             cc=cc, nesting=nesting, loc=loc, num_params=params,
