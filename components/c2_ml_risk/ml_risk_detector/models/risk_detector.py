@@ -88,14 +88,18 @@ class ShapExplainer:
                 feature_perturbation="interventional", model_output="probability",
             )
 
-    def explain(self, x: np.ndarray) -> np.ndarray:
-        values = self._explainer.shap_values(x.reshape(1, -1).astype(np.float32))
+    def explain_batch(self, X: np.ndarray) -> np.ndarray:
+        """SHAP values for every row, shape (rows, features), in one shap call."""
+        values = self._explainer.shap_values(np.atleast_2d(X).astype(np.float32))
         if isinstance(values, list):    # one array per class
             values = values[1]
         values = np.asarray(values)
         if values.ndim == 3:            # (samples, features, classes)
             values = values[..., 1]
-        return values[0]
+        return values
+
+    def explain(self, x: np.ndarray) -> np.ndarray:
+        return self.explain_batch(x.reshape(1, -1))[0]
  
  
 # ──────────────────────────────────────────────────────────────────────

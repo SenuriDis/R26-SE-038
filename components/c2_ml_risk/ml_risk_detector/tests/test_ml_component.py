@@ -232,6 +232,15 @@ class TestMLRiskDetector:
         prob = float(trained_detector.xgb_model.predict_proba(x.reshape(1, -1))[0][1])
         assert abs(base + phi.sum() - prob) < 1e-3
 
+    def test_shap_batch_matches_single_rows(self, trained_detector, feature_engineer):
+        X, y, _ = generate_synthetic_dataset(n_samples=10, random_state=11)
+        Xn = feature_engineer.normalise_frame(X).values.astype(np.float32)
+        for explainer in (trained_detector._rf_explainer, trained_detector._gb_explainer):
+            batch = explainer.explain_batch(Xn)
+            assert batch.shape == Xn.shape
+            for i, x in enumerate(Xn):
+                assert np.allclose(batch[i], explainer.explain(x), atol=1e-6)
+
     def test_shap_explanation_text(self, trained_detector, feature_engineer, sample_metrics):
         x = feature_engineer.transform(sample_metrics)
         _, explanation = trained_detector.get_shap_top_factors(x)
