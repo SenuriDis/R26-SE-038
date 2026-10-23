@@ -14,7 +14,7 @@ import numpy as np
 sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
  
 from utils.feature_engineering import FeatureEngineer, CodeMetrics
-from models.risk_detector import MLRiskDetector, RiskPrediction
+from models.risk_detector import MLRiskDetector, RiskPrediction, RiskThresholds
 from models.prioritizer import TestPrioritizer
  
 logging.basicConfig(level=logging.INFO)
@@ -168,7 +168,7 @@ async def health():
     return {
         "status": "healthy",
         "model_loaded": _detector is not None and _detector.is_fitted,
-        "version": "1.0.0",
+        "version": MLRiskDetector.MODEL_VERSION,
     }
  
  
@@ -180,10 +180,14 @@ async def model_info():
         "model_version": MLRiskDetector.MODEL_VERSION,
         "features": _detector.feature_names,
         "thresholds": {
-            "HIGH": 0.65,
-            "MEDIUM": 0.35,
+            "HIGH": RiskThresholds.HIGH,
+            "MEDIUM": RiskThresholds.MEDIUM,
         },
-        "ensemble": "RandomForest(40%) + XGBoost(50%) + LogisticRegression(10%)",
+        "ensemble": (
+            f"RandomForest({MLRiskDetector.W_RF:.0%}) + XGBoost({MLRiskDetector.W_XGB:.0%}) "
+            f"+ LogisticRegression({MLRiskDetector.W_LR:.0%})"
+        ),
+        "explainer": "shap.TreeExplainer",
     }
  
  
