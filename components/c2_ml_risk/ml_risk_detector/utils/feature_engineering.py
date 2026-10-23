@@ -131,12 +131,35 @@ class FeatureEngineer:
     def fit(self, metrics_list: List[CodeMetrics]) -> "FeatureEngineer":
         """Compute z-score stats from a list of CodeMetrics (training data)."""
         df = pd.DataFrame([self.extract_features(m) for m in metrics_list])
-        self._fit_stats = {
-            col: {"mean": df[col].mean(), "std": max(df[col].std(), 1e-8)}
-            for col in df.columns
-        }
+        self._fit_stats = self._stats(df)
         logger.info(f"FeatureEngineer fitted on {len(metrics_list)} samples.")
         return self
+
+    def fit_frame(self, X: pd.DataFrame) -> "FeatureEngineer":
+        """Compute z-score stats from the training feature matrix itself."""
+        self._fit_stats = self._stats(X[self.FEATURE_NAMES])
+        logger.info(f"FeatureEngineer fitted on {len(X)} samples.")
+        return self
+
+    def normalise_frame(self, X: pd.DataFrame) -> pd.DataFrame:
+        """Z-score a feature matrix with the fitted stats, so the model trains on
+        exactly the representation transform() produces at inference time."""
+        if self._fit_stats is None:
+            raise RuntimeError("FeatureEngineer is not fitted.")
+        out = X[self.FEATURE_NAMES].astype(float).copy()
+        for f in self.FEATURE_NAMES:
+            out[f] = (out[f] - self._fit_stats[f]["mean"]) / self._fit_stats[f]["std"]
+        return out
+
+    def _stats(self, df: pd.DataFrame) -> Dict[str, Dict]:
+        # A constant column (e.g. git metrics absent from a dataset) gets std 1,
+        # so an unseen value at inference shifts by its raw difference rather than
+        # exploding by 1e8.
+        stats = {}
+        for col in df.columns:
+            std = df[col].std()
+            stats[col] = {"mean": df[col].mean(), "std": std if std > 1e-8 else 1.0}
+        return stats
  
     def transform(self, metrics: CodeMetrics) -> np.ndarray:
         """Return a normalised feature vector for a single CodeMetrics object."""
