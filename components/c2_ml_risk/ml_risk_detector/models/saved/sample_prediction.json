@@ -5,7 +5,7 @@
     "high_risk_count": 0,
     "medium_risk_count": 2,
     "low_risk_count": 1,
-    "average_risk_score": 0.3373,
+    "average_risk_score": 0.3742,
     "high_risk_pct": 0.0
   },
   "tier_breakdown": {
@@ -17,82 +17,82 @@
       "description": "Risk score 0.35\u20130.65 \u2014 boundary tests recommended",
       "functions": [
         {
-          "function_name": "validate_payment",
-          "file_path": "src/payment.py",
-          "start_line": 112,
-          "end_line": 140,
-          "risk_score": 0.4061,
-          "risk_level": "MEDIUM",
-          "confidence": 0.6486,
-          "priority_rank": 1,
-          "top_risk_factors": [
-            {
-              "feature": "complexity_nesting_product",
-              "contribution": 0.024504538506305445,
-              "value": 27.0,
-              "direction": "increases"
-            },
-            {
-              "feature": "structural_complexity",
-              "contribution": -0.011659211846221564,
-              "value": 8.0,
-              "direction": "decreases"
-            },
-            {
-              "feature": "lines_of_code",
-              "contribution": 0.009229237319399263,
-              "value": 45.0,
-              "direction": "increases"
-            }
-          ],
-          "explanation_text": "Risk driven by: Complexity Nesting Product = 27 (raises risk), Structural Complexity = 8 (lowers risk), Lines Of Code = 45 (raises risk)",
-          "recommended_test_depth": "boundary",
-          "test_types": [
-            "boundary_tests",
-            "typical_inputs"
-          ],
-          "ensemble_score": 0.4061,
-          "rf_score": 0.4482,
-          "xgb_score": 0.3576
-        },
-        {
           "function_name": "process_transaction",
           "file_path": "src/payment.py",
           "start_line": 45,
           "end_line": 78,
-          "risk_score": 0.3799,
+          "risk_score": 0.4499,
           "risk_level": "MEDIUM",
-          "confidence": 0.6673,
-          "priority_rank": 2,
+          "confidence": 0.5097,
+          "priority_rank": 1,
           "top_risk_factors": [
             {
-              "feature": "coupling_ratio",
-              "contribution": -0.018227118158335595,
-              "value": 3.0,
-              "direction": "decreases"
-            },
-            {
-              "feature": "num_conditionals",
-              "contribution": 0.017893512512732426,
-              "value": 12.0,
+              "feature": "lines_of_code",
+              "contribution": 0.02697223121123056,
+              "value": 87.0,
               "direction": "increases"
             },
             {
               "feature": "cyclomatic_complexity",
-              "contribution": 0.016058961219823063,
+              "contribution": 0.021417313324338386,
               "value": 18.0,
+              "direction": "increases"
+            },
+            {
+              "feature": "num_conditionals",
+              "contribution": 0.019920512315450223,
+              "value": 12.0,
               "direction": "increases"
             }
           ],
-          "explanation_text": "Risk driven by: Coupling Ratio = 3 (lowers risk), Num Conditionals = 12 (raises risk), Cyclomatic Complexity = 18 (raises risk)",
+          "explanation_text": "Risk driven by: Lines Of Code = 87 (raises risk), Cyclomatic Complexity = 18 (raises risk), Num Conditionals = 12 (raises risk)",
           "recommended_test_depth": "boundary",
           "test_types": [
             "boundary_tests",
             "typical_inputs"
           ],
-          "ensemble_score": 0.3799,
-          "rf_score": 0.4151,
+          "ensemble_score": 0.4499,
+          "rf_score": 0.5902,
           "xgb_score": 0.3094
+        },
+        {
+          "function_name": "validate_payment",
+          "file_path": "src/payment.py",
+          "start_line": 112,
+          "end_line": 140,
+          "risk_score": 0.4463,
+          "risk_level": "MEDIUM",
+          "confidence": 0.5582,
+          "priority_rank": 2,
+          "top_risk_factors": [
+            {
+              "feature": "complexity_nesting_product",
+              "contribution": 0.02429029284042422,
+              "value": 27.0,
+              "direction": "increases"
+            },
+            {
+              "feature": "lines_of_code",
+              "contribution": 0.01842390511074926,
+              "value": 45.0,
+              "direction": "increases"
+            },
+            {
+              "feature": "complexity_density",
+              "contribution": 0.010405880333235463,
+              "value": 0.20000000298023224,
+              "direction": "increases"
+            }
+          ],
+          "explanation_text": "Risk driven by: Complexity Nesting Product = 27 (raises risk), Lines Of Code = 45 (raises risk), Complexity Density = 0.20 (raises risk)",
+          "recommended_test_depth": "boundary",
+          "test_types": [
+            "boundary_tests",
+            "typical_inputs"
+          ],
+          "ensemble_score": 0.4463,
+          "rf_score": 0.5487,
+          "xgb_score": 0.3576
         }
       ]
     },
@@ -104,26 +104,26 @@
           "file_path": "src/output.py",
           "start_line": 34,
           "end_line": 52,
-          "risk_score": 0.2259,
+          "risk_score": 0.2265,
           "risk_level": "LOW",
-          "confidence": 0.8247,
+          "confidence": 0.8232,
           "priority_rank": 3,
           "top_risk_factors": [
             {
               "feature": "lines_of_code",
-              "contribution": -0.04543615675375311,
+              "contribution": -0.04908941886518188,
               "value": 18.0,
               "direction": "decreases"
             },
             {
               "feature": "num_conditionals",
-              "contribution": -0.04236742224173183,
+              "contribution": -0.037618557021815636,
               "value": 1.0,
               "direction": "decreases"
             },
             {
               "feature": "complexity_nesting_product",
-              "contribution": -0.026151917204730184,
+              "contribution": -0.02415111678401425,
               "value": 2.0,
               "direction": "decreases"
             }
@@ -133,8 +133,8 @@
           "test_types": [
             "happy_path"
           ],
-          "ensemble_score": 0.2259,
-          "rf_score": 0.2605,
+          "ensemble_score": 0.2265,
+          "rf_score": 0.2622,
           "xgb_score": 0.1616
         }
       ]
@@ -142,108 +142,108 @@
   },
   "ranked_functions": [
     {
-      "function_name": "validate_payment",
-      "file_path": "src/payment.py",
-      "start_line": 112,
-      "end_line": 140,
-      "risk_score": 0.4061,
-      "risk_level": "MEDIUM",
-      "confidence": 0.6486,
-      "priority_rank": 1,
-      "top_risk_factors": [
-        {
-          "feature": "complexity_nesting_product",
-          "contribution": 0.024504538506305445,
-          "value": 27.0,
-          "direction": "increases"
-        },
-        {
-          "feature": "structural_complexity",
-          "contribution": -0.011659211846221564,
-          "value": 8.0,
-          "direction": "decreases"
-        },
-        {
-          "feature": "lines_of_code",
-          "contribution": 0.009229237319399263,
-          "value": 45.0,
-          "direction": "increases"
-        }
-      ],
-      "explanation_text": "Risk driven by: Complexity Nesting Product = 27 (raises risk), Structural Complexity = 8 (lowers risk), Lines Of Code = 45 (raises risk)",
-      "recommended_test_depth": "boundary",
-      "test_types": [
-        "boundary_tests",
-        "typical_inputs"
-      ],
-      "ensemble_score": 0.4061,
-      "rf_score": 0.4482,
-      "xgb_score": 0.3576
-    },
-    {
       "function_name": "process_transaction",
       "file_path": "src/payment.py",
       "start_line": 45,
       "end_line": 78,
-      "risk_score": 0.3799,
+      "risk_score": 0.4499,
       "risk_level": "MEDIUM",
-      "confidence": 0.6673,
-      "priority_rank": 2,
+      "confidence": 0.5097,
+      "priority_rank": 1,
       "top_risk_factors": [
         {
-          "feature": "coupling_ratio",
-          "contribution": -0.018227118158335595,
-          "value": 3.0,
-          "direction": "decreases"
-        },
-        {
-          "feature": "num_conditionals",
-          "contribution": 0.017893512512732426,
-          "value": 12.0,
+          "feature": "lines_of_code",
+          "contribution": 0.02697223121123056,
+          "value": 87.0,
           "direction": "increases"
         },
         {
           "feature": "cyclomatic_complexity",
-          "contribution": 0.016058961219823063,
+          "contribution": 0.021417313324338386,
           "value": 18.0,
+          "direction": "increases"
+        },
+        {
+          "feature": "num_conditionals",
+          "contribution": 0.019920512315450223,
+          "value": 12.0,
           "direction": "increases"
         }
       ],
-      "explanation_text": "Risk driven by: Coupling Ratio = 3 (lowers risk), Num Conditionals = 12 (raises risk), Cyclomatic Complexity = 18 (raises risk)",
+      "explanation_text": "Risk driven by: Lines Of Code = 87 (raises risk), Cyclomatic Complexity = 18 (raises risk), Num Conditionals = 12 (raises risk)",
       "recommended_test_depth": "boundary",
       "test_types": [
         "boundary_tests",
         "typical_inputs"
       ],
-      "ensemble_score": 0.3799,
-      "rf_score": 0.4151,
+      "ensemble_score": 0.4499,
+      "rf_score": 0.5902,
       "xgb_score": 0.3094
+    },
+    {
+      "function_name": "validate_payment",
+      "file_path": "src/payment.py",
+      "start_line": 112,
+      "end_line": 140,
+      "risk_score": 0.4463,
+      "risk_level": "MEDIUM",
+      "confidence": 0.5582,
+      "priority_rank": 2,
+      "top_risk_factors": [
+        {
+          "feature": "complexity_nesting_product",
+          "contribution": 0.02429029284042422,
+          "value": 27.0,
+          "direction": "increases"
+        },
+        {
+          "feature": "lines_of_code",
+          "contribution": 0.01842390511074926,
+          "value": 45.0,
+          "direction": "increases"
+        },
+        {
+          "feature": "complexity_density",
+          "contribution": 0.010405880333235463,
+          "value": 0.20000000298023224,
+          "direction": "increases"
+        }
+      ],
+      "explanation_text": "Risk driven by: Complexity Nesting Product = 27 (raises risk), Lines Of Code = 45 (raises risk), Complexity Density = 0.20 (raises risk)",
+      "recommended_test_depth": "boundary",
+      "test_types": [
+        "boundary_tests",
+        "typical_inputs"
+      ],
+      "ensemble_score": 0.4463,
+      "rf_score": 0.5487,
+      "xgb_score": 0.3576
     },
     {
       "function_name": "format_receipt",
       "file_path": "src/output.py",
       "start_line": 34,
       "end_line": 52,
-      "risk_score": 0.2259,
+      "risk_score": 0.2265,
       "risk_level": "LOW",
-      "confidence": 0.8247,
+      "confidence": 0.8232,
       "priority_rank": 3,
       "top_risk_factors": [
         {
           "feature": "lines_of_code",
-          "contribution": -0.04543615675375311,
+          "contribution": -0.04908941886518188,
           "value": 18.0,
           "direction": "decreases"
         },
         {
           "feature": "num_conditionals",
-          "contribution": -0.04236742224173183,
+          "contribution": -0.037618557021815636,
           "value": 1.0,
           "direction": "decreases"
         },
         {
           "feature": "complexity_nesting_product",
-          "contribution": -0.026151917204730184,
+          "contribution": -0.02415111678401425,
           "value": 2.0,
           "direction": "decreases"
         }
@@ -253,8 +253,8 @@
       "test_types": [
         "happy_path"
       ],
-      "ensemble_score": 0.2259,
-      "rf_score": 0.2605,
+      "ensemble_score": 0.2265,
+      "rf_score": 0.2622,
       "xgb_score": 0.1616
     }
   ]
