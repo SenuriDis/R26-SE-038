@@ -8,12 +8,11 @@ import sys, os
 sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
 
 import numpy as np
-import pandas as pd
 import pytest
 import json
 
 from utils.feature_engineering import FeatureEngineer, CodeMetrics
-from models.risk_detector import MLRiskDetector, RiskThresholds, RiskPrediction
+from models.risk_detector import MLRiskDetector, RiskThresholds
 # Aliased: the TestPrioritizer test class below would otherwise shadow it
 from models.prioritizer import TestPrioritizer as Prioritizer
 from data.dataset import generate_synthetic_dataset
