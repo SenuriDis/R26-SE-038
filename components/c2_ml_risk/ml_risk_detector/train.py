@@ -227,7 +227,7 @@ def run_demo(detector: MLRiskDetector, fe: FeatureEngineer) -> dict:
     print("\n  Top SHAP factors:")
     for factor in top.top_risk_factors:
         bar = "█" * int(abs(factor["contribution"]) * 80)
-        print(f"    {factor['feature']:<35} +{factor['contribution']:+.3f}  {bar}")
+        print(f"    {factor['feature']:<35} {factor['contribution']:+.3f}  {bar}")
  
     # JSON file save
     out_path = "models/saved/sample_prediction.json"
