@@ -291,7 +291,7 @@ class TestMLRiskDetector:
     def test_evaluate_returns_metrics(self, trained_detector):
         X, y, _ = generate_synthetic_dataset(n_samples=100, random_state=77)
         metrics = trained_detector.evaluate(X, y)
-        required = {"precision", "recall", "f1_score", "roc_auc"}
+        required = {"precision", "recall", "f1_score", "roc_auc", "pr_auc", "mcc"}
         assert required.issubset(set(metrics.keys()))
 
     def test_confidence_between_0_and_1(self, trained_detector):

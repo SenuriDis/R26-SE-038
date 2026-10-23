@@ -10,7 +10,10 @@ import shap
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.linear_model import LogisticRegression
 from sklearn.model_selection import StratifiedKFold, cross_val_score
-from sklearn.metrics import f1_score, precision_score, recall_score, roc_auc_score, classification_report
+from sklearn.metrics import (
+    f1_score, precision_score, recall_score, roc_auc_score, classification_report,
+    average_precision_score, matthews_corrcoef,
+)
 from sklearn.preprocessing import StandardScaler
 from sklearn.neighbors import NearestNeighbors
 from xgboost import XGBClassifier
@@ -295,6 +298,9 @@ class MLRiskDetector:
             "recall": recall_score(y, preds_recall, zero_division=0),
             "f1_score": f1_score(y, preds, zero_division=0),
             "roc_auc": roc_auc_score(y, probs),
+            # Threshold-free and imbalance-aware: a random ranker scores the base rate
+            "pr_auc": average_precision_score(y, probs),
+            "mcc": matthews_corrcoef(y, (probs >= 0.5).astype(int)),
         }
         for k, v in metrics.items():
             logger.info(f"  {k}: {v:.4f}")
