@@ -100,6 +100,11 @@ class ShapExplainer:
 # Data classes
 # ──────────────────────────────────────────────────────────────────────
  
+def _fmt_value(v: float) -> str:
+    """Whole numbers without decimals (CC = 18), ratios to two places (0.21)."""
+    return str(int(round(v))) if abs(v - round(v)) < 1e-6 else f"{v:.2f}"
+
+
 @dataclass
 class RiskPrediction:
     function_name: str
@@ -214,24 +219,28 @@ class MLRiskDetector:
         ensemble, rf_prob, gb_prob = self.predict_proba_batch(x.reshape(1, -1))
         return float(ensemble[0]), float(rf_prob[0]), float(gb_prob[0])
 
-    def get_shap_top_factors(self, x: np.ndarray, top_k: int = 3) -> Tuple[List[Dict], str]:
+    def get_shap_top_factors(self, x: np.ndarray, top_k: int = 3,
+                             raw: Optional[np.ndarray] = None) -> Tuple[List[Dict], str]:
+        """Top-k SHAP factors for one function. `x` is the model input; `raw`, when
+        given, is the same row unnormalised and is what gets reported as the value."""
         sv_rf = self._rf_explainer.explain(x.astype(np.float32))
         sv_gb = self._gb_explainer.explain(x.astype(np.float32))
         # SHAP is additive across models, so blend with the ensemble's own weights
         # (renormalised over the two tree models, which carry 90% of the score).
         sv = (self.W_RF * sv_rf + self.W_XGB * sv_gb) / (self.W_RF + self.W_XGB)
+        shown = x if raw is None else raw
         sorted_idx = np.argsort(np.abs(sv))[::-1][:top_k]
         factors = []
         for idx in sorted_idx:
             factors.append({
                 "feature": self.feature_names[idx],
                 "contribution": float(sv[idx]),
-                "value": float(x[idx]),
+                "value": float(shown[idx]),
                 "direction": "increases" if sv[idx] > 0 else "decreases",
             })
         parts = [
-            f"{f['feature'].replace('_', ' ').title()} "
-            f"({'high' if f['contribution'] > 0 else 'low'}: {f['value']:.1f})"
+            f"{f['feature'].replace('_', ' ').title()} = {_fmt_value(f['value'])} "
+            f"({'raises' if f['direction'] == 'increases' else 'lowers'} risk)"
             for f in factors
         ]
         return factors, "Risk driven by: " + ", ".join(parts)
@@ -241,7 +250,10 @@ class MLRiskDetector:
         decisiveness = abs(score - 0.5) * 2
         return float(min(0.5 * agreement + 0.5 * decisiveness + 0.1, 1.0))
  
-    def predict_batch(self, feature_matrix: np.ndarray, metadata: List[Dict]) -> List[RiskPrediction]:
+    def predict_batch(self, feature_matrix: np.ndarray, metadata: List[Dict],
+                      raw_matrix: Optional[np.ndarray] = None) -> List[RiskPrediction]:
+        """Score, explain and rank a batch. `raw_matrix` (optional, same shape as
+        `feature_matrix` but unnormalised) supplies the values shown in explanations."""
         if not self.is_fitted:
             raise RuntimeError("Model not fitted.")
         results = []
@@ -250,7 +262,8 @@ class MLRiskDetector:
             ensemble_score = float(ensemble_scores[i])
             rf_score, xgb_score = float(rf_scores[i]), float(xgb_scores[i])
             confidence = self.get_confidence(ensemble_score, rf_score, xgb_score)
-            top_factors, explanation = self.get_shap_top_factors(x, top_k=3)
+            raw = raw_matrix[i] if raw_matrix is not None else None
+            top_factors, explanation = self.get_shap_top_factors(x, top_k=3, raw=raw)
             risk_level = RiskThresholds.classify(ensemble_score)
             meta = metadata[i] if i < len(metadata) else {}
             results.append(RiskPrediction(

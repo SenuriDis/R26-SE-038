@@ -239,6 +239,15 @@ class TestMLRiskDetector:
         assert isinstance(explanation, str)
         assert len(explanation) > 10
 
+    def test_explanation_reports_raw_values(self, trained_detector, feature_engineer, sample_metrics):
+        x = feature_engineer.transform(sample_metrics)
+        raw = feature_engineer.raw_batch([sample_metrics])[0]
+        factors, explanation = trained_detector.get_shap_top_factors(x, raw=raw)
+        names = FeatureEngineer.FEATURE_NAMES
+        for f in factors:
+            assert f["value"] == pytest.approx(raw[names.index(f["feature"])])
+        assert "raises risk" in explanation or "lowers risk" in explanation
+
     def test_batch_predict_length(self, trained_detector, feature_engineer, sample_metrics, low_risk_metrics):
         metrics_list = [sample_metrics, low_risk_metrics]
         feature_matrix = feature_engineer.transform_batch(metrics_list)
