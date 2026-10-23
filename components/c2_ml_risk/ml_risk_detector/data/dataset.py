@@ -516,6 +516,17 @@ def load_all_real_datasets(
     X_combined = pd.concat(all_X, ignore_index=True)
     y_combined = pd.concat(all_y, ignore_index=True)
 
+    # Remove exact duplicates (same features and label). Several files overlap
+    # (e.g. cm1 and PC1 appear in both PROMISE and the CPDP benchmark), and a
+    # row on both sides of the train/test split inflates hold-out scores.
+    dup = X_combined.assign(_label=y_combined.values).duplicated()
+    if dup.any():
+        keep = (~dup).values
+        logger.info(f"load_all_real_datasets: removed {int(dup.sum())} duplicate rows")
+        X_combined = X_combined[keep].reset_index(drop=True)
+        y_combined = y_combined[keep].reset_index(drop=True)
+        all_metrics = [m for m, k in zip(all_metrics, keep) if k]
+
     # Shuffle (reproducible)
     rng = np.random.RandomState(42)
     idx = rng.permutation(len(X_combined))
