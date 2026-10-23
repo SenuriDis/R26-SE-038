@@ -6,6 +6,7 @@ import logging
 from typing import Dict, List, Tuple, Optional, Any
 from dataclasses import dataclass, field
  
+import shap
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.linear_model import LogisticRegression
 from sklearn.model_selection import StratifiedKFold, cross_val_score
@@ -13,7 +14,7 @@ from sklearn.metrics import f1_score, precision_score, recall_score, roc_auc_sco
 from sklearn.preprocessing import StandardScaler
 from sklearn.neighbors import NearestNeighbors
 from xgboost import XGBClassifier
- 
+
 logger = logging.getLogger(__name__)
  
  
@@ -61,29 +62,38 @@ class SimpleSMOTE:
  
  
 # ──────────────────────────────────────────────────────────────────────
-# Permutation Explainer (SHAP-compatible schema, model-agnostic)
+# SHAP Explainer (shap.TreeExplainer, probability space)
 # ──────────────────────────────────────────────────────────────────────
- 
-class PermutationExplainer:
+
+class ShapExplainer:
     """
-    Local feature importance via leave-one-out permutation.
-    Approximates SHAP values. Output schema is identical to shap.TreeExplainer
-    so the swap is a one-line change when shap becomes available.
+    Exact TreeSHAP values for the defective class, in probability units.
+
+    Random Forest: path-dependent TreeSHAP. A forest's raw output is already
+    the averaged class probability, so no background data is needed.
+    XGBoost: interventional TreeSHAP against a background sample, which lets
+    shap explain the probability rather than the log-odds margin.
+    Both therefore share one unit and can be blended with the ensemble weights.
     """
-    def __init__(self, model, feature_names: List[str]):
+    def __init__(self, model, feature_names: List[str], background: Optional[np.ndarray] = None):
         self.model = model
         self.feature_names = feature_names
- 
+        if background is None:
+            self._explainer = shap.TreeExplainer(model)
+        else:
+            self._explainer = shap.TreeExplainer(
+                model, data=background,
+                feature_perturbation="interventional", model_output="probability",
+            )
+
     def explain(self, x: np.ndarray) -> np.ndarray:
-        x2d = x.reshape(1, -1)
-        base_prob = float(self.model.predict_proba(x2d)[0][1])
-        contributions = np.zeros(len(self.feature_names))
-        for i in range(len(self.feature_names)):
-            x_perturbed = x2d.copy()
-            x_perturbed[0, i] = 0.0
-            perturbed_prob = float(self.model.predict_proba(x_perturbed)[0][1])
-            contributions[i] = base_prob - perturbed_prob
-        return contributions
+        values = self._explainer.shap_values(x.reshape(1, -1).astype(np.float32))
+        if isinstance(values, list):    # one array per class
+            values = values[1]
+        values = np.asarray(values)
+        if values.ndim == 3:            # (samples, features, classes)
+            values = values[..., 1]
+        return values[0]
  
  
 # ──────────────────────────────────────────────────────────────────────
@@ -129,19 +139,21 @@ class RiskThresholds:
 # ──────────────────────────────────────────────────────────────────────
  
 class MLRiskDetector:
-    MODEL_VERSION = "1.1.0"
+    MODEL_VERSION = "2.0.0"
     # Soft-voting weights: Random Forest, XGBoost, Logistic Regression
     W_RF, W_XGB, W_LR = 0.40, 0.50, 0.10
- 
+    SHAP_BACKGROUND_SIZE = 100
+
     def __init__(self, n_estimators_rf=200, n_estimators_xgb=200, random_state=42, use_smote=True):
         self.random_state = random_state
         self.use_smote = use_smote
         self.scaler = StandardScaler()
         self.feature_names: List[str] = []
         self.is_fitted = False
-        self._rf_explainer: Optional[PermutationExplainer] = None
-        self._gb_explainer: Optional[PermutationExplainer] = None
- 
+        self.background: Optional[np.ndarray] = None
+        self._rf_explainer: Optional[ShapExplainer] = None
+        self._gb_explainer: Optional[ShapExplainer] = None
+
         self.rf = RandomForestClassifier(
             n_estimators=n_estimators_rf, max_depth=15, min_samples_leaf=3,
             class_weight="balanced", random_state=random_state, n_jobs=-1,
@@ -160,7 +172,12 @@ class MLRiskDetector:
         self.feature_names = list(X.columns)
         X_arr = X.values.astype(np.float32)
         logger.info(f"Training: {len(X)} samples, {int(y.sum())} defective ({y.mean()*100:.1f}%)")
- 
+
+        # SHAP background: real (pre-SMOTE) training rows only
+        rng = np.random.RandomState(self.random_state)
+        bg_idx = rng.choice(len(X_arr), size=min(self.SHAP_BACKGROUND_SIZE, len(X_arr)), replace=False)
+        self.background = X_arr[bg_idx]
+
         if self.use_smote:
             X_arr, y_arr = self.smote.fit_resample(X_arr, y.values)
             logger.info(f"After SMOTE: {len(X_arr)} samples")
@@ -174,13 +191,16 @@ class MLRiskDetector:
         self.xgb_model.fit(X_arr, y_arr)
         logger.info("Fitting Logistic Regression...")
         self.lr.fit(X_scaled, y_arr)
- 
-        self._rf_explainer = PermutationExplainer(self.rf, self.feature_names)
-        self._gb_explainer = PermutationExplainer(self.xgb_model, self.feature_names)
+
+        self._build_explainers()
         self.is_fitted = True
         logger.info("Training complete.")
         return self
- 
+
+    def _build_explainers(self) -> None:
+        self._rf_explainer = ShapExplainer(self.rf, self.feature_names)
+        self._gb_explainer = ShapExplainer(self.xgb_model, self.feature_names, background=self.background)
+
     def predict_proba_single(self, x: np.ndarray) -> Tuple[float, float, float]:
         x2d = x.reshape(1, -1).astype(np.float32)
         rf_prob = float(self.rf.predict_proba(x2d)[0][1])
@@ -188,11 +208,13 @@ class MLRiskDetector:
         lr_prob = float(self.lr.predict_proba(self.scaler.transform(x2d))[0][1])
         ensemble = self.W_RF * rf_prob + self.W_XGB * gb_prob + self.W_LR * lr_prob
         return ensemble, rf_prob, gb_prob
- 
+
     def get_shap_top_factors(self, x: np.ndarray, top_k: int = 3) -> Tuple[List[Dict], str]:
         sv_rf = self._rf_explainer.explain(x.astype(np.float32))
         sv_gb = self._gb_explainer.explain(x.astype(np.float32))
-        sv = 0.5 * sv_rf + 0.5 * sv_gb
+        # SHAP is additive across models, so blend with the ensemble's own weights
+        # (renormalised over the two tree models, which carry 90% of the score).
+        sv = (self.W_RF * sv_rf + self.W_XGB * sv_gb) / (self.W_RF + self.W_XGB)
         sorted_idx = np.argsort(np.abs(sv))[::-1][:top_k]
         factors = []
         for idx in sorted_idx:
@@ -280,6 +302,7 @@ class MLRiskDetector:
                 "rf": self.rf, "xgb_model": self.xgb_model, "lr": self.lr,
                 "scaler": self.scaler, "feature_names": self.feature_names,
                 "is_fitted": self.is_fitted, "version": self.MODEL_VERSION,
+                "background": self.background,
             }, f)
         logger.info(f"Model saved → {path}")
  
@@ -291,8 +314,8 @@ class MLRiskDetector:
         d.rf = state["rf"]; d.xgb_model = state["xgb_model"]; d.lr = state["lr"]
         d.scaler = state["scaler"]; d.feature_names = state["feature_names"]
         d.is_fitted = state["is_fitted"]
-        d._rf_explainer = PermutationExplainer(d.rf, d.feature_names)
-        d._gb_explainer = PermutationExplainer(d.xgb_model, d.feature_names)
+        d.background = state.get("background")
+        d._build_explainers()
         logger.info(f"Model loaded ← {path}")
         return d
  

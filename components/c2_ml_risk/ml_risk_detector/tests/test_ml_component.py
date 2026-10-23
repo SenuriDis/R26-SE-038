@@ -209,6 +209,15 @@ class TestMLRiskDetector:
             assert "value" in factor
             assert "direction" in factor
 
+    def test_shap_values_are_additive(self, trained_detector, feature_engineer, sample_metrics):
+        # TreeSHAP is exact: base value + contributions = the model's probability
+        x = feature_engineer.transform(sample_metrics)
+        explainer = trained_detector._gb_explainer
+        phi = explainer.explain(x)
+        base = float(np.ravel(explainer._explainer.expected_value)[-1])
+        prob = float(trained_detector.xgb_model.predict_proba(x.reshape(1, -1))[0][1])
+        assert abs(base + phi.sum() - prob) < 1e-3
+
     def test_shap_explanation_text(self, trained_detector, feature_engineer, sample_metrics):
         x = feature_engineer.transform(sample_metrics)
         _, explanation = trained_detector.get_shap_top_factors(x)
