@@ -14,7 +14,8 @@ import json
 
 from utils.feature_engineering import FeatureEngineer, CodeMetrics
 from models.risk_detector import MLRiskDetector, RiskThresholds, RiskPrediction
-from models.prioritizer import TestPrioritizer
+# Aliased: the TestPrioritizer test class below would otherwise shadow it
+from models.prioritizer import TestPrioritizer as Prioritizer
 from data.dataset import generate_synthetic_dataset
 
 
@@ -281,7 +282,7 @@ class TestPrioritizer:
             for m in metrics_list[:20]
         ]
         predictions = trained_detector.predict_batch(feature_matrix, metadata)
-        prioritizer = TestPrioritizer()
+        prioritizer = Prioritizer()
         payload = prioritizer.prioritize(predictions, project_name="test_project")
 
         assert "summary" in payload
@@ -300,7 +301,7 @@ class TestPrioritizer:
             for m in metrics_list[:20]
         ]
         predictions = trained_detector.predict_batch(feature_matrix, metadata)
-        prioritizer = TestPrioritizer()
+        prioritizer = Prioritizer()
         payload = prioritizer.prioritize(predictions)
 
         s = payload["summary"]
@@ -316,7 +317,7 @@ class TestPrioritizer:
             for m in metrics_list[:10]
         ]
         predictions = trained_detector.predict_batch(feature_matrix, metadata)
-        prioritizer = TestPrioritizer()
+        prioritizer = Prioritizer()
         payload = prioritizer.prioritize(predictions)
 
         out = str(tmp_path / "output.json")
