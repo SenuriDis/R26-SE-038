@@ -110,6 +110,17 @@ def train():
         pickle.dump(fe, f)
  
     # ── 7. Demo prediction ──────────────────────────────────────────
+    run_demo(detector, fe)
+ 
+    print("\n  Training complete. Model ready for API deployment.")
+    print("  Run: uvicorn api.predict_api:app --host 0.0.0.0 --port 8000\n")
+ 
+    return detector, fe, metrics
+ 
+ 
+def run_demo(detector: MLRiskDetector, fe: FeatureEngineer) -> dict:
+    """Score three hand-written payment-service functions, print the summary
+    and save models/saved/sample_prediction.json."""
     logger.info("Step 7: Running demo prediction on known high-risk function...")
  
     # This mirrors the process_transaction() function from the UI mockup in the proposal
@@ -223,14 +234,17 @@ def train():
     with open(out_path, "w") as f:
         json.dump(payload, f, indent=2)
     logger.info(f"Sample prediction saved to {out_path}")
- 
-    print("\n  Training complete. Model ready for API deployment.")
-    print("  Run: uvicorn api.predict_api:app --host 0.0.0.0 --port 8000\n")
- 
-    return detector, fe, metrics
- 
- 
+    return payload
+
+
 if __name__ == "__main__":
-    train()
+    if "--demo-only" in sys.argv:
+        # Regenerate the sample prediction from the saved model, without retraining
+        import pickle
+        with open("models/saved/feature_engineer.pkl", "rb") as f:
+            saved_fe = pickle.load(f)
+        run_demo(MLRiskDetector.load("models/saved/risk_detector.pkl"), saved_fe)
+    else:
+        train()
  
 
